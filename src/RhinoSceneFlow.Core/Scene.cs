@@ -1,4 +1,4 @@
-namespace RhinoPSD.Core;
+namespace RhinoSceneFlow.Core;
 
 public readonly record struct Rgb(byte R, byte G, byte B)
 {

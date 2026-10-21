@@ -1,12 +1,12 @@
 using System.Buffers.Binary;
 using System.Text;
 
-namespace RhinoPSD.Core;
+namespace RhinoSceneFlow.Core;
 
 /// <summary>Minimal PSD v1 writer: RGB/8, Unicode pixel layers, transparency, raw planar channels.</summary>
 public static class PsdWriter
 {
-    public static int Save(string path, RasterImage image, CancellationToken cancellation = default)
+    public static int Save(string path, RasterImage image, CancellationToken cancellation = default, bool overwrite = true)
     {
         var layers = image.GetVisibleLayers(cancellation);
         if (layers.Count == 0) throw new InvalidOperationException("No visible surface pixels to export.");
@@ -20,7 +20,7 @@ public static class PsdWriter
             using (var stream = new FileStream(temporary, FileMode.CreateNew, FileAccess.ReadWrite, FileShare.None))
                 Write(stream, image, layers, cancellation);
             cancellation.ThrowIfCancellationRequested();
-            File.Move(temporary, target, overwrite: true);
+            File.Move(temporary, target, overwrite);
         }
         finally { if (File.Exists(temporary)) File.Delete(temporary); }
         return layers.Count;

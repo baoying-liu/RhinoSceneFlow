@@ -2,9 +2,9 @@ using Rhino;
 using Rhino.Display;
 using Rhino.DocObjects;
 using Rhino.Geometry;
-using RhinoPSD.Core;
+using RhinoSceneFlow.Core;
 
-namespace RhinoPSD.Plugin;
+namespace RhinoSceneFlow.Plugin;
 
 internal sealed class SceneReader(RhinoDoc doc, RhinoViewport viewport, CancellationToken cancellation)
 {

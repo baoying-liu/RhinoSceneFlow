@@ -1,4 +1,4 @@
-namespace RhinoPSD.Core;
+namespace RhinoSceneFlow.Core;
 
 /// <summary>Opaque, double-sided triangles with a shared depth buffer for all color groups.</summary>
 public static class FlatRasterizer

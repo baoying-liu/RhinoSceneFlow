@@ -1,4 +1,4 @@
-using RhinoPSD.Core;
+using RhinoSceneFlow.Core;
 
 static void Check(bool condition, string message)
 { if (!condition) throw new Exception(message); }
@@ -65,4 +65,7 @@ using var canceled = new CancellationTokenSource(); canceled.Cancel();
 try { PsdWriter.Save(Path.Combine(output, "occlusion.psd"), image, canceled.Token); throw new Exception("Cancellation ignored."); }
 catch (OperationCanceledException) { }
 Check(original.SequenceEqual(File.ReadAllBytes(Path.Combine(output, "occlusion.psd"))), "Cancellation must preserve existing output.");
+try { PsdWriter.Save(Path.Combine(output, "occlusion.psd"), image, overwrite: false); throw new Exception("Overwrite protection ignored."); }
+catch (IOException) { }
+Check(original.SequenceEqual(File.ReadAllBytes(Path.Combine(output, "occlusion.psd"))), "Refusing overwrite must preserve existing output.");
 Console.WriteLine($"PASS: occlusion, clipping, projection, alpha composition, PSD export, cancellation. Fixtures: {output}");

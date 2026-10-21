@@ -1,4 +1,4 @@
-namespace RhinoPSD.Core;
+namespace RhinoSceneFlow.Core;
 
 public sealed record LayerBounds(int Group, int Left, int Top, int Right, int Bottom)
 {
