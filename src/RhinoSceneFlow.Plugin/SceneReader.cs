@@ -56,15 +56,15 @@ internal sealed class SceneReader(RhinoDoc doc, RhinoViewport viewport, Cancella
         switch (geometry)
         {
             case Mesh mesh: meshes = [mesh]; owned = false; break;
-            case Brep brep: meshes = Mesh.CreateFromBrep(brep, MeshingParameters.Default) ?? []; break;
+            case Brep brep: meshes = MeshBrep(brep); break;
             case Extrusion extrusion:
-                using (var eb = extrusion.ToBrep()) meshes = Mesh.CreateFromBrep(eb, MeshingParameters.Default) ?? [];
+                using (var eb = extrusion.ToBrep()) meshes = MeshBrep(eb);
                 break;
             case SubD subd:
                 var sm = Mesh.CreateFromSubD(subd, 2);
                 meshes = sm is null ? [] : [sm]; break;
             case Surface surface:
-                using (var sb = surface.ToBrep()) meshes = Mesh.CreateFromBrep(sb, MeshingParameters.Default) ?? [];
+                using (var sb = surface.ToBrep()) meshes = MeshBrep(sb);
                 break;
             default:
                 string type = obj.ObjectType.ToString();
@@ -127,4 +127,15 @@ internal sealed class SceneReader(RhinoDoc doc, RhinoViewport viewport, Cancella
 
     private static Vec3 ToVec(Point3d p) => new(p.X, p.Y, p.Z);
     private static Vec3 ToVec(Vector3d p) => new(p.X, p.Y, p.Z);
+
+    private static Mesh[] MeshBrep(Brep brep)
+    {
+        using var parameters = MeshingParameters.QualityRenderMesh;
+        // A bilinear saddle can otherwise be returned as one twisted quad. Splitting that
+        // quad into two planar triangles changes the surface and its silhouette dramatically.
+        parameters.GridMinCount = Math.Max(64, parameters.GridMinCount);
+        parameters.RefineGrid = true;
+        parameters.SimplePlanes = true;
+        return Mesh.CreateFromBrep(brep, parameters) ?? [];
+    }
 }

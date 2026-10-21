@@ -67,7 +67,7 @@ def api(operation, **kwargs):
     return json.loads(McpApi.Execute(json.dumps(request)))
 report['describe'] = api('describe')
 assert report['describe']['ok']
-assert report['describe']['result']['version'] == '0.2.0'
+assert report['describe']['result']['version'].startswith('0.2.')
 export_dir = os.path.join(os.path.dirname(OUTPUT_DIR), 'exports')
 assert api('configure_export', directory=export_dir)['ok']
 assert api('status')['result']['defaultDirectory'] == export_dir

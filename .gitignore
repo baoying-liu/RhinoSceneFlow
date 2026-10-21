@@ -6,3 +6,4 @@ artifacts/
 *.suo
 *.psd
 *.psb
+**/__pycache__/

@@ -25,7 +25,7 @@ public static class McpApi
             switch (operation)
             {
                 case "describe":
-                    response = new { name = "RhinoSceneFlow", version = "0.2.0", transport = "Rhino-MCP-Platform.run_python",
+                    response = new { name = "RhinoSceneFlow", version = "0.2.1", transport = "Rhino-MCP-Platform.run_python",
                         entryPoint = "RhinoSceneFlow.Plugin.McpApi.Execute(string)",
                         operations = new object[] {
                             new { name="describe", required=Array.Empty<string>(), parameters="apiVersion=1", output="Version, operation contracts, limitations" },

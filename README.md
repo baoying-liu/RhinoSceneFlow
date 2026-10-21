@@ -69,6 +69,8 @@ docs                   设计边界、Rhino 实机验收清单
 
 Core 与 Rhino SDK 解耦，可由后续命令、界面或 MCP 适配层共同调用。首版没有引入 C++ 或运行时第三方依赖，PSD 写入按 [Adobe 格式说明](https://www.adobe.com/devnet-apps/photoshop/fileformatashtml/)实现，当前使用未压缩通道；16 位、PSB、压缩、ICC 配置和材质分组留待后续。
 
+v0.2.1 已修复马鞍形曲面的网格退化问题，并在球体、双曲面、圆环、带孔曲面上完成 1024 / 2048 像素实测，见 [复杂曲面报告](docs/Complex-Surfaces.md)。
+
 ## 验证
 
 构建脚本运行核心验证，覆盖前后遮挡、绘制顺序、透视边界、相机近远平面裁切、透明背景、图层合成及取消时保护旧文件。
