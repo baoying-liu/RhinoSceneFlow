@@ -1,6 +1,6 @@
 # RhinoSceneFlow development
 
-- Product scope: AI assets → physical-scale materials → planting → view-layer export → postproduction. Current implemented slice is layer-RGB PSD export and Platform automation.
+- Product scope: AI assets → physical-scale materials → planting → view-layer export → postproduction. Current implemented slice is layer-RGB PSD export, independent hard-shadow PSD export and Platform automation.
 - Keep geometry/projection/PSD serialization in Core; Rhino SDK, commands, preferences and the public JSON API belong in Plugin. Commands and automation call ExportService.
 - Depend on the user's installed Rhino-MCP-Platform. Do not start another MCP server, patch Platform private implementations, or edit Codex MCP configuration for this project.
 - Automation entry point: `RhinoSceneFlow.Plugin.McpApi.Execute(JSON)` via Platform `run_python`. Update docs/MCP.md with API changes.
@@ -11,3 +11,7 @@
 - Manage test instance builds/restarts through the sandbox MCP. Retain failed/unknown exit evidence; do not force-kill instances or change another channel.
 - No formal Rhino deployment is implied by sandbox test work. Preserve document geometry, attributes, selection, view and modified state during exports.
 - Update docs/Validation.md and docs/Sandbox-B.md with actual evidence; distinguish independent file decoding from opening Photoshop itself.
+
+- Shadow backend: pinned geometry3Sharp 1.0.324 (Boost). Keep the managed dependency beside the RHP. No native runtime or separate MCP server.
+- Use refined ruled-surface meshes, interpolated receiver normals, and local tangent-plane error bias for shadow rays; do not hide geometric artifacts with blur or threshold image cleanup.
+- Shadow verification: scripts/Test-ShadowRhino.py after Test-ComplexRhino.py; independent scripts/Verify-ShadowPsd.py. Retain failed visual/oracle evidence and verify curved receivers as well as planar ground.

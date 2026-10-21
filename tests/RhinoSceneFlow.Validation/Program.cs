@@ -69,3 +69,60 @@ try { PsdWriter.Save(Path.Combine(output, "occlusion.psd"), image, overwrite: fa
 catch (IOException) { }
 Check(original.SequenceEqual(File.ReadAllBytes(Path.Combine(output, "occlusion.psd"))), "Refusing overwrite must preserve existing output.");
 Console.WriteLine($"PASS: occlusion, clipping, projection, alpha composition, PSD export, cancellation. Fixtures: {output}");
+
+// Analytic shadow: a plate at z=2, lit from +X/+Z, casts [-3,-1] onto z=0.
+static WorldTriangle[] Plate(double z, double radius) => [
+    new(new(-radius,-radius,z),new(radius,-radius,z),new(radius,radius,z)),
+    new(new(-radius,-radius,z),new(radius,radius,z),new(-radius,radius,z))];
+var shadowCamera = new CameraProjection(new(0,0,10),new(1,0,0),new(0,1,0),new(0,0,1),-5,5,-5,5,.1,20,true);
+var shadowScene = Plate(0,5).Concat(Plate(2,1)).ToArray();
+var shadow = ShadowRenderer.Render(100,100,shadowCamera,shadowScene,new(new(1,0,1),new(90,90,90)));
+Check(shadow.CompositeChannel(3,30,50)==255,"Analytic projected shadow missing.");
+Check(shadow.CompositeChannel(3,50,50)==0,"Lit plate must occlude its ground shadow.");
+Check(shadow.CompositeChannel(3,80,50)==0,"Unshadowed ground must be transparent.");
+var softAlpha = ShadowRenderer.Render(100,100,shadowCamera,shadowScene,new(new(1,0,1),new(12,34,56),Opacity:.5));
+Check(softAlpha.LayerAlpha(0,30,50)==128,"Shadow opacity must affect pixel layer alpha.");
+var below = ShadowRenderer.Render(32,32,shadowCamera,Plate(0,5),new(new(0,0,-1),new(90,90,90)));
+Check(below.GetVisibleLayers().Count==0,"Backlighting must not accidentally become cast shadow.");
+var form = ShadowRenderer.Render(32,32,shadowCamera,Plate(0,5),new(new(0,0,-1),new(90,90,90),true));
+Check(form.CompositeChannel(3,16,16)==255,"Optional form shading missing.");
+PsdWriter.Save(Path.Combine(output,"shadow.psd"),shadow);
+PsdWriter.Save(Path.Combine(output,"shadow-opacity.psd"),softAlpha);
+PsdWriter.Save(Path.Combine(output,"shadow-empty.psd"),below,allowEmpty:true);
+// Perspective projection has the same shadow point; test unprojection away from the optical axis.
+var pc = shadowCamera with { Parallel=false, Left=-.05, RightEdge=.05, Bottom=-.05, Top=.05 };
+var ps = ShadowRenderer.Render(100,100,pc,shadowScene,new(new(1,0,1),new(90,90,90)));
+Check(ps.CompositeChannel(3,30,50)==255 && ps.CompositeChannel(3,50,50)==0,"Perspective shadow projection.");
+// Translation invariance at survey-scale offsets.
+var offset = new Vec3(1e8,-1e8,1e8);
+var shifted = ShadowRenderer.Render(100,100,shadowCamera with { Origin=shadowCamera.Origin+offset },
+    shadowScene.Select(t=>new WorldTriangle(t.A+offset,t.B+offset,t.C+offset)).ToArray(),new(new(1,0,1),new(90,90,90)));
+for(int y=0;y<100;y++) for(int x=0;x<100;x++)
+    Check(shifted.CompositeChannel(3,x,y)==shadow.CompositeChannel(3,x,y),"Large-coordinate shadow must be translation invariant.");
+Console.WriteLine("PASS: analytic shadows, visibility, perspective, opacity, optional form shading, empty PSD, large coordinates.");
+
+var offscreen = Plate(0,5).Concat(Plate(12,1).Select(t=> new WorldTriangle(t.A+new Vec3(8,0,0),t.B+new Vec3(8,0,0),t.C+new Vec3(8,0,0)))).ToArray();
+var outside = ShadowRenderer.Render(100,100,shadowCamera,offscreen,new(new(1,0,1),new(90,90,90)));
+Check(outside.CompositeChannel(3,10,50)==255,"A caster outside the camera frustum must still cast shadows.");
+Console.WriteLine("PASS: off-camera casters.");
+
+var sn = new Vec3(-.9,0,.1).Unit;
+var smoothPlane = Plate(0,5).Select(t=>t with { NA=sn,NB=sn,NC=sn }).ToArray();
+var smoothForm = ShadowRenderer.Render(32,32,shadowCamera,smoothPlane,new(new(1,0,1),new(90,90,90),true));
+Check(smoothForm.CompositeChannel(3,16,16)==255,"Smooth receiver normals must control form shading, independently of triangulation.");
+Console.WriteLine("PASS: interpolated receiver normals.");
+
+// A smooth convex sphere has no cast shadows of its own. Coarse mesh facets must
+// not turn its smooth-normal terminator into a noisy ring of false occlusion.
+var ball = new List<WorldTriangle>();
+Vec3 BallPoint(int latitude,int longitude) => new(3*Math.Sin(latitude*Math.PI/16)*Math.Cos(longitude*Math.PI/16),
+    3*Math.Sin(latitude*Math.PI/16)*Math.Sin(longitude*Math.PI/16),3*Math.Cos(latitude*Math.PI/16));
+void AddBall(Vec3 a,Vec3 b,Vec3 c) => ball.Add(new(a,b,c,a.Unit,b.Unit,c.Unit));
+for(int j=0;j<16;j++) for(int i=0;i<32;i++)
+{
+    var a=BallPoint(j,i);var b=BallPoint(j,i+1);var c=BallPoint(j+1,i+1);var d=BallPoint(j+1,i);
+    AddBall(a,b,c);AddBall(a,c,d);
+}
+var sphereShadow=ShadowRenderer.Render(128,128,shadowCamera,ball,new(new(1,0,1),new(90,90,90)));
+Check(sphereShadow.GetVisibleLayers().Count==0,"A convex smooth sphere must not generate faceted shadow acne.");
+Console.WriteLine("PASS: smooth sphere terminator has no false cast-shadow pixels.");

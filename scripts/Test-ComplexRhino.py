@@ -88,7 +88,7 @@ vp.DisplayMode=DisplayModeDescription.FindByName('Shaded')
 bounds=BoundingBox(Point3d(-11,-7,-2),Point3d(34,7,8))
 report={'pid':EXPECTED_PID,'objects':objects,'colors':colors,'waistRadius':waist,'cases':[]}
 report['pluginVersion']=api('describe')['result']['version']
-assert report['pluginVersion']=='0.2.1',report['pluginVersion']
+assert report['pluginVersion']=='0.3.0',report['pluginVersion']
 
 def snapshot():
     return (doc.Modified,doc.Objects.Count,tuple(str(o.Id) for o in doc.Objects.GetSelectedObjects(False,False)),

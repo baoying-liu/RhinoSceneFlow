@@ -2,7 +2,7 @@
 
 Rhino 场景表现工作流：**AI 素材 → 真实尺度材质 → 植物布置 → 视图分层导出 → 后期编辑**，由 Codex / Agent 编排。名称中的 Scene 表示材质与植物组成的场景，Flow 表示从 Rhino 到后期编辑的连续流程。
 
-当前为 Rhino 8 / Windows v0.2 原型，已实现按**图层 RGB 颜色**分层的 PSD、默认目录及原厂 Rhino-MCP-Platform 自动化适配。其余工作流模块尚未实现；不依赖 ComfyUI，不启动额外 MCP 服务。
+当前为 Rhino 8 / Windows v0.3 原型，已实现按**图层 RGB 颜色**分层的 PSD、独立单色阴影 PSD、默认目录及原厂 Rhino-MCP-Platform 自动化适配。其余工作流模块尚未实现；不依赖 ComfyUI，不启动额外 MCP 服务。
 
 项目位置：`00_DevProjects/C#/RhinoSceneFlow`，独立 Git 仓库；与 `00_DevProjects/C++/RhinoBIM` 在语言目录下层级一致。
 
@@ -17,7 +17,7 @@ Rhino 场景表现工作流：**AI 素材 → 真实尺度材质 → 植物布�
 - 跳过隐藏对象与隐藏父图层；锁定面对象仍参与导出。
 - 不修改模型、图层、选择、相机、显示模式或材质；临时文件写入成功后才替换目标 PSD。
 
-这不是当前显示模式的截图分层。当前为专用 CPU 色块投影器，不输出贴图、光照、阴影、透明材质或植物 PNG 的 alpha；这些对象目前按不透明面处理。曲线、点、标注、文字和 Hatch 不导出，命令行会报告跳过类型及数量。网格精度可能与 Rhino 当前显示网格有差异。
+色层导出使用专用 CPU 色块投影器，不输出贴图、光照、透明材质或植物 PNG 的 alpha；阴影通过独立命令导出。这些对象目前按不透明面处理。曲线、点、标注、文字和 Hatch 不导出，命令行会报告跳过类型及数量。网格精度可能与 Rhino 当前显示网格有差异。
 
 当前不支持布局视图、关联裁剪平面的视图、自定义显示插件内容、渲染器效果和单独隐藏的子对象。布局与裁剪视图会明确拒绝。工程大坐标使用双精度相机投影，但实际 Rhino 相机对齐仍需实机验收。
 
@@ -92,3 +92,13 @@ artifacts/verify-env/Scripts/python.exe scripts/Verify-Psd.py artifacts/validati
 不要通过默认通道或 UI 当前页签推断操作目标，也不要直接修改本机 workspace.json。通道的构建、启动与备份重启统一通过管理 MCP 执行。
 
 `scripts/Smoke-Rhino.py` 在 B 的空测试文档创建专用示例，验证真实命令导出、同色合并、遮挡、隐藏父图层与锁定对象；会保留示例模型供人工查看。完整测试记录见 `docs/Sandbox-B.md`。
+
+## v0.3 独立阴影 PSD
+
+命令：`RhinoSceneFlowExportShadowPSD`。输入宽度和输出路径；回车使用默认路径，无保存对话框。自动化示例：`_-RhinoSceneFlowExportShadowPSD 1024 _Enter`。
+
+输出透明背景、单一灰色、清晰边缘的 `Shadow` 图层；默认只输出投射阴影。模型需有实际接收阴影的表面。高级太阳方向、颜色、透明度和背光面开关通过 [MCP API](docs/MCP.md) 设置。默认优先采用启用且在地平线上方的 Rhino Sun，否则使用固定斜上方光源，报告记录实际来源。
+
+几何查询采用固定版本 geometry3Sharp 1.0.324（Boost Software License 1.0）；参见 [第三方说明](third-party/README.md)。
+
+实测记录、预览位置和曲面碎纹修复说明：[阴影验证](docs/Shadows.md)。

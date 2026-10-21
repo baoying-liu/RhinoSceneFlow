@@ -9,12 +9,13 @@ public sealed record LayerBounds(int Group, int Left, int Top, int Right, int Bo
 public sealed class RasterImage
 {
     private readonly int[] owners;
+    private readonly double opacity;
     public int Width { get; }
     public int Height { get; }
     public IReadOnlyList<ColorGroup> Groups { get; }
 
-    internal RasterImage(int width, int height, IReadOnlyList<ColorGroup> groups, int[] owners)
-    { Width = width; Height = height; Groups = groups; this.owners = owners; }
+    internal RasterImage(int width, int height, IReadOnlyList<ColorGroup> groups, int[] owners, double opacity = 1)
+    { Width = width; Height = height; Groups = groups; this.owners = owners; this.opacity = opacity; }
 
     public int SampleOwner(int x, int y, int sample) =>
         owners[(y * 2 + sample / 2) * Width * 2 + x * 2 + sample % 2];
@@ -51,7 +52,7 @@ public sealed class RasterImage
             if (g == group) own++;
             else if (g >= 0 && g < group) above++;
         }
-        return own == 0 ? (byte)0 : (byte)Math.Round(255.0 * own / (4 - above));
+        return own == 0 ? (byte)0 : (byte)Math.Round(opacity * 255.0 * own / (4 - above));
     }
 
     public byte CompositeChannel(int channel, int x, int y)
@@ -65,7 +66,7 @@ public sealed class RasterImage
             var color = Groups[g].Color;
             sum += channel switch { 0 => color.R, 1 => color.G, 2 => color.B, _ => 0 };
         }
-        if (channel == 3) return (byte)Math.Round(255.0 * covered / 4);
+        if (channel == 3) return (byte)Math.Round(opacity * 255.0 * covered / 4);
         return covered == 0 ? (byte)0 : (byte)Math.Round((double)sum / covered);
     }
 }

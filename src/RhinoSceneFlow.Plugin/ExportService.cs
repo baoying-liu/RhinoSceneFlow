@@ -12,13 +12,35 @@ public sealed record ExportReport(string Path, int Width, int Height, int LayerC
     uint Document, Guid ViewportId, string ViewName, string Projection, string[] Limitations);
 
 /// <summary>UI-thread application service shared by commands and the Platform automation bridge.</summary>
+public sealed record ShadowExportReport(ExportReport Export, double[] ToSun, string LightSource, string Color, double Opacity, bool IncludeFormShading, double Bias, bool Empty);
+
 public static class ExportService
 {
     public static string NewDefaultPath() => System.IO.Path.Combine(SceneFlowPlugin.Instance.ExportDirectory,
         $"SceneFlow-{DateTime.Now:yyyyMMdd-HHmmss-fffffff}-{Guid.NewGuid().ToString("N")[..6]}.psd");
 
     public static ExportReport Export(RhinoDoc doc, int width = 2048, string? path = null,
-        bool overwrite = false, Guid? expectedViewport = null, CancellationToken cancellation = default)
+        bool overwrite = false, Guid? expectedViewport = null, CancellationToken cancellation = default) =>
+        ExportInternal(doc, width, path, overwrite, expectedViewport, cancellation, null);
+
+    public static ShadowExportReport ExportShadow(RhinoDoc doc, int width = 2048, string? path = null,
+        bool overwrite = false, Guid? expectedViewport = null, Vec3? toSun = null,
+        Rgb? color = null, double opacity = 1, bool includeFormShading = false, double? bias = null)
+    {
+        if (RhinoApp.InvokeRequired) throw new InvalidOperationException("Export must run on Rhino UI thread.");
+        var sun = doc.RenderSettings.Sun;
+        var direction = sun.Vector;
+        string source = toSun.HasValue ? "explicit" : sun.Enabled && direction.IsValid && direction.Length > 0 && direction.Z < 0 ? "rhino_sun" : "default";
+        var light = (toSun ?? (source == "rhino_sun" ? new Vec3(-direction.X,-direction.Y,-direction.Z) : new Vec3(-1,-1,2))).Unit;
+        // Bias is in model units and deliberately much smaller than document modeling tolerance.
+        double epsilon = bias ?? Math.Max(doc.ModelAbsoluteTolerance * .001, 1e-7);
+        var settings = new ShadowSettings(light, color ?? new Rgb(90,90,90), includeFormShading, epsilon, opacity);
+        var report = ExportInternal(doc, width, path, overwrite, expectedViewport, default, settings);
+        return new(report, [light.X,light.Y,light.Z], source, settings.Color.Hex, opacity, includeFormShading, epsilon, report.Layers.Length == 0);
+    }
+
+    private static ExportReport ExportInternal(RhinoDoc doc, int width, string? path, bool overwrite,
+        Guid? expectedViewport, CancellationToken cancellation, ShadowSettings? shadow)
     {
         if (RhinoApp.InvokeRequired) throw new InvalidOperationException("Export must run on Rhino's UI thread.");
         var watch = Stopwatch.StartNew();
@@ -41,16 +63,18 @@ public static class ExportService
             throw new ArgumentException("Output must have a .psd extension.");
         path = System.IO.Path.GetFullPath(path);
         if (!overwrite && File.Exists(path)) throw new IOException("Output already exists; set overwrite=true explicitly.");
-        var reader = new SceneReader(doc, viewport, cancellation);
-        var image = FlatRasterizer.Render(width, height, reader.Groups, reader.Read(), cancellation);
+        var reader = new SceneReader(doc, viewport, cancellation, shadow is not null);
+        var triangles = reader.Read().ToArray();
+        var image = shadow is null ? FlatRasterizer.Render(width, height, reader.Groups, triangles, cancellation) :
+            ShadowRenderer.Render(width, height, reader.Camera, reader.WorldTriangles, shadow, cancellation);
         var visible = image.GetVisibleLayers(cancellation);
-        if (visible.Count == 0) throw new InvalidOperationException("No visible surface pixels to export.");
+        if (visible.Count == 0 && shadow is null) throw new InvalidOperationException("No visible surface pixels to export.");
         Directory.CreateDirectory(System.IO.Path.GetDirectoryName(path)!);
-        int count = PsdWriter.Save(path, image, cancellation, overwrite);
+        int count = PsdWriter.Save(path, image, cancellation, overwrite, allowEmpty: shadow is not null);
         return new ExportReport(path, width, height, count, visible.Select(l => image.Groups[l.Group].Name).ToArray(),
             reader.MeshObjects, reader.TriangleCount, new FileInfo(path).Length, watch.ElapsedMilliseconds,
             reader.Skipped, doc.RuntimeSerialNumber, viewport.Id, viewport.Name,
             viewport.IsParallelProjection ? "parallel" : "perspective",
-            ["Opaque layer-color surfaces only", "Textures, lighting and alpha materials are not exported", "Curves, text, annotations and hatches are skipped"]);
+            shadow is not null ? ["Opaque mesh approximations; no alpha cutouts", "Existing visible surfaces receive shadows; no implicit ground plane", "Directional hard shadows; form shading optional"] : ["Opaque layer-color surfaces only", "Textures, lighting and alpha materials are not exported", "Curves, text, annotations and hatches are skipped"]);
     }
 }

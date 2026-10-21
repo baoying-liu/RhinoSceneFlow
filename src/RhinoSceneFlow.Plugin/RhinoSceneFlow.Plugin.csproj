@@ -1,6 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFramework>net8.0-windows</TargetFramework>
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
     <TargetExt>.rhp</TargetExt>
     <PlatformTarget>x64</PlatformTarget>
     <RhinoSystem Condition="'$(RhinoSystem)'==''">C:\Program Files\Rhino 8\System</RhinoSystem>

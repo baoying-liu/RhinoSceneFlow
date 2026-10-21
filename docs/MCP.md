@@ -59,3 +59,27 @@ print(McpApi.Execute(json.dumps(request)))
 仓库提供 `scripts/Rhino-Mcp.py`，只向沙盒管理 MCP `19540` 查询 B 通道，再核对其 Monitor PID，使用该实例实际端口执行原厂工具。它不会更改现有 Codex MCP 配置。
 
 `scripts/Smoke-Rhino.py` 生成演示并通过本 API 导出；`scripts/Verify-RhinoPsd.py` 在外部用 psd-tools 解码真实文件，检查尺寸、颜色图层、遮挡、透明背景以及图层重合成。外部检查不启动 Photoshop，也不需要鼠标。
+
+## v0.3 阴影导出
+
+`export_shadow_psd` 使用同一 Platform 入口和显式 `document`，共享 `export_psd` 的 `width/path/overwrite/viewportId` 规则。返回 `result.export` 为原有导出报告，另有 `toSun/lightSource/color/opacity/includeFormShading/bias/empty`。
+
+```python
+request = {
+    'apiVersion': 1, 'operation': 'export_shadow_psd',
+    'document': int(__rhino_doc__.RuntimeSerialNumber),
+    'width': 2048,
+    'toSun': [-0.3, -1, 1],
+    'color': '#5A5A5A', 'opacity': 1.0,
+    'includeFormShading': False
+}
+print(McpApi.Execute(json.dumps(request)))
+```
+
+`toSun` 为世界坐标下**表面指向太阳**的向量，内部归一化。省略时，启用且位于地平线上方的 Rhino Sun 优先，否则使用固定方向 `[-1,-1,2]`；实际来源和方向写入报告。导出不启用或修改 Rhino 太阳。`color` 默认 `#5A5A5A`，`opacity` 范围 `(0,1]`。无渐变、软阴影、环境光遮蔽；2×2 超采样仅控制边缘覆盖。
+
+默认 `includeFormShading=false` 排除可见面背光产生的本体明暗，保留朝向太阳的面被其它几何遮挡产生的投射阴影（也包括凹面自遮挡）。设为 true 时，背光面也填为同一阴影色。双面网格的法线按相机方向统一；不依赖对象原始法线方向。
+
+接收面必须是模型中实际可见的表面，支持地面、墙、曲面；不自动创建无限地面。隐藏对象不参与投射或接收；透明材质仍视为不透明网格。曲面使用阴影专用细分网格近似，并插值顶点法线以抑制背光分界处的三角碎纹；仍非解析 NURBS 阴影。`bias` 可指定正数（模型单位）以控制数值自相交误差，默认 `max(ModelAbsoluteTolerance*0.001,1e-7)`。光线起点还按局部顶点切平面的偏差沿平滑法线偏移，以抑制曲面背光分界碎点；小于网格误差的极薄间隙仍可能损失。
+
+无阴影时仍输出一个完全透明的 `Shadow` 图层，`empty=true`。阴影和色层使用同一相机、画幅及尺寸，保持视图不变时可直接对齐。PSD 内只有独立 `Shadow` 像素层，可在后期调整。

@@ -6,7 +6,7 @@ using RhinoSceneFlow.Core;
 
 namespace RhinoSceneFlow.Plugin;
 
-internal sealed class SceneReader(RhinoDoc doc, RhinoViewport viewport, CancellationToken cancellation)
+internal sealed class SceneReader(RhinoDoc doc, RhinoViewport viewport, CancellationToken cancellation, bool forShadows = false)
 {
     private readonly Dictionary<int, int> groupByColor = new();
     private readonly List<ColorGroup> groups = [];
@@ -14,6 +14,8 @@ internal sealed class SceneReader(RhinoDoc doc, RhinoViewport viewport, Cancella
     public IReadOnlyList<ColorGroup> Groups => groups;
     public Dictionary<string, int> Skipped { get; } = new();
     public int MeshObjects { get; private set; }
+    public List<WorldTriangle> WorldTriangles { get; } = [];
+    public CameraProjection Camera { get; private set; } = null!;
     public int TriangleCount { get; private set; }
 
     public IEnumerable<Triangle> Read()
@@ -22,6 +24,7 @@ internal sealed class SceneReader(RhinoDoc doc, RhinoViewport viewport, Cancella
             throw new InvalidOperationException("无法读取当前视图相机。");
         var camera = new CameraProjection(ToVec(viewport.CameraLocation), ToVec(viewport.CameraX),
             ToVec(viewport.CameraY), ToVec(viewport.CameraZ), l, r, b, t, n, f, viewport.IsParallelProjection);
+        Camera = camera;
         var settings = new ObjectEnumeratorSettings
         {
             NormalObjects = true, LockedObjects = true, HiddenObjects = false,
@@ -78,17 +81,31 @@ internal sealed class SceneReader(RhinoDoc doc, RhinoViewport viewport, Cancella
             foreach (var mesh in meshes)
             {
                 var vertices = new ClipVertex[mesh.Vertices.Count];
+                var world = new Vec3[vertices.Length];
+                var normals = new Vec3?[vertices.Length];
+                bool hasNormals = mesh.Normals.Count == vertices.Length && transform.TryGetInverse(out _);
+                transform.TryGetInverse(out var inverse);
                 for (int i = 0; i < vertices.Length; i++)
                 {
                     var p = (Point3d)mesh.Vertices[i];
-                    p.Transform(transform); vertices[i] = camera.Project(ToVec(p));
+                    p.Transform(transform); world[i] = ToVec(p); vertices[i] = camera.Project(world[i]);
+                    if (hasNormals)
+                    {
+                        var normal = mesh.Normals[i];
+                        var wn = new Vec3(inverse.M00*normal.X + inverse.M10*normal.Y + inverse.M20*normal.Z,
+                            inverse.M01*normal.X + inverse.M11*normal.Y + inverse.M21*normal.Z,
+                            inverse.M02*normal.X + inverse.M12*normal.Y + inverse.M22*normal.Z);
+                        if (wn.Length > 0 && double.IsFinite(wn.Length)) normals[i] = wn.Unit;
+                    }
                 }
                 foreach (var face in mesh.Faces)
                 {
+                    WorldTriangles.Add(new(world[face.A], world[face.B], world[face.C], normals[face.A], normals[face.B], normals[face.C]));
                     TriangleCount++;
                     yield return new Triangle(vertices[face.A], vertices[face.B], vertices[face.C], group);
                     if (face.IsQuad)
                     {
+                        WorldTriangles.Add(new(world[face.A], world[face.C], world[face.D], normals[face.A], normals[face.C], normals[face.D]));
                         TriangleCount++;
                         yield return new Triangle(vertices[face.A], vertices[face.C], vertices[face.D], group);
                     }
@@ -128,7 +145,7 @@ internal sealed class SceneReader(RhinoDoc doc, RhinoViewport viewport, Cancella
     private static Vec3 ToVec(Point3d p) => new(p.X, p.Y, p.Z);
     private static Vec3 ToVec(Vector3d p) => new(p.X, p.Y, p.Z);
 
-    private static Mesh[] MeshBrep(Brep brep)
+    private Mesh[] MeshBrep(Brep brep)
     {
         using var parameters = MeshingParameters.QualityRenderMesh;
         // A bilinear saddle can otherwise be returned as one twisted quad. Splitting that
@@ -136,6 +153,9 @@ internal sealed class SceneReader(RhinoDoc doc, RhinoViewport viewport, Cancella
         parameters.GridMinCount = Math.Max(64, parameters.GridMinCount);
         parameters.RefineGrid = true;
         parameters.SimplePlanes = true;
+        // Ruled surfaces can have long twisted quads despite dense circumferential sampling.
+        // Subdivide those rulings for hard-shadow rays as well as the visible silhouette.
+        if (forShadows) parameters.MaximumEdgeLength = brep.GetBoundingBox(true).Diagonal.Length / 128;
         return Mesh.CreateFromBrep(brep, parameters) ?? [];
     }
 }
