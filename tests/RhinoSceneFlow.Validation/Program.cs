@@ -126,3 +126,57 @@ for(int j=0;j<16;j++) for(int i=0;i<32;i++)
 var sphereShadow=ShadowRenderer.Render(128,128,shadowCamera,ball,new(new(1,0,1),new(90,90,90)));
 Check(sphereShadow.GetVisibleLayers().Count==0,"A convex smooth sphere must not generate faceted shadow acne.");
 Console.WriteLine("PASS: smooth sphere terminator has no false cast-shadow pixels.");
+
+// Independent backend comparison: the ray reference has geometric normals only,
+// so it cannot use the known tangent-plane displacement heuristic.
+var volumeSettings=new ShadowSettings(new(1,0,1),new(90,90,90));
+void CompareVolume(string name,CameraProjection cam,IReadOnlyList<WorldTriangle> scene)
+{
+    var geometric=scene.Select(t=>t with { NA=null,NB=null,NC=null }).ToArray();
+    var reference=ShadowRenderer.Render(96,96,cam,geometric,volumeSettings);
+    var actual=ShadowVolumeRenderer.Render(96,96,cam,scene,volumeSettings);
+    int differences=0,interiorDifferences=0;
+    for(int y=0;y<96;y++)for(int x=0;x<96;x++)for(int sample=0;sample<4;sample++)
+        if(reference.SampleOwner(x,y,sample)!=actual.SampleOwner(x,y,sample))
+        {
+            differences++;
+            bool edge=false;int owner=reference.SampleOwner(x,y,sample);
+            for(int dy=-1;dy<=1;dy++)for(int dx=-1;dx<=1;dx++)for(int ss=0;ss<4;ss++)
+                if(x+dx>=0&&x+dx<96&&y+dy>=0&&y+dy<96&&reference.SampleOwner(x+dx,y+dy,ss)!=owner)edge=true;
+            if(!edge){interiorDifferences++;if(interiorDifferences<12)Console.WriteLine($"Interior {name}: {x},{y}/{sample}: ray={owner},volume={actual.SampleOwner(x,y,sample)}");}
+        }
+    Check(interiorDifferences==0,$"Volume/ray interior visibility mismatch: {name}: {interiorDifferences}/{differences}");
+    Console.WriteLine($"Volume oracle {name}: {differences} edge sample differences, {interiorDifferences} interior differences.");
+    PsdWriter.Save(Path.Combine(output,$"volume-{name}.psd"),actual,allowEmpty:true);
+}
+CompareVolume("plate",shadowCamera,shadowScene);
+CompareVolume("perspective",pc,shadowScene);
+CompareVolume("offscreen",shadowCamera,offscreen);
+CompareVolume("sphere",shadowCamera,ball.Concat(Plate(-3.2,5)).ToArray());
+// A receiver lies in the shadow volume and the closing cap is beyond camera.Far.
+CompareVolume("far-cap",shadowCamera with { Far=10.5 },shadowScene);
+CompareVolume("near-crossing",pc with { Origin=new(-1.5,0,1), Near=.2, Left=-.3,RightEdge=.3,Bottom=-.3,Top=.3 },shadowScene);
+var gapReceiver=Plate(0,2).Select(t=>t with { NA=new Vec3(-.3,-.3,1).Unit,NB=new Vec3(.3,-.3,1).Unit,NC=new Vec3(.3,.3,1).Unit });
+var gapRoof=new[]{new WorldTriangle(new(.15,-.5,.25),new(.35,-.5,.25),new(.35,.5,.25)),new WorldTriangle(new(.15,-.5,.25),new(.35,.5,.25),new(.15,.5,.25))};
+var gapScene=gapReceiver.Concat(gapRoof).ToArray();
+var gapVolume=ShadowVolumeRenderer.Render(100,100,shadowCamera with { Left=-2,RightEdge=2,Bottom=-2,Top=2 },gapScene,volumeSettings);
+Check(gapVolume.CompositeChannel(3,50,50)==255,"Volume must preserve the known smooth-normal gap shadow.");
+CompareVolume("gap",shadowCamera with { Left=-2,RightEdge=2,Bottom=-2,Top=2 },gapScene);
+CompareVolume("reverse-winding",shadowCamera,shadowScene.Select(t=>new WorldTriangle(t.C,t.B,t.A)).ToArray());
+CompareVolume("overlapping",shadowCamera,shadowScene.Concat(Plate(3,.7)).ToArray());
+var volumeShift=ShadowVolumeRenderer.Render(100,100,shadowCamera with { Origin=shadowCamera.Origin+offset },
+ shadowScene.Select(t=>new WorldTriangle(t.A+offset,t.B+offset,t.C+offset)).ToArray(),volumeSettings);
+var volumeOriginal=ShadowVolumeRenderer.Render(100,100,shadowCamera,shadowScene,volumeSettings);
+for(int y=0;y<100;y++)for(int x=0;x<100;x++)Check(volumeShift.CompositeChannel(3,x,y)==volumeOriginal.CompositeChannel(3,x,y),"Volume survey coordinate invariance.");
+Console.WriteLine("PASS: shadow volumes vs geometric-ray oracle, gap regression, perspective, clipping, far caps, overlap, winding, sphere, large coordinates.");
+
+var emptyVolume=ShadowVolumeRenderer.Render(32,32,shadowCamera,Plate(0,5),new(new(0,0,-1),new(90,90,90)));
+Check(emptyVolume.GetVisibleLayers().Count==0,"Volume backlighting must remain optional.");
+var formVolume=ShadowVolumeRenderer.Render(32,32,shadowCamera,smoothPlane,new(new(1,0,1),new(90,90,90),true));
+Check(formVolume.CompositeChannel(3,16,16)==255,"Volume form shading must use smooth normals.");
+var styledVolume=ShadowVolumeRenderer.Render(100,100,shadowCamera,shadowScene,volumeSettings with { Opacity=.5 });
+Check(styledVolume.LayerAlpha(0,30,50)==128,"Volume opacity.");
+using var volumeCanceled=new CancellationTokenSource();volumeCanceled.Cancel();
+try { ShadowVolumeRenderer.Render(32,32,shadowCamera,shadowScene,volumeSettings,volumeCanceled.Token);throw new Exception("Volume cancellation ignored."); }
+catch(OperationCanceledException) { }
+Console.WriteLine("PASS: volume style, optional smooth form shading, empty mask and cancellation.");

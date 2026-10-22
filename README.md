@@ -2,7 +2,7 @@
 
 Rhino 场景表现工作流：**AI 素材 → 真实尺度材质 → 植物布置 → 视图分层导出 → 后期编辑**，由 Codex / Agent 编排。名称中的 Scene 表示材质与植物组成的场景，Flow 表示从 Rhino 到后期编辑的连续流程。
 
-当前为 Rhino 8 / Windows v0.3 原型，已实现按**图层 RGB 颜色**分层的 PSD、独立单色阴影 PSD、默认目录及原厂 Rhino-MCP-Platform 自动化适配。其余工作流模块尚未实现；不依赖 ComfyUI，不启动额外 MCP 服务。
+当前为 Rhino 8 / Windows v0.4 原型，已实现按**图层 RGB 颜色**分层的 PSD、独立单色阴影 PSD、默认目录及原厂 Rhino-MCP-Platform 自动化适配。其余工作流模块尚未实现；不依赖 ComfyUI，不启动额外 MCP 服务。
 
 项目位置：`00_DevProjects/C#/RhinoSceneFlow`，独立 Git 仓库；与 `00_DevProjects/C++/RhinoBIM` 在语言目录下层级一致。
 
@@ -95,7 +95,7 @@ artifacts/verify-env/Scripts/python.exe scripts/Verify-Psd.py artifacts/validati
 
 ## v0.3 独立阴影 PSD
 
-**已知准确性问题（2026-10-22）：当前后端存在可复现的近接遮挡漏影。** [问题复核与替代路线](docs/Shadow-Alternatives.md)包含反例及实验平面投影 PSD；实验模式尚未接入正式命令。
+**旧射线后端的已知准确性问题（2026-10-22）：存在可复现的近接遮挡漏影。** [问题复核与替代路线](docs/Shadow-Alternatives.md)包含反例及实验平面投影 PSD；平面投影实验尚未接入正式命令。
 
 命令：`RhinoSceneFlowExportShadowPSD`。输入宽度和输出路径；回车使用默认路径，无保存对话框。自动化示例：`_-RhinoSceneFlowExportShadowPSD 1024 _Enter`。
 
@@ -104,3 +104,9 @@ artifacts/verify-env/Scripts/python.exe scripts/Verify-Psd.py artifacts/validati
 几何查询采用固定版本 geometry3Sharp 1.0.324（Boost Software License 1.0）；参见 [第三方说明](third-party/README.md)。
 
 实测记录、预览位置和曲面碎纹修复说明：[阴影验证](docs/Shadows.md)。
+
+## v0.4 阴影体 PSD
+
+新命令：`RhinoSceneFlowExportShadowVolumePSD`，回车采用默认 2048 像素宽度和默认路径。自动化：`_-RhinoSceneFlowExportShadowVolumePSD 1024 _Enter`；同一 MCP API 使用 `backend:"volume"`。旧阴影命令及省略 backend 的 API 仍使用旧射线后端，供对照。
+
+新后端使用 CPU 软件 z-fail 阴影体，已恢复之前确认的近接漏影。在 B 的球体、双曲面、墙面等场景完成 1,564 个原始 Brep 参考采样及独立 PSD 解码；默认 2048 像素导出约 9.1 秒。这不保证任意曲面精度，双曲面分界附近仍有网格近似细碎纹理。完整方法、证据和限制见 [阴影体后端](docs/Shadow-Volumes.md)。

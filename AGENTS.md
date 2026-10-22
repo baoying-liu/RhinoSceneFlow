@@ -17,3 +17,5 @@
 - Shadow verification: scripts/Test-ShadowRhino.py after Test-ComplexRhino.py; independent scripts/Verify-ShadowPsd.py. Retain failed visual/oracle evidence and verify curved receivers as well as planar ground.
 
 - Accuracy audit: scripts/Research-ShadowNative.py, Research-ShadowPlanar.py and Research-ShadowContact.py are B-only research prototypes. Verify-ShadowAlternatives.py records a known CURRENT-backend failure; researchChecksCompleted does not mean currentBackendAccurate. See docs/Shadow-Alternatives.md.
+
+- v0.4 adds a separate CPU z-fail volume backend (`backend: volume`, `RhinoSceneFlowExportShadowVolumePSD`). Keep the legacy ray default explicit; it still has the known offset failure. Volume casts use geometric facing, and smooth normals affect optional form shading only. Preserve closed caps, off-camera casters, far-plane handling, exact shared-edge cancellation and fixed subpixel/top-left coverage. Validate with Test-ShadowVolumes.py, Probe-ShadowVolumeMesh.py, then independent Verify-ShadowVolumes.py; see docs/Shadow-Volumes.md. Mesh terminator artifacts remain; do not claim analytic NURBS accuracy or hide defects with image cleanup.

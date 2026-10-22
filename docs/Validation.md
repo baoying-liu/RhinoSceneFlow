@@ -42,3 +42,11 @@ B 通道 PID 78996 的最终版本通过独立阴影验收：3,689 个原始 Bre
 ## 2026-10-22 准确性复核：已确认漏影
 
 v0.3 的切平面法线偏移在接触反例中会越过遮挡片，导致应为 alpha=255 的阴影变成 0。旧版采样通过不构成完整准确性保证；太阳角度测试也补上了 BeginChange/EndChange 和实际角度断言。详情、对照及替代方案见 [Shadow-Alternatives.md](Shadow-Alternatives.md)。当前后端尚未修复该漏影，不应将研究验证完成解释为后端精度通过。
+
+## 2026-10-22 v0.4 阴影体增量
+
+新增独立命令 `RhinoSceneFlowExportShadowVolumePSD` 和 MCP `backend:"volume"`。仅通过固定 B 通道部署，管理任务 `16674f059d1745cabbb734352b91fd2d` 成功加载 PID 26432，部署 `20261022-153951-18aa2cfcb65b41eda600206989d8e536`。未发布正式 Rhino，未使用鼠标。
+
+`Build.ps1` 核心检查通过；真实 PSD 的 1,564 个原始 Brep 参考采样无不一致，近接漏影反例的新后端中心 alpha=255（旧后端仍为 0）。默认 2048×1047 导出约 9.1 秒。独立 psd-tools 验证单色、alpha、重合成及真实命令，未打开 Photoshop。实际 135°/45° Rhino Sun 的自动和显式方向 PSD 字节一致，完整渲染设置恢复。
+
+同一网格的射线参考与阴影体透视结果仅 2 个像素相差 64 alpha；曲面分界仍有细碎纹理，不能将采样通过解释为全部像素或解析曲面精度保证。旧后端漏影未修复。详见 [Shadow-Volumes.md](Shadow-Volumes.md)，证据在 `artifacts/rhino-B/volumes/`。

@@ -12,7 +12,7 @@ public sealed record ExportReport(string Path, int Width, int Height, int LayerC
     uint Document, Guid ViewportId, string ViewName, string Projection, string[] Limitations);
 
 /// <summary>UI-thread application service shared by commands and the Platform automation bridge.</summary>
-public sealed record ShadowExportReport(ExportReport Export, double[] ToSun, string LightSource, string Color, double Opacity, bool IncludeFormShading, double Bias, bool Empty);
+public sealed record ShadowExportReport(ExportReport Export, double[] ToSun, string LightSource, string Color, double Opacity, bool IncludeFormShading, double Bias, bool Empty, string Backend);
 
 public static class ExportService
 {
@@ -25,9 +25,10 @@ public static class ExportService
 
     public static ShadowExportReport ExportShadow(RhinoDoc doc, int width = 2048, string? path = null,
         bool overwrite = false, Guid? expectedViewport = null, Vec3? toSun = null,
-        Rgb? color = null, double opacity = 1, bool includeFormShading = false, double? bias = null)
+        Rgb? color = null, double opacity = 1, bool includeFormShading = false, double? bias = null, string backend = "ray")
     {
         if (RhinoApp.InvokeRequired) throw new InvalidOperationException("Export must run on Rhino UI thread.");
+        if (backend is not ("ray" or "volume")) throw new ArgumentException("backend must be ray or volume.");
         var sun = doc.RenderSettings.Sun;
         var direction = sun.Vector;
         string source = toSun.HasValue ? "explicit" : sun.Enabled && direction.IsValid && direction.Length > 0 && direction.Z < 0 ? "rhino_sun" : "default";
@@ -35,12 +36,12 @@ public static class ExportService
         // Bias is in model units and deliberately much smaller than document modeling tolerance.
         double epsilon = bias ?? Math.Max(doc.ModelAbsoluteTolerance * .001, 1e-7);
         var settings = new ShadowSettings(light, color ?? new Rgb(90,90,90), includeFormShading, epsilon, opacity);
-        var report = ExportInternal(doc, width, path, overwrite, expectedViewport, default, settings);
-        return new(report, [light.X,light.Y,light.Z], source, settings.Color.Hex, opacity, includeFormShading, epsilon, report.Layers.Length == 0);
+        var report = ExportInternal(doc, width, path, overwrite, expectedViewport, default, settings, backend);
+        return new(report, [light.X,light.Y,light.Z], source, settings.Color.Hex, opacity, includeFormShading, epsilon, report.Layers.Length == 0, backend);
     }
 
     private static ExportReport ExportInternal(RhinoDoc doc, int width, string? path, bool overwrite,
-        Guid? expectedViewport, CancellationToken cancellation, ShadowSettings? shadow)
+        Guid? expectedViewport, CancellationToken cancellation, ShadowSettings? shadow, string backend = "ray")
     {
         if (RhinoApp.InvokeRequired) throw new InvalidOperationException("Export must run on Rhino's UI thread.");
         var watch = Stopwatch.StartNew();
@@ -66,6 +67,7 @@ public static class ExportService
         var reader = new SceneReader(doc, viewport, cancellation, shadow is not null);
         var triangles = reader.Read().ToArray();
         var image = shadow is null ? FlatRasterizer.Render(width, height, reader.Groups, triangles, cancellation) :
+            backend == "volume" ? ShadowVolumeRenderer.Render(width, height, reader.Camera, reader.WorldTriangles, shadow, cancellation) :
             ShadowRenderer.Render(width, height, reader.Camera, reader.WorldTriangles, shadow, cancellation);
         var visible = image.GetVisibleLayers(cancellation);
         if (visible.Count == 0 && shadow is null) throw new InvalidOperationException("No visible surface pixels to export.");

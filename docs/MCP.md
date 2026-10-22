@@ -1,6 +1,6 @@
 # 原厂 Rhino-MCP-Platform 接入
 
-RhinoSceneFlow v0.2 不启动 MCP 服务，不监听额外端口，不修改 Platform 私有实现。使用已安装的 Rhino-MCP-Platform 的 `run_python` 工具，在 Rhino UI 线程调用公开入口：
+RhinoSceneFlow v0.4 不启动 MCP 服务，不监听额外端口，不修改 Platform 私有实现。使用已安装的 Rhino-MCP-Platform 的 `run_python` 工具，在 Rhino UI 线程调用公开入口：
 
 ```csharp
 string RhinoSceneFlow.Plugin.McpApi.Execute(string requestJson)
@@ -62,7 +62,7 @@ print(McpApi.Execute(json.dumps(request)))
 
 ## v0.3 阴影导出
 
-`export_shadow_psd` 使用同一 Platform 入口和显式 `document`，共享 `export_psd` 的 `width/path/overwrite/viewportId` 规则。返回 `result.export` 为原有导出报告，另有 `toSun/lightSource/color/opacity/includeFormShading/bias/empty`。
+`export_shadow_psd` 使用同一 Platform 入口和显式 `document`，共享 `export_psd` 的 `width/path/overwrite/viewportId` 规则。返回 `result.export` 为原有导出报告，另有 `toSun/lightSource/color/opacity/includeFormShading/bias/empty/backend`。
 
 ```python
 request = {
@@ -80,6 +80,24 @@ print(McpApi.Execute(json.dumps(request)))
 
 默认 `includeFormShading=false` 排除可见面背光产生的本体明暗，保留朝向太阳的面被其它几何遮挡产生的投射阴影（也包括凹面自遮挡）。设为 true 时，背光面也填为同一阴影色。双面网格的法线按相机方向统一；不依赖对象原始法线方向。
 
-接收面必须是模型中实际可见的表面，支持地面、墙、曲面；不自动创建无限地面。隐藏对象不参与投射或接收；透明材质仍视为不透明网格。曲面使用阴影专用细分网格近似，并插值顶点法线以抑制背光分界处的三角碎纹；仍非解析 NURBS 阴影。`bias` 可指定正数（模型单位）以控制数值自相交误差，默认 `max(ModelAbsoluteTolerance*0.001,1e-7)`。光线起点还按局部顶点切平面的偏差沿平滑法线偏移，以抑制曲面背光分界碎点；小于网格误差的极薄间隙仍可能损失。
+接收面必须是模型中实际可见的表面，支持地面、墙、曲面；不自动创建无限地面。隐藏对象不参与投射或接收；透明材质仍视为不透明网格。曲面使用阴影专用细分网格近似，仍非解析 NURBS 阴影。`bias` 可指定正数（模型单位）以控制数值自相交误差，默认 `max(ModelAbsoluteTolerance*0.001,1e-7)`。旧 `ray` 后端还按局部顶点切平面偏差移动光线起点，已确认会越过邻近遮挡面而漏影，不能将该启发式视为可靠修复。
 
 无阴影时仍输出一个完全透明的 `Shadow` 图层，`empty=true`。阴影和色层使用同一相机、画幅及尺寸，保持视图不变时可直接对齐。PSD 内只有独立 `Shadow` 像素层，可在后期调整。
+
+## v0.4 阴影体后端
+
+在 `export_shadow_psd` 请求中加入 `"backend":"volume"`。省略时保持旧版 `"ray"`；未知值返回 `invalid_request`，不回退。结果中的 `backend` 标识实际执行的后端。`describe` 返回版本 0.4.0 和该参数。
+
+```python
+request = {
+    'apiVersion': 1, 'operation': 'export_shadow_psd',
+    'document': int(__rhino_doc__.RuntimeSerialNumber),
+    'backend': 'volume', 'width': 1024,
+    'toSun': [-0.3, -1, 1]
+}
+print(McpApi.Execute(json.dumps(request)))
+```
+
+`volume` 使用 CPU 软件 z-fail 阴影体，沿光方向建立封闭体并计数，不移动接收点。`bias` 是以模型单位比较相机深度的容差；平滑法线只用于可选本体明暗。默认投射阴影资格根据朝光源的可见几何面判断，曲面网格细分及几何法线仍影响分界，不能保证消除全部碎纹。其余样式、默认路径、太阳方向来源及空 PSD 规则不变。
+
+原生命令 `RhinoSceneFlowExportShadowVolumePSD` 固定使用 `volume`。新方案较慢，当前同步执行。此后端没有增加 MCP 服务、端口或顶层工具。测试证据与限制见 [Shadow-Volumes.md](Shadow-Volumes.md)。
