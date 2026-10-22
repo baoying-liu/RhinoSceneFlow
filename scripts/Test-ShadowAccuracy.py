@@ -29,6 +29,8 @@ for o in doc.Objects:
     elif isinstance(g,Mesh):b=Brep.CreateFromMesh(g,True)
     else:b=g.ToBrep()
     refs.append((o.Attributes.Name,b))
+reference_bounds={id(b):b.GetBoundingBox(True) for name,b in refs}
+reference_spheres={id(b):b.Faces[0].TryGetSphere(1e-10)[1] for name,b in refs if name=='Sphere'}
 def api(operation,**kwargs):
     r=json.loads(McpApi.Execute(json.dumps(dict(apiVersion=1,operation=operation,document=int(doc.RuntimeSerialNumber),**kwargs))))
     assert r['ok'],r
@@ -49,17 +51,20 @@ def trace(line):
                 values=roots(d.X*d.X+d.Y*d.Y-k*d.Z*d.Z,2*((o.X-11)*d.X+o.Y*d.Y-k*(o.Z-3.5)*d.Z),(o.X-11)**2+o.Y**2-k*(o.Z-3.5)**2-2.25)
                 values=[t for t in values if 0<=line.PointAt(t).Z<=7]
             elif name=='ShadowWall':
-                values=[] if abs(d.Y)<1e-20 else [(6-o.Y)/d.Y]
-                values=[t for t in values if -11<=line.PointAt(t).X<=34 and -2<=line.PointAt(t).Z<=10]
+                box=reference_bounds[id(b)]
+                values=[] if abs(d.Y)<1e-20 else [(box.Min.Y-o.Y)/d.Y]
+                values=[t for t in values if box.Min.X<=line.PointAt(t).X<=box.Max.X and box.Min.Z<=line.PointAt(t).Z<=box.Max.Z]
             elif name=='Ground':
-                values=[] if abs(d.Z)<1e-20 else [(-2-o.Z)/d.Z]
-                values=[t for t in values if -11<=line.PointAt(t).X<=34 and -7<=line.PointAt(t).Y<=7]
+                box=reference_bounds[id(b)]
+                values=[] if abs(d.Z)<1e-20 else [(box.Min.Z-o.Z)/d.Z]
+                values=[t for t in values if box.Min.X<=line.PointAt(t).X<=box.Max.X and box.Min.Y<=line.PointAt(t).Y<=box.Max.Y]
             elif name=='Saddle':
                 k=5.0/18
                 values=roots(-k*d.X*d.Y,d.Z-k*((o.X-3)*d.Y+o.Y*d.X),o.Z-3-k*(o.X-3)*o.Y)
                 values=[t for t in values if 0<=line.PointAt(t).X<=6 and -3<=line.PointAt(t).Y<=3]
             elif name=='Sphere':
-                box=b.GetBoundingBox(True);center=box.Center;r=(box.Max.X-box.Min.X)/2;q=o-center
+                sphere=reference_spheres[id(b)]
+                center=sphere.Center;r=sphere.Radius;q=o-center
                 values=roots(d*d,2*(q*d),q*q-r*r)
             if values is None:ok,ts=Intersection.CurveBrep(curve,b,1e-9,1e-9)
             else:ts=[curve.Domain.ParameterAt(t) for t in values if 0<=t<=1]
@@ -90,7 +95,7 @@ def oracle(px,py,w,h,sun,form):
 
 
 report={'pid':EXPECTED_PID,'version':api('describe')['version'],'cases':[],'mixed':[]}
-assert report['version'] in ('0.4.1','0.5.0')
+assert report['version'] in ('0.4.1','0.5.0','0.5.1')
 try:
  for name,top,light in [('perspective',False,[-.3,-1,1]),('top',True,[-.3,-1,1]),('other-sun',False,[1,-1,2])]:
     if top:vp.SetProjection(DefinedViewportProjection.Top,'Accuracy_Top',True)
@@ -99,7 +104,7 @@ try:
         vp.SetCameraLocations(Point3d(11,0,2),Point3d(45,-48,36))
     vp.ZoomBoundingBox(BoundingBox(Point3d(-11,-7,-2),Point3d(34,7,10)))
     before=snapshot()
-    result=api('export_shadow_psd',backend='volume',width=1024,path=os.path.join(folder,name+'.psd'),overwrite=True,toSun=light)
+    result=api('export_shadow_psd',backend='volume',includeFormShading=False,width=1024,path=os.path.join(folder,name+'.psd'),overwrite=True,toSun=light)
     assert before==snapshot()
     base=api('export_psd',width=1024,path=os.path.join(folder,'base-'+name+'.psd'),overwrite=True)
     sun=Vector3d(*light);sun.Unitize();w=result['export']['width'];h=result['export']['height']

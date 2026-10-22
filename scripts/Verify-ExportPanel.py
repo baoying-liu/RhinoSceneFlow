@@ -6,7 +6,7 @@ from PIL import Image
 from psd_tools import PSDImage
 folder=Path('artifacts/rhino-B/panel')
 report=json.loads((folder/'report.json').read_text(encoding='utf-8'))
-assert report['complete'] and report['stateUnchanged'] and report['version']=='0.5.0'
+assert report['complete'] and report['stateUnchanged'] and report['version'] in ('0.5.0','0.5.1')
 checks=[]
 def verify(result,channels,label):
     for f in result['files']:

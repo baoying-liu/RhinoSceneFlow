@@ -2,7 +2,7 @@
 
 Rhino 场景表现工作流：**AI 素材 → 真实尺度材质 → 植物布置 → 视图分层导出 → 后期编辑**，由 Codex / Agent 编排。名称中的 Scene 表示材质与植物组成的场景，Flow 表示从 Rhino 到后期编辑的连续流程。
 
-当前为 Rhino 8 / Windows v0.5 原型，已实现 **Eto Named View 批量导出面板**、按图层 RGB 颜色分层的 PSD、独立单色阴影 PSD、默认目录及原厂 Rhino-MCP-Platform 自动化适配。其余工作流模块尚未实现；不依赖 ComfyUI，不启动额外 MCP 服务。
+当前为 Rhino 8 / Windows v0.5.1 原型，已实现 **Eto Named View 批量导出面板**、按图层 RGB 颜色分层的 PSD、独立单色阴影 PSD、默认目录及原厂 Rhino-MCP-Platform 自动化适配。其余工作流模块尚未实现；不依赖 ComfyUI，不启动额外 MCP 服务。
 
 项目位置：`00_DevProjects/C#/RhinoSceneFlow`，独立 Git 仓库；与 `00_DevProjects/C++/RhinoBIM` 在语言目录下层级一致。
 
@@ -113,6 +113,6 @@ artifacts/verify-env/Scripts/python.exe scripts/Verify-Psd.py artifacts/validati
 
 新命令：`RhinoSceneFlowExportShadowVolumePSD`，回车采用默认 2048 像素宽度和默认路径。自动化：`_-RhinoSceneFlowExportShadowVolumePSD 1024 _Enter`；同一 MCP API 使用 `backend:"volume"`。旧阴影命令及省略 backend 的 API 仍使用旧射线后端，供对照。
 
-新后端使用 CPU 软件 z-fail 阴影体，已恢复之前确认的近接漏影。v0.4 的方法与历史证据见 [阴影体后端](docs/Shadow-Volumes.md)。
+新后端使用 CPU 软件 z-fail 阴影体，已恢复之前确认的近接漏影。v0.5.1 的面板及阴影体命令默认包含背光面和自身遮挡，只计算太阳直射光，不计算反射、间接光或 AO。预览采用 Eto 图片控件，避免创建额外的浮动 Custom view 窗口。v0.4 的方法与历史证据见 [阴影体后端](docs/Shadow-Volumes.md)。
 
 v0.4.1 增加原始曲面复核，修正测试双曲面上的断续碎影，保留真实投射阴影；没有使用模糊或图像清理。含明暗边界的 9,049 个像素、36,196 个子采样与独立解析参考一致，原有 1,564 个 Brep 稳定区采样也通过。这个场景默认 2048 像素导出约 34 秒，较原型更慢。仍非任意模型的精度保证，SubD、极小特征等有限制。方法、前后对比及复核命令见 [准确性修正](docs/Shadow-Accuracy.md)。

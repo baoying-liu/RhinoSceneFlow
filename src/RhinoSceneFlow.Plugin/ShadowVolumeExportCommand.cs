@@ -18,7 +18,7 @@ public sealed class ShadowVolumeExportCommand : Command
         if(result!=Result.Success)return result;
         try
         {
-            var report=ExportService.ExportShadow(doc,width,path.Trim('"'),backend:"volume");
+            var report=ExportService.ExportShadow(doc,width,path.Trim('"'),includeFormShading:true,backend:"volume");
             RhinoApp.WriteLine($"Shadow volume PSD: {report.Export.Width} x {report.Export.Height}, {report.Export.ElapsedMilliseconds} ms, empty={report.Empty}\n{report.Export.Path}");
             return Result.Success;
         }

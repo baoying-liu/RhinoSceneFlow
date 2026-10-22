@@ -8,15 +8,27 @@ namespace RhinoSceneFlow.Plugin;
 /// All snapshots are owned copies; this class never edits document geometry.</summary>
 internal sealed class SurfaceRefiner(Point3d origin) : IDisposable
 {
-    private readonly List<(GeometryBase Geometry,BoundingBox Bounds)> sources=[];
-    public int Queries { get; private set; }
+    private readonly record struct Source(GeometryBase Geometry,BoundingBox Bounds,Sphere? Sphere=null,Plane? Plane=null);
+    private readonly List<Source> sources=[];
+    private readonly List<ThreadLocal<SurfaceRefiner>> workers=[];
+    private int queries;
+    public int Queries => queries;
 
     public void AddBrep(Brep source,Transform transform)
     {
         transform=Transform.Translation(-origin.X,-origin.Y,-origin.Z)*transform;
         var copy=source.DuplicateBrep();
         if(!copy.Transform(transform)){copy.Dispose();throw new InvalidOperationException("Cannot transform shadow surface.");}
-        sources.Add((copy,copy.GetBoundingBox(true)));
+        Sphere? sphere=null;Plane? plane=null;
+        if(copy.Faces.Count==1)
+        {
+            var face=copy.Faces[0];
+            // A closed one-face spherical Brep covers the whole sphere. Partial or
+            // trimmed spheres retain the generic trim-aware intersection path.
+            if(copy.IsSolid && face.TryGetSphere(out var s,1e-10))sphere=s;
+            else if(face.TryGetPlane(out var p,1e-10))plane=p;
+        }
+        sources.Add(new(copy,sphere?.BoundingBox??copy.GetBoundingBox(true),sphere,plane));
     }
 
     public void AddMesh(Mesh source,Transform transform)
@@ -40,7 +52,7 @@ internal sealed class SurfaceRefiner(Point3d origin) : IDisposable
             if(f.IsQuad)copy.Faces.AddFace(f.A,f.C,f.D);
         }
         copy.FaceNormals.ComputeFaceNormals();
-        sources.Add((copy,copy.GetBoundingBox(true)));
+        sources.Add(new(copy,copy.GetBoundingBox(true)));
     }
 
     public Func<int,int,bool> Evaluator(CameraProjection camera,int width,int height,ShadowSettings settings)
@@ -51,13 +63,26 @@ internal sealed class SurfaceRefiner(Point3d origin) : IDisposable
         // Do not reuse the document modeling tolerance as an occlusion gap.
         double tolerance=Math.Max(1e-10,Math.Min(settings.Bias*.001,span*1e-10));
         var sun=new Vector3d(settings.ToSun.Unit.X,settings.ToSun.Unit.Y,settings.ToSun.Unit.Z);
+        // Rhino intersection caches are never shared between worker threads. Each
+        // worker owns a deep copy of the already detached, transformed snapshots.
+        var local=new ThreadLocal<SurfaceRefiner>(()=>
+        {
+            var worker=new SurfaceRefiner(origin);
+            foreach(var source in sources)
+            {
+                GeometryBase copy=source.Geometry is Brep b?b.DuplicateBrep():((Mesh)source.Geometry).DuplicateMesh();
+                worker.sources.Add(source with { Geometry=copy });
+            }
+            return worker;
+        },trackAllValues:true);
+        workers.Add(local);
         return (x,y) =>
         {
-            Queries++;
+            Interlocked.Increment(ref queries);var worker=local.Value!;
             var near=Point(camera.At((x+.5)/(width*2),1-(y+.5)/(height*2),camera.Near));
             var far=Point(camera.At((x+.5)/(width*2),1-(y+.5)/(height*2),camera.Far));
             var view=far-near;double length=view.Length;view.Unitize();
-            var hit=Trace(near,view,length,tolerance);
+            var hit=worker.Trace(near,view,length,tolerance);
             if(hit is null)return false;
             var n=hit.Value.Normal;var formNormal=hit.Value.FormNormal;
             if(formNormal*n<0)formNormal=-formNormal;
@@ -66,7 +91,7 @@ internal sealed class SurfaceRefiner(Point3d origin) : IDisposable
             if(n*sun<=1e-10)return false;
             // The origin moves only along the light ray by the explicit numeric bias;
             // it is never displaced along a smooth normal or mesh-error envelope.
-            return Trace(hit.Value.Point+sun*settings.Bias,sun,span*2,tolerance) is not null;
+            return worker.Trace(hit.Value.Point+sun*settings.Bias,sun,span*2,tolerance) is not null;
         };
     }
 
@@ -76,11 +101,32 @@ internal sealed class SurfaceRefiner(Point3d origin) : IDisposable
     {
         Hit? best=null;
         using var line=new LineCurve(origin,origin+direction*maximum);
-        foreach(var (geometry,bounds) in sources)
+        foreach(var source in sources)
         {
+            var geometry=source.Geometry;var bounds=source.Bounds;
             double limit=best?.Distance ?? maximum;
             if(!Crosses(bounds,origin,direction,limit,tolerance))continue;
-            if(geometry is Mesh mesh)
+            if(source.Sphere is {} sphere)
+            {
+                var q=origin-sphere.Center;double b=q*direction,c=q*q-sphere.Radius*sphere.Radius;
+                double discriminant=b*b-c;
+                if(discriminant<0)continue;
+                double root=Math.Sqrt(discriminant),distance=-b-root;
+                if(distance<0)distance=-b+root;
+                if(distance<0||distance>limit)continue;
+                var point=origin+direction*distance;var normal=(point-sphere.Center)/sphere.Radius;
+                best=new(point,normal,normal,distance);
+            }
+            else if(source.Plane is {} plane && geometry is Brep planar)
+            {
+                double slope=plane.Normal*direction;if(Math.Abs(slope)<1e-14)continue;
+                double distance=((plane.Origin-origin)*plane.Normal)/slope;
+                if(distance<0||distance>limit)continue;
+                var point=origin+direction*distance;var face=planar.Faces[0];
+                if(!face.ClosestPoint(point,out double u,out double v)||face.IsPointOnFace(u,v,tolerance)==PointFaceRelation.Exterior)continue;
+                best=new(point,plane.Normal,plane.Normal,distance);
+            }
+            else if(geometry is Mesh mesh)
             {
                 double distance=Intersection.MeshRay(mesh,new Ray3d(origin,direction),out var faces);
                 if(distance<0 || distance>limit || faces.Length==0)continue;
@@ -152,5 +198,9 @@ internal sealed class SurfaceRefiner(Point3d origin) : IDisposable
         return true;
     }
     private static Point3d Point(Vec3 v)=>new(v.X,v.Y,v.Z);
-    public void Dispose(){foreach(var s in sources)s.Geometry.Dispose();sources.Clear();}
+    public void Dispose()
+    {
+        foreach(var local in workers){foreach(var worker in local.Values)worker.Dispose();local.Dispose();}workers.Clear();
+        foreach(var s in sources)s.Geometry.Dispose();sources.Clear();
+    }
 }

@@ -5,6 +5,8 @@ namespace RhinoSceneFlow.Core;
 /// prism; signed shared side walls cancel exactly. No topology welding or shading-normal
 /// displacement is required. Volumes are not clipped at the camera far plane: their
 /// closing caps must participate even when outside the visible scene depth range.
+/// Source refinement callbacks can run concurrently on at most four workers and
+/// must own their query geometry or otherwise be safe for concurrent calls.
 /// </summary>
 public static class ShadowVolumeRenderer
 {
@@ -36,6 +38,19 @@ public static class ShadowVolumeRenderer
             Raster(camera.Project(t.A),camera.Project(t.B),camera.Project(t.C),true,sw,sh,
                 (index,z,_) => { if (z < depth[index]) { depth[index]=z; receiver[index]=current; } },cancellation);
         }
+        // Receiver depths are reused by every overlapping volume fragment.
+        for(int i=0;i<size;i++)if(receiver[i]>=0)depth[i]=Distance(depth[i]);
+        var geometricNormals=new Vec3[scene.Length];var variations=new double[scene.Length];
+        for(int id=0;id<scene.Length;id++)
+        {
+            var t=scene[id];var n=(t.B-t.A).Cross(t.C-t.A).Unit;geometricNormals[id]=n;
+            if(t.NA.HasValue&&t.NB.HasValue&&t.NC.HasValue)
+            {
+                Vec3 Orient(Vec3 v)=>v.Dot(n)<0?v*-1:v;
+                var a=Orient(t.NA.Value);var b=Orient(t.NB.Value);var c=Orient(t.NC.Value);
+                variations[id]=Math.Max((a-b).Length,Math.Max((a-c).Length,(b-c).Length));
+            }
+        }
         // A cap past the minimum scene coordinate along the sunlight axis cannot
         // truncate a shadow on any scene receiver. Include off-camera casters too.
         double min=double.PositiveInfinity,max=double.NegativeInfinity;
@@ -54,7 +69,7 @@ public static class ShadowVolumeRenderer
         void VolumeFace(Vec3 a,Vec3 b,Vec3 c,int multiplicity=1) =>
             Raster(camera.Project(a),camera.Project(b),camera.Project(c),false,sw,sh,(index,z,sign) =>
             {
-                if (receiver[index]>=0 && Distance(z)>=Distance(depth[index])-settings.Bias)
+                if (receiver[index]>=0 && Distance(z)>=depth[index]-settings.Bias)
                     stencil[index]+=sign*multiplicity;
             },cancellation);
         foreach (var t in scene)
@@ -75,16 +90,17 @@ public static class ShadowVolumeRenderer
             VolumeFace(b,a,a+extrusion,count);
             VolumeFace(b,a+extrusion,b+extrusion,count);
         }
-        for(int y=0;y<sh;y++)
+        var parallel=new ParallelOptions{CancellationToken=cancellation,MaxDegreeOfParallelism=Math.Min(4,Environment.ProcessorCount)};
+        Parallel.For(0,sh,parallel,y=>
         {
             cancellation.ThrowIfCancellationRequested();
             for(int x=0;x<sw;x++)
             {
                 int index=y*sw+x,id=receiver[index]; if(id<0) continue;
                 var t=scene[id];
-                var point=camera.At((x+.5)/sw,1-(y+.5)/sh,Distance(depth[index]));
+                var point=camera.At((x+.5)/sw,1-(y+.5)/sh,depth[index]);
                 var view=camera.Parallel ? camera.Back : camera.Origin-point;
-                var geometric=(t.B-t.A).Cross(t.C-t.A).Unit;
+                var geometric=geometricNormals[id];
                 if(geometric.Dot(view)<0) geometric=geometric*-1;
                 var normal=geometric;
                 if(t.NA.HasValue && t.NB.HasValue && t.NC.HasValue)
@@ -105,18 +121,22 @@ public static class ShadowVolumeRenderer
                 bool shadow=form || (geometric.Dot(sun)>1e-10 && stencil[index]!=0);
                 if(refineSurface is not null && t.NA.HasValue && t.NB.HasValue && t.NC.HasValue)
                 {
-                    Vec3 Orient(Vec3 n) => n.Dot(geometric)<0 ? n*-1 : n;
-                    var na=Orient(t.NA.Value);var nb=Orient(t.NB.Value);var nc=Orient(t.NC.Value);
-                    double variation=Math.Max((na-nb).Length,Math.Max((na-nc).Length,(nb-nc).Length));
+                    double variation=variations[id];
                     double uncertainty=2*Math.Max(Math.Abs(geometric.Dot(sun)-normal.Dot(sun)),variation)+1e-6;
                     // Re-evaluate actual geometry, not the image, where faceting can
                     // change terminator classification or create false self-occlusion.
-                    if(variation>1e-6 && (shadow || Math.Abs(normal.Dot(sun))<=uncertainty))
+                    bool safelyBacklit=settings.IncludeFormShading && normal.Dot(sun)<-uncertainty;
+                    // Direct-light shadow interiors are already classified by the
+                    // volume or by backlighting. Original-surface queries are needed
+                    // at the terminator and coverage boundaries (below), rather than
+                    // at every dark curved sample. Keep the cast-only audit path.
+                    bool uncertainTerminator=Math.Abs(normal.Dot(sun))<=uncertainty;
+                    if(variation>1e-6 && !safelyBacklit && ((shadow&&!settings.IncludeFormShading) || uncertainTerminator))
                     { shadow=refineSurface(x,y);evaluated![index]=1; }
                 }
                 if(shadow) owners[index]=0;
             }
-        }
+        });
         if(refineSurface is not null)
         {
             // A mesh silhouette can also move a shadow between different receivers,
@@ -134,12 +154,12 @@ public static class ShadowVolumeRenderer
                         {evaluated[i]=2;break;}
                 }
             }
-            for(int y=0;y<sh;y++)
+            Parallel.For(0,sh,parallel,y=>
             {
                 cancellation.ThrowIfCancellationRequested();
                 for(int x=0;x<sw;x++)if(evaluated![y*sw+x]==2)
                     owners[y*sw+x]=refineSurface(x,y)?0:-1;
-            }
+            });
         }
         return new(width,height,[new("Shadow",settings.Color)],owners,settings.Opacity);
     }

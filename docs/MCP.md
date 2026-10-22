@@ -1,6 +1,6 @@
 # 原厂 Rhino-MCP-Platform 接入
 
-RhinoSceneFlow v0.5.0 不启动 MCP 服务，不监听额外端口，不修改 Platform 私有实现。使用已安装的 Rhino-MCP-Platform 的 `run_python` 工具，在 Rhino UI 线程调用公开入口：
+RhinoSceneFlow v0.5.1 不启动 MCP 服务，不监听额外端口，不修改 Platform 私有实现。使用已安装的 Rhino-MCP-Platform 的 `run_python` 工具，在 Rhino UI 线程调用公开入口：
 
 ```csharp
 string RhinoSceneFlow.Plugin.McpApi.Execute(string requestJson)
@@ -82,7 +82,7 @@ print(McpApi.Execute(json.dumps(request)))
 
 `toSun` 为世界坐标下**表面指向太阳**的向量，内部归一化。省略时，启用且位于地平线上方的 Rhino Sun 优先，否则使用固定方向 `[-1,-1,2]`；实际来源和方向写入报告。导出不启用或修改 Rhino 太阳。`color` 默认 `#5A5A5A`，`opacity` 范围 `(0,1]`。无渐变、软阴影、环境光遮蔽；2×2 超采样仅控制边缘覆盖。
 
-默认 `includeFormShading=false` 排除可见面背光产生的本体明暗，保留朝向太阳的面被其它几何遮挡产生的投射阴影（也包括凹面自遮挡）。设为 true 时，背光面也填为同一阴影色。双面网格的法线按相机方向统一；不依赖对象原始法线方向。
+v0.5.1 的 `backend:"volume"` 默认 `includeFormShading=true`，背光面与遮挡阴影填为同一阴影色，只计算太阳直射光，不计算反射、间接光或 AO。显式 false 可导出纯投射阴影；旧 `ray` 后端仍默认 false。双面网格的法线按相机方向统一；不依赖对象原始法线方向。
 
 接收面必须是模型中实际可见的表面，支持地面、墙、曲面；不自动创建无限地面。隐藏对象不参与投射或接收；透明材质仍视为不透明网格。曲面使用阴影专用细分网格近似，仍非解析 NURBS 阴影。`bias` 可指定正数（模型单位）以控制数值自相交误差，默认 `max(ModelAbsoluteTolerance*0.001,1e-7)`。旧 `ray` 后端还按局部顶点切平面偏差移动光线起点，已确认会越过邻近遮挡面而漏影，不能将该启发式视为可靠修复。
 
@@ -90,7 +90,7 @@ print(McpApi.Execute(json.dumps(request)))
 
 ## v0.4 阴影体后端
 
-在 `export_shadow_psd` 请求中加入 `"backend":"volume"`。省略时保持旧版 `"ray"`；未知值返回 `invalid_request`，不回退。结果中的 `backend` 标识实际执行的后端。`describe` 当前返回版本 0.5.0 和该参数。
+在 `export_shadow_psd` 请求中加入 `"backend":"volume"`。省略时保持旧版 `"ray"`；未知值返回 `invalid_request`，不回退。结果中的 `backend` 标识实际执行的后端。`describe` 当前返回版本 0.5.1 和该参数。Named View 面板及批量 API 默认使用包含背光面的 volume 后端。
 
 ```python
 request = {

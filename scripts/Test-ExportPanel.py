@@ -33,7 +33,7 @@ def state():
         tuple((str(l.Id),l.Color.ToArgb(),l.IsVisible) for l in doc.Layers if not l.IsDeleted))
 
 report=dict(pid=EXPECTED_PID,version=api('describe')['version'],cases=[])
-assert report['version']=='0.5.0'
+assert report['version'] in ('0.5.0','0.5.1')
 saved=ViewportInfo(vp)
 try:
     cases=[('SceneFlow_Test_俯视',True,320,200),('SceneFlow_Test_透视',False,384,192),('SceneFlow_Test_方图',False,240,240)]

@@ -199,6 +199,32 @@ var refinedSphere=ShadowVolumeRenderer.Render(96,96,shadowCamera,ball,volumeSett
 Check(sphereQueries>0&&refinedSphere.GetVisibleLayers().Count==0,"A convex exact sphere has no cast shadows of its own.");
 Console.WriteLine("PASS: source-surface refinement preserves analytic gap shadows and convex-sphere visibility.");
 
+// Direct sunlight includes a convex sphere's backlit side even though it has no
+// cast shadow of its own. Its analytic terminator must remain independent of facets.
+var directSettings=volumeSettings with { IncludeFormShading=true };
+bool AnalyticBall(int sx,int sy)
+{
+    var a=shadowCamera.At((sx+.5)/192,1-(sy+.5)/192,shadowCamera.Near);
+    var b=shadowCamera.At((sx+.5)/192,1-(sy+.5)/192,shadowCamera.Far);
+    var d=(b-a).Unit;double q=a.Dot(d),disc=q*q-a.Dot(a)+9;
+    if(disc<0)return false;
+    double distance=-q-Math.Sqrt(disc);if(distance<0)return false;
+    return (a+d*distance).Unit.Dot(directSettings.ToSun.Unit)<=1e-10;
+}
+var directBall=ShadowVolumeRenderer.Render(96,96,shadowCamera,ball,directSettings,refineSurface:AnalyticBall);
+int directDark=0,directLit=0;
+for(int y=0;y<96;y++)for(int x=0;x<96;x++)for(int s=0;s<4;s++)
+{
+    var a=shadowCamera.At((x+(s%2==0?.25:.75))/96,1-(y+(s<2?.25:.75))/96,shadowCamera.Near);
+    // Avoid mesh silhouette approximation in this test; test the body and terminator.
+    if(a.X*a.X+a.Y*a.Y>6.25)continue;
+    bool expected=AnalyticBall(x*2+s%2,y*2+s/2);
+    Check((directBall.SampleOwner(x,y,s)==0)==expected,"Direct sphere form shadow differs from analytic sunlight.");
+    if(expected)directDark++;else directLit++;
+}
+Check(directDark>0&&directLit>0,"Direct sphere must contain both lit and backlit samples.");
+Console.WriteLine("PASS: direct sunlight analytic sphere body and terminator, without reflections.");
+
 // Separate passes overlap in the PSD; their composite must match normal alpha blending.
 var batchMaterial=FlatRasterizer.Render(100,100,[new ColorGroup("Material #C86432",new(200,100,50))],
  shadowScene.Select(t=>new Triangle(shadowCamera.Project(t.A),shadowCamera.Project(t.B),shadowCamera.Project(t.C),0)));

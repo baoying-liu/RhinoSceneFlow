@@ -26,17 +26,17 @@ public static class McpApi
             switch (operation)
             {
                 case "describe":
-                    response = new { name = "RhinoSceneFlow", version = "0.5.0", transport = "Rhino-MCP-Platform.run_python",
+                    response = new { name = "RhinoSceneFlow", version = "0.5.1", transport = "Rhino-MCP-Platform.run_python",
                         entryPoint = "RhinoSceneFlow.Plugin.McpApi.Execute(string)",
                         operations = new object[] {
                             new { name="open_panel", required=new[]{"document"}, parameters="Opens or activates the native Eto Named View export panel", output="Panel state" },
                             new { name="panel_status", required=new[]{"document"}, parameters="Read-only panel state", output="Panel state, or open=false" },
                             new { name="named_views", required=new[]{"document"}, parameters="Lists stable named-view IDs and default dimensions", output="Named View entries" },
-                            new { name="export_named_views", required=new[]{"document","directory","views"}, parameters="views: [{viewId,width,height}]; channels?: [material,shadow] (material currently layer RGB); collision?: number (default), overwrite, cancel; writes one PSD per Named View", output="Batch files, dimensions, layer counts, timing and per-view errors" },
+                            new { name="export_named_views", required=new[]{"document","directory","views"}, parameters="views: [{viewId,width,height}]; channels?: [material,shadow] (material currently layer RGB; shadow includes backlit surfaces, direct sunlight only); collision?: number (default), overwrite, cancel; writes one PSD per Named View", output="Batch files, dimensions, layer counts, timing and per-view errors" },
                             new { name="describe", required=Array.Empty<string>(), parameters="apiVersion=1", output="Version, operation contracts, limitations" },
                             new { name="status", required=new[]{"document"}, parameters="document: Rhino runtime serial number", output="Default directory, document and active viewport" },
                             new { name="configure_export", required=new[]{"directory"}, parameters="directory: absolute path; directory is created on export", output="Persisted default export directory" },
-                            new { name="export_shadow_psd", required=new[]{"document"}, parameters="width?, path?, viewportId?, overwrite?; toSun?: [x,y,z] surface-to-sun direction (default enabled Rhino sun or [-1,-1,2]); color?: #RRGGBB (default #5A5A5A); opacity?: (0,1] default 1; includeFormShading?: false; bias?: positive model units; backend?: ray (legacy default) or volume (z-fail volumes with original-surface refinement)", output="Export report (including surfaceRefinements query count) plus normalized light direction, source, style, bias, backend and empty flag" },
+                            new { name="export_shadow_psd", required=new[]{"document"}, parameters="width?, path?, viewportId?, overwrite?; toSun?: [x,y,z] surface-to-sun direction (default enabled Rhino sun or [-1,-1,2]); color?: #RRGGBB (default #5A5A5A); opacity?: (0,1] default 1; includeFormShading?: true for volume, false for legacy ray; bias?: positive model units; backend?: ray (legacy default) or volume (z-fail volumes with original-surface refinement)", output="Export report (including surfaceRefinements query count) plus normalized light direction, source, style, bias, backend and empty flag" },
                             new { name="export_psd", required=new[]{"document"}, parameters="width?: 64..8192 (default 2048), path?: absolute .psd (default generated), viewportId?: expected active viewport GUID, overwrite?: false", output="File path, dimensions, layers, object/triangle counts, skipped types, timing" }
                         }, limits = new { maxPixels=8_000_000, maxSide=8192, bitDepth=8, grouping="layer_rgb", appearance="opaque_flat_color" } };
                     break;
@@ -90,7 +90,7 @@ public static class McpApi
                         r.TryGetProperty("overwrite", out var so) && so.GetBoolean(),
                         r.TryGetProperty("viewportId", out var sv) ? Guid.Parse(sv.GetString()!) : null,
                         toSun, shadowColor, r.TryGetProperty("opacity", out var opacity) ? opacity.GetDouble() : 1,
-                        r.TryGetProperty("includeFormShading", out var form) && form.GetBoolean(),
+                        r.TryGetProperty("includeFormShading", out var form) ? form.GetBoolean() : r.TryGetProperty("backend",out var formBackend) && formBackend.GetString()=="volume",
                         r.TryGetProperty("bias", out var bias) ? bias.GetDouble() : null,
                         r.TryGetProperty("backend", out var backend) ? backend.GetString() ?? "ray" : "ray");
                     break;

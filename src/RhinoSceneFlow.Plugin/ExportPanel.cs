@@ -4,7 +4,6 @@ using Eto.Forms;
 using Rhino;
 using Rhino.Display;
 using Rhino.UI;
-using Rhino.UI.Controls;
 using RhinoSceneFlow.Core;
 
 namespace RhinoSceneFlow.Plugin;
@@ -34,7 +33,7 @@ public static class ExportPanelController
     public static ExportPanel? Find(uint document)=>windows.GetValueOrDefault(document);
 }
 
-/// <summary>Modeless native Eto UI, with Rhino's own embedded viewport control.</summary>
+/// <summary>Modeless native Eto UI. Raster previews never create Rhino child/floating views.</summary>
 public sealed class ExportPanel : Form
 {
     private readonly uint document;
@@ -43,8 +42,10 @@ public sealed class ExportPanel : Form
     private readonly NumericStepper width=new(){MinValue=64,MaxValue=8192,DecimalPlaces=0,Width=100};
     private readonly NumericStepper height=new(){MinValue=64,MaxValue=8192,DecimalPlaces=0,Width=100};
     private readonly DropDown modes=new(){Width=180};
-    private readonly ViewportControl preview=new();
-    private readonly PixelLayout previewHost=new(){BackgroundColor=Color.FromArgb(36,39,43)};
+    private readonly ImageView preview=new();
+    private Size previewPixels=new(600,375);
+    private System.Drawing.Bitmap? previewBitmap;
+    private readonly PixelLayout previewHost=new(){BackgroundColor=Color.FromArgb(36,39,43),Size=new(400,260)};
     private readonly Label frameLabel=new(){Text="选择 Named View 查看预览"};
     private readonly Label status=new(){Text="就绪"};
     private readonly CheckBox material=new(){Text="材质 / 图层色",Checked=true};
@@ -102,11 +103,11 @@ public sealed class ExportPanel : Form
         previewHost.SizeChanged+=(_,_)=>Guard(FitPreview);
         var right=new DynamicLayout{Spacing=new(8,8)};right.AddRow(options);right.AddRow(frameLabel);
         right.Add(previewHost,true,true);
-        right.AddRow(new Label{Text="可旋转预览；导出以保存的 Named View 为准。"});
+        right.AddRow(new Label{Text="预览保存的 Named View；极地等模式的光照效果不代表阴影通道。"});
         var splitter=new Splitter{Orientation=Orientation.Horizontal,Panel1=left,Panel2=right,Position=465,FixedPanel=SplitterFixedPanel.Panel1};
         var bottom=outputOptions;
         bottom.AddRow(new StackLayout{Orientation=Orientation.Horizontal,Spacing=24,Items={material,shadow}});
-        bottom.AddRow(new Label{Text="材质通道沿用图层颜色分层；预览显示模式不改变导出通道。"});
+        bottom.AddRow(new Label{Text="阴影包含背光面和遮挡，仅计算太阳直射光；不计算反射、间接光或环境遮蔽。"});
         browse.Width=125;
         bottom.AddRow(new TableLayout{Spacing=new(8,6),Rows={new TableRow(
             new TableCell(new Label{Text="输出文件夹"},false),new TableCell(folder,true),new TableCell(browse,false))}});
@@ -119,7 +120,7 @@ public sealed class ExportPanel : Form
         cancel.Click+=(_,_)=>{cancellation?.Cancel();status.Text="正在取消，已完成的文件会保留…";};
         Shown+=(_,_)=>{shown=true;Guard(RefreshPreview);};
         Closing+=(_,e)=>{if(busy&&!documentClosed){cancellation?.Cancel();e.Cancel=true;status.Text="正在取消，请稍候再关闭。";}};
-        Closed+=(_,_)=>{RhinoDoc.CloseDocument-=OnDocumentClosed;cancellation?.Dispose();};
+        Closed+=(_,_)=>{RhinoDoc.CloseDocument-=OnDocumentClosed;cancellation?.Dispose();preview.Image?.Dispose();previewBitmap?.Dispose();};
         RhinoDoc.CloseDocument+=OnDocumentClosed;
         RefreshNamedViews();
     }
@@ -163,29 +164,56 @@ public sealed class ExportPanel : Form
     private void FitPreview()
     {
         if(!shown||busy||Selected is not {} row)return;
-        int maxW=Math.Max(64,previewHost.Width-16),maxH=Math.Max(64,previewHost.Height-16);
+        // Hidden sandbox owners have no measured client size. Still generate a
+        // useful preview without showing a window merely to measure its controls.
+        int maxW=previewHost.Width>32?Math.Max(32,previewHost.Width-16):600;
+        int maxH=previewHost.Height>32?Math.Max(32,previewHost.Height-16):400;
         double ratio=(double)row.Width/row.Height;
         int w=Math.Min(maxW,(int)Math.Round(maxH*ratio)),h=(int)Math.Round(w/ratio);
-        preview.Size=new(Math.Max(32,w),Math.Max(32,h));
-        previewHost.Move(preview,(previewHost.Width-preview.Width)/2,(previewHost.Height-preview.Height)/2);
+        previewPixels=new(Math.Max(32,w),Math.Max(32,h));preview.Size=previewPixels;
+        previewHost.Move(preview,(maxW+16-previewPixels.Width)/2,(maxH+16-previewPixels.Height)/2);
     }
     public void RefreshPreview()
     {
         if(!shown||busy||Selected is not {} row)return;
         NamedViewExportService.RequireActive(Doc);NamedViewExportService.ValidateSize(row.Width,row.Height);
         FitPreview();
-        NamedViewExportService.ApplyCamera(Doc,row.Id,preview.Viewport,row.Width,row.Height);
-        preview.Viewport.DisplayMode=DisplayModeDescription.GetDisplayMode(row.Mode)??throw new InvalidOperationException("显示模式已删除，请刷新列表。");
-        preview.Viewport.ConstructionGridVisible=false;preview.Viewport.ConstructionAxesVisible=false;preview.Viewport.WorldAxesVisible=false;
-        preview.Refresh();frameLabel.Text=$"{row.Name}  ·  {row.Width} × {row.Height} px  ·  {modes.SelectedValue}";
+        var view=Doc.Views.ActiveView;var viewport=view.ActiveViewport;
+        using var saved=new Rhino.DocObjects.ViewportInfo(viewport);
+        var mode=viewport.DisplayMode;var viewName=viewport.Name;bool modified=Doc.Modified;
+        bool gridVisible=viewport.ConstructionGridVisible,axes=viewport.ConstructionAxesVisible,worldAxes=viewport.WorldAxesVisible;
+        bool redraw=Doc.Views.RedrawEnabled;
+        System.Drawing.Bitmap bitmap;
+        try
+        {
+            // Rhino's standalone viewport cannot render document geometry. Capture
+            // through the existing view without resizing it or creating a window,
+            // and restore its complete projection before allowing another redraw.
+            Doc.Views.RedrawEnabled=false;
+            NamedViewExportService.ApplyCamera(Doc,row.Id,viewport,row.Width,row.Height);
+            viewport.ConstructionGridVisible=false;viewport.ConstructionAxesVisible=false;viewport.WorldAxesVisible=false;
+            var display=DisplayModeDescription.GetDisplayMode(row.Mode)??throw new InvalidOperationException("显示模式已删除，请刷新列表。");
+            bitmap=view.CaptureToBitmap(new System.Drawing.Size(previewPixels.Width,previewPixels.Height),display)
+                ??throw new InvalidOperationException("Rhino 暂未生成预览，请刷新后重试。");
+        }
+        finally
+        {
+            viewport.SetViewProjection(saved,true);viewport.Name=viewName;viewport.DisplayMode=mode;
+            viewport.ConstructionGridVisible=gridVisible;viewport.ConstructionAxesVisible=axes;viewport.WorldAxesVisible=worldAxes;
+            Doc.Modified=modified;Doc.Views.RedrawEnabled=redraw;
+        }
+        using var stream=new MemoryStream();bitmap.Save(stream,System.Drawing.Imaging.ImageFormat.Png);stream.Position=0;
+        var image=new Bitmap(stream);var old=preview.Image;preview.Image=image;old?.Dispose();
+        FitPreview();
+        previewBitmap?.Dispose();previewBitmap=bitmap;
+        frameLabel.Text=$"{row.Name}  ·  {row.Width} × {row.Height} px  ·  {modes.SelectedValue}";
     }
     public void CapturePreview(string path)
     {
         RefreshPreview();
         if(!Path.IsPathFullyQualified(path)||!path.EndsWith(".png",StringComparison.OrdinalIgnoreCase))throw new ArgumentException("预览路径需为绝对 .png 路径。");
-        using var bitmap=DisplayPipeline.DrawToBitmap(preview.Viewport,Math.Max(64,preview.Width),Math.Max(64,preview.Height))
-            ??throw new InvalidOperationException("Rhino 暂未生成预览，请刷新后重试。");
-        Directory.CreateDirectory(Path.GetDirectoryName(path)!);bitmap.Save(path,System.Drawing.Imaging.ImageFormat.Png);
+        if(previewBitmap is null)throw new InvalidOperationException("请先选择 Named View。");
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);previewBitmap.Save(path,System.Drawing.Imaging.ImageFormat.Png);
     }
     private FileCollision ResolveCollision(string path)
     {
@@ -257,7 +285,7 @@ public sealed class ExportPanel : Form
         catch(Exception ex){if(!IsDisposed){status.Text=ex.Message;MessageBox.Show(this,ex.Message,"无法导出",MessageBoxType.Error);}}
     }
     public object GetState()=>new{document,busy,visible=Visible,selected=Selected?.Id,directory=folder.Text,status=status.Text,
-        previewSize=new{width=preview.Width,height=preview.Height},previewMode=preview.Viewport.DisplayMode?.Id,
+        previewSize=new{width=previewPixels.Width,height=previewPixels.Height},previewMode=Selected?.Mode,
         channels=new{material=material.Checked==true,shadow=shadow.Checked==true},views=rows.ToArray(),
         displayModes=modes.Items.Select(m=>new{id=m.Key,name=m.Text}).ToArray(),lastReport=LastReport};
 }

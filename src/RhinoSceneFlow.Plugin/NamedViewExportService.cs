@@ -106,7 +106,7 @@ public static class NamedViewExportService
             var sun=doc.RenderSettings.Sun;var direction=sun.Vector;
             var toSun=sun.Enabled && direction.IsValid && direction.Length>0 && direction.Z<0 ?
                 new Vec3(-direction.X,-direction.Y,-direction.Z) : new Vec3(-1,-1,2);
-            var shadow=new ShadowSettings(toSun.Unit,new(90,90,90),Bias:Math.Max(doc.ModelAbsoluteTolerance*.001,1e-7));
+            var shadow=new ShadowSettings(toSun.Unit,new(90,90,90),IncludeFormShading:true,Bias:Math.Max(doc.ModelAbsoluteTolerance*.001,1e-7));
             return new(plan,channels,reader,viewport,triangles,shadow);
         }
         catch{reader?.Dispose();viewport.Dispose();throw;}
