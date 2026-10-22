@@ -6,7 +6,7 @@ from PIL import Image
 from psd_tools import PSDImage
 folder=Path('artifacts/rhino-B/accuracy')
 report=json.loads((folder/'report.json').read_text())
-assert report['version']=='0.4.1'
+assert report['version'] in ('0.4.1','0.5.0')
 assert report['complete'] and report['viewRestored']
 checks=[];failures=[]
 for case in report['cases']:

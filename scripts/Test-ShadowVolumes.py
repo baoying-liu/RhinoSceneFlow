@@ -66,7 +66,7 @@ def oracle(px,py,w,h,sun,form):
     return hit is not None,name
 
 report={'pid':EXPECTED_PID,'version':api('describe')['version'],'cases':[]}
-assert report['version']=='0.4.1'
+assert report['version'] in ('0.4.1','0.5.0')
 try:
  for name,top,form,width in [('top',True,False,1024),('perspective',False,False,1024),('form',False,True,512)]:
     if top:vp.SetProjection(DefinedViewportProjection.Top,'Volume_Top',True)

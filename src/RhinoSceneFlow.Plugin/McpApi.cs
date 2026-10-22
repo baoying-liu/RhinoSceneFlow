@@ -26,9 +26,13 @@ public static class McpApi
             switch (operation)
             {
                 case "describe":
-                    response = new { name = "RhinoSceneFlow", version = "0.4.1", transport = "Rhino-MCP-Platform.run_python",
+                    response = new { name = "RhinoSceneFlow", version = "0.5.0", transport = "Rhino-MCP-Platform.run_python",
                         entryPoint = "RhinoSceneFlow.Plugin.McpApi.Execute(string)",
                         operations = new object[] {
+                            new { name="open_panel", required=new[]{"document"}, parameters="Opens or activates the native Eto Named View export panel", output="Panel state" },
+                            new { name="panel_status", required=new[]{"document"}, parameters="Read-only panel state", output="Panel state, or open=false" },
+                            new { name="named_views", required=new[]{"document"}, parameters="Lists stable named-view IDs and default dimensions", output="Named View entries" },
+                            new { name="export_named_views", required=new[]{"document","directory","views"}, parameters="views: [{viewId,width,height}]; channels?: [material,shadow] (material currently layer RGB); collision?: number (default), overwrite, cancel; writes one PSD per Named View", output="Batch files, dimensions, layer counts, timing and per-view errors" },
                             new { name="describe", required=Array.Empty<string>(), parameters="apiVersion=1", output="Version, operation contracts, limitations" },
                             new { name="status", required=new[]{"document"}, parameters="document: Rhino runtime serial number", output="Default directory, document and active viewport" },
                             new { name="configure_export", required=new[]{"directory"}, parameters="directory: absolute path; directory is created on export", output="Persisted default export directory" },
@@ -36,6 +40,23 @@ public static class McpApi
                             new { name="export_psd", required=new[]{"document"}, parameters="width?: 64..8192 (default 2048), path?: absolute .psd (default generated), viewportId?: expected active viewport GUID, overwrite?: false", output="File path, dimensions, layers, object/triangle counts, skipped types, timing" }
                         }, limits = new { maxPixels=8_000_000, maxSide=8192, bitDepth=8, grouping="layer_rgb", appearance="opaque_flat_color" } };
                     break;
+                case "open_panel":
+                    response=ExportPanelController.Open(Document(r)).GetState();break;
+                case "panel_status":
+                    response=ExportPanelController.Find(Document(r).RuntimeSerialNumber)?.GetState() ?? (object)new {open=false};break;
+                case "named_views":
+                    response=NamedViewExportService.List(Document(r));break;
+                case "export_named_views":
+                    var batchDoc=Document(r);
+                    var views=r.GetProperty("views").EnumerateArray().Select(v=>new NamedViewSpec(
+                        Guid.Parse(v.GetProperty("viewId").GetString()!),v.GetProperty("width").GetInt32(),v.GetProperty("height").GetInt32())).ToArray();
+                    string[] channels=r.TryGetProperty("channels",out var channelList)?channelList.EnumerateArray().Select(c=>c.GetString()??"").ToArray():["material","shadow"];
+                    if(channels.Any(c=>c is not ("material" or "shadow")))throw new ArgumentException("channels must contain material and/or shadow.");
+                    string collision=r.TryGetProperty("collision",out var policy)?policy.GetString()??"number":"number";
+                    var action=collision switch {"number"=>FileCollision.Number,"overwrite"=>FileCollision.Overwrite,"cancel"=>FileCollision.Cancel,_=>throw new ArgumentException("collision must be number, overwrite or cancel.")};
+                    var passes=new BatchChannels(channels.Contains("material"),channels.Contains("shadow"));
+                    var plan=NamedViewExportService.Plan(batchDoc,views,r.GetProperty("directory").GetString()??"",passes,_=>action);
+                    response=NamedViewExportService.Export(batchDoc,plan,passes);break;
                 case "configure_export":
                     string directory = r.GetProperty("directory").GetString() ?? "";
                     if (!Path.IsPathFullyQualified(directory)) throw new ArgumentException("Directory must be an absolute path.");

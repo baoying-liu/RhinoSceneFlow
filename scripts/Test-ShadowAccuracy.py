@@ -90,7 +90,7 @@ def oracle(px,py,w,h,sun,form):
 
 
 report={'pid':EXPECTED_PID,'version':api('describe')['version'],'cases':[],'mixed':[]}
-assert report['version']=='0.4.1'
+assert report['version'] in ('0.4.1','0.5.0')
 try:
  for name,top,light in [('perspective',False,[-.3,-1,1]),('top',True,[-.3,-1,1]),('other-sun',False,[1,-1,2])]:
     if top:vp.SetProjection(DefinedViewportProjection.Top,'Accuracy_Top',True)

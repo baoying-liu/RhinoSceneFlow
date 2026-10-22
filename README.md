@@ -2,7 +2,7 @@
 
 Rhino 场景表现工作流：**AI 素材 → 真实尺度材质 → 植物布置 → 视图分层导出 → 后期编辑**，由 Codex / Agent 编排。名称中的 Scene 表示材质与植物组成的场景，Flow 表示从 Rhino 到后期编辑的连续流程。
 
-当前为 Rhino 8 / Windows v0.4 原型，已实现按**图层 RGB 颜色**分层的 PSD、独立单色阴影 PSD、默认目录及原厂 Rhino-MCP-Platform 自动化适配。其余工作流模块尚未实现；不依赖 ComfyUI，不启动额外 MCP 服务。
+当前为 Rhino 8 / Windows v0.5 原型，已实现 **Eto Named View 批量导出面板**、按图层 RGB 颜色分层的 PSD、独立单色阴影 PSD、默认目录及原厂 Rhino-MCP-Platform 自动化适配。其余工作流模块尚未实现；不依赖 ComfyUI，不启动额外 MCP 服务。
 
 项目位置：`00_DevProjects/C#/RhinoSceneFlow`，独立 Git 仓库；与 `00_DevProjects/C++/RhinoBIM` 在语言目录下层级一致。
 
@@ -38,6 +38,10 @@ dotnet build RhinoSceneFlow.sln -c Release '-p:RhinoSystem=D:\Rhino 8\System'
 ```
 
 ## 使用
+
+批量导出面板：执行 **`RhinoSceneFlowPanel`**。读取并勾选 Named Views，为每个视图设置宽、高；使用 Rhino 原生视口预览着色、渲染、极地等模式，选择材质/图层色和阴影通道，再导出到文件夹。每个视图一个同名 PSD，选中通道合并到该文件；重名先询问，选择不覆盖自动添加 001、002……。支持后台导出、进度及取消。完整说明见 [导出面板](docs/Export-Panel.md)。
+
+以下为保留的单视图命令用法：
 
 1. 打开模型视图，设置视角和图层颜色。
 2. 执行 `RhinoSceneFlowExportPSD`。

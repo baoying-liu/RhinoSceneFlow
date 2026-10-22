@@ -6,7 +6,7 @@ namespace RhinoSceneFlow.Core;
 /// <summary>Minimal PSD v1 writer: RGB/8, Unicode pixel layers, transparency, raw planar channels.</summary>
 public static class PsdWriter
 {
-    public static int Save(string path, RasterImage image, CancellationToken cancellation = default, bool overwrite = true, bool allowEmpty = false)
+    public static int Save(string path, IPsdImage image, CancellationToken cancellation = default, bool overwrite = true, bool allowEmpty = false)
     {
         var layers = image.GetVisibleLayers(cancellation);
         if (layers.Count == 0 && allowEmpty && image.Groups.Count == 1) layers = [new LayerBounds(0,0,0,1,1)];
@@ -27,7 +27,7 @@ public static class PsdWriter
         return layers.Count;
     }
 
-    private static void Write(Stream stream, RasterImage image, IReadOnlyList<LayerBounds> layers, CancellationToken cancellation)
+    private static void Write(Stream stream, IPsdImage image, IReadOnlyList<LayerBounds> layers, CancellationToken cancellation)
     {
         var w = new BigEndian(stream);
         w.Ascii("8BPS"); w.U16(1); w.Zero(6); w.U16(4);

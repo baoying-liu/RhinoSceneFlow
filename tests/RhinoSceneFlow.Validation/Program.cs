@@ -198,3 +198,33 @@ var refinedSphere=ShadowVolumeRenderer.Render(96,96,shadowCamera,ball,volumeSett
  refineSurface:(_,_)=>{sphereQueries++;return false;});
 Check(sphereQueries>0&&refinedSphere.GetVisibleLayers().Count==0,"A convex exact sphere has no cast shadows of its own.");
 Console.WriteLine("PASS: source-surface refinement preserves analytic gap shadows and convex-sphere visibility.");
+
+// Separate passes overlap in the PSD; their composite must match normal alpha blending.
+var batchMaterial=FlatRasterizer.Render(100,100,[new ColorGroup("Material #C86432",new(200,100,50))],
+ shadowScene.Select(t=>new Triangle(shadowCamera.Project(t.A),shadowCamera.Project(t.B),shadowCamera.Project(t.C),0)));
+var stack=new LayerStack(softAlpha,batchMaterial);
+Check(stack.Groups.Count==2 && stack.Groups[0].Name=="Shadow","Shadow pass must be above material.");
+Check(stack.CompositeChannel(3,30,50)==255,"Material keeps the composite opaque beneath shadow.");
+Check(stack.CompositeChannel(0,30,50)==106 && stack.CompositeChannel(1,30,50)==67,"Independent shadow opacity composition.");
+PsdWriter.Save(Path.Combine(output,"batch-stack.psd"),stack);
+var emptyPass=new LayerStack(ShadowVolumeRenderer.Render(100,100,shadowCamera,Plate(0,5),new(new(0,0,-1),new(90,90,90))),batchMaterial);
+Check(emptyPass.GetVisibleLayers().Count==2,"A selected empty Shadow pass must remain editable in the PSD.");
+PsdWriter.Save(Path.Combine(output,"batch-empty-shadow.psd"),emptyPass);
+string namesDirectory=Path.Combine(output,"names-"+Guid.NewGuid().ToString("N"));Directory.CreateDirectory(namesDirectory);
+File.WriteAllText(Path.Combine(namesDirectory,"视图.psd"),"existing");
+File.WriteAllText(Path.Combine(namesDirectory,"视图001.psd"),"existing");
+var reserved=new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+var numbered=OutputNames.Reserve(namesDirectory,"视图",reserved,_=>FileCollision.Number);
+Check(Path.GetFileName(numbered.Path)=="视图002.psd"&&!numbered.Overwrite,"Numbering must skip existing suffixes.");
+var next=OutputNames.Reserve(namesDirectory,"视图",reserved,_=>FileCollision.Number);
+Check(Path.GetFileName(next.Path)=="视图003.psd","Numbering must reserve names within a batch.");
+var overwritten=OutputNames.Reserve(namesDirectory,"视图",new HashSet<string>(),_=>FileCollision.Overwrite);
+Check(overwritten.Overwrite&&Path.GetFileName(overwritten.Path)=="视图.psd","Explicit overwrite policy.");
+try{OutputNames.Reserve(namesDirectory,"视图",new HashSet<string>(),_=>FileCollision.Cancel);throw new Exception("Collision cancellation ignored.");}
+catch(OperationCanceledException){}
+var same=new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+var aName=OutputNames.Reserve(namesDirectory,"a/b",same,_=>FileCollision.Overwrite);
+var bName=OutputNames.Reserve(namesDirectory,"a:b",same,_=>FileCollision.Overwrite);
+Check(aName.Path!=bName.Path&&!bName.Overwrite,"Sanitized duplicate names must never overwrite another planned view.");
+Check(OutputNames.SafeStem("CON")=="_CON"&&OutputNames.SafeStem("..")!="..","Invalid/device filenames.");
+Console.WriteLine("PASS: multi-pass PSD composition, empty channels, Unicode filenames, suffix reservation, overwrite and cancellation.");

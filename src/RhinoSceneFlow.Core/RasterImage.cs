@@ -6,7 +6,7 @@ public sealed record LayerBounds(int Group, int Left, int Top, int Right, int Bo
     public int Height => Bottom - Top;
 }
 
-public sealed class RasterImage
+public sealed class RasterImage : IPsdImage
 {
     private readonly int[] owners;
     private readonly double opacity;

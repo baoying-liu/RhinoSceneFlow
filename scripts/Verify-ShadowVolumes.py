@@ -6,7 +6,7 @@ from PIL import Image,ImageDraw
 from psd_tools import PSDImage
 folder=Path('artifacts/rhino-B/volumes-v041')
 report=json.loads((folder/'report.json').read_text())
-assert report['version']=='0.4.1'
+assert report['version'] in ('0.4.1','0.5.0')
 assert report['complete'] and report['viewRestored'] and report['invalidBackendRejected']
 command=PSDImage.open(report['commandPath']);assert command.width==128 and len(command)==1
 style=PSDImage.open(report['style']['export']['path'])[0].topil().convert('RGBA')

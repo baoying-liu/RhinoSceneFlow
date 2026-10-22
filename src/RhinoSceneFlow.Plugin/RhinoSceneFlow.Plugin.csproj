@@ -7,6 +7,7 @@
     <RhinoSystem Condition="'$(RhinoSystem)'==''">C:\Program Files\Rhino 8\System</RhinoSystem>
   </PropertyGroup>
   <ItemGroup>
+    <FrameworkReference Include="Microsoft.WindowsDesktop.App.WindowsForms" />
     <ProjectReference Include="../RhinoSceneFlow.Core/RhinoSceneFlow.Core.csproj" />
     <Reference Include="RhinoCommon"><HintPath>$(RhinoSystem)\RhinoCommon.dll</HintPath><Private>false</Private></Reference>
     <Reference Include="Eto"><HintPath>$(RhinoSystem)\Eto.dll</HintPath><Private>false</Private></Reference>

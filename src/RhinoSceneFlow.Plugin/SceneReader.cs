@@ -11,6 +11,7 @@ internal sealed class SceneReader(RhinoDoc doc, RhinoViewport viewport, Cancella
 {
     public SurfaceRefiner? Surfaces { get; } = captureSurfaces ? new(viewport.CameraLocation) : null;
     public void Dispose() => Surfaces?.Dispose();
+    public RhinoViewport? VisibilityViewport { get; init; }
     private readonly Dictionary<int, int> groupByColor = new();
     private readonly List<ColorGroup> groups = [];
     private readonly List<HashSet<string>> names = [];
@@ -31,7 +32,7 @@ internal sealed class SceneReader(RhinoDoc doc, RhinoViewport viewport, Cancella
         var settings = new ObjectEnumeratorSettings
         {
             NormalObjects = true, LockedObjects = true, HiddenObjects = false,
-            ReferenceObjects = true, IdefObjects = false, ViewportFilter = viewport,
+            ReferenceObjects = true, IdefObjects = false, ViewportFilter = VisibilityViewport ?? viewport,
             VisibleFilter = true
         };
         foreach (var obj in doc.Objects.GetObjectList(settings))
@@ -124,7 +125,7 @@ internal sealed class SceneReader(RhinoDoc doc, RhinoViewport viewport, Cancella
         var layer = doc.Layers[index];
         while (layer is not null)
         {
-            if (!visited.Add(layer.Id) || !layer.IsVisible || !layer.PerViewportIsVisible(viewport.Id)) return false;
+            if (!visited.Add(layer.Id) || !layer.IsVisible || !layer.PerViewportIsVisible((VisibilityViewport ?? viewport).Id)) return false;
             if (layer.ParentLayerId == Guid.Empty) break;
             layer = doc.Layers.FindId(layer.ParentLayerId);
         }
