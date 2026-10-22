@@ -101,9 +101,14 @@ assert report['defaultResolution']['export']['width']==2048 and before==snapshot
 # Verify the Rhino Sun convention and the automatic source branch without leaving
 # solar settings or the document modified flag changed after this test.
 sun=doc.RenderSettings.Sun
-saved=(sun.Enabled,sun.ManualControlOn,sun.Azimuth,sun.Altitude,doc.Modified)
+render_state=doc.RenderSettings.Duplicate();sun_hash=int(sun.Hash);saved_modified=doc.Modified
 try:
-    sun.Azimuth=135;sun.Altitude=45;sun.Enabled=True
+    sun.BeginChange(Rhino.Render.RenderContent.ChangeContexts.Program)
+    try:
+        sun.ManualControlOn=True;sun.Azimuth=135;sun.Altitude=45;sun.Enabled=True
+    finally:sun.EndChange()
+    assert sun.ManualControlOn and abs(sun.Altitude-45)<1e-8 and abs(sun.Azimuth-135)<1e-8
+    assert abs(sun.Vector.Z+math.sqrt(.5))<1e-8
     before=snapshot();v=sun.Vector
     automatic=api('export_shadow_psd',width=128,path=os.path.join(os.path.dirname(OUTPUT_DIR),'exports','shadow-rhino-sun.psd'),overwrite=True)
     assert automatic['lightSource']=='rhino_sun',automatic
@@ -115,7 +120,9 @@ try:
     with open(explicit['export']['path'],'rb') as f:assert f.read()==automatic_bytes
     report['sun']=dict(automatic=automatic,explicit=explicit,identical=True)
 finally:
-    sun.Azimuth=saved[2];sun.Altitude=saved[3];sun.ManualControlOn=saved[1];sun.Enabled=saved[0];doc.Modified=saved[4]
+    doc.RenderSettings=render_state
+    assert int(doc.RenderSettings.Sun.Hash)==sun_hash
+    doc.Modified=saved_modified;render_state.Dispose()
 before=snapshot()
 report['style']=api('export_shadow_psd',width=128,path=os.path.join(os.path.dirname(OUTPUT_DIR),'exports','shadow-styled.psd'),overwrite=True,toSun=[-.3,-1,1],color='#123456',opacity=.5)
 assert before==snapshot()

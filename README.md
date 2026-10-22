@@ -95,6 +95,8 @@ artifacts/verify-env/Scripts/python.exe scripts/Verify-Psd.py artifacts/validati
 
 ## v0.3 独立阴影 PSD
 
+**已知准确性问题（2026-10-22）：当前后端存在可复现的近接遮挡漏影。** [问题复核与替代路线](docs/Shadow-Alternatives.md)包含反例及实验平面投影 PSD；实验模式尚未接入正式命令。
+
 命令：`RhinoSceneFlowExportShadowPSD`。输入宽度和输出路径；回车使用默认路径，无保存对话框。自动化示例：`_-RhinoSceneFlowExportShadowPSD 1024 _Enter`。
 
 输出透明背景、单一灰色、清晰边缘的 `Shadow` 图层；默认只输出投射阴影。模型需有实际接收阴影的表面。高级太阳方向、颜色、透明度和背光面开关通过 [MCP API](docs/MCP.md) 设置。默认优先采用启用且在地平线上方的 Rhino Sun，否则使用固定斜上方光源，报告记录实际来源。

@@ -13,5 +13,7 @@
 - Update docs/Validation.md and docs/Sandbox-B.md with actual evidence; distinguish independent file decoding from opening Photoshop itself.
 
 - Shadow backend: pinned geometry3Sharp 1.0.324 (Boost). Keep the managed dependency beside the RHP. No native runtime or separate MCP server.
-- Use refined ruled-surface meshes, interpolated receiver normals, and local tangent-plane error bias for shadow rays; do not hide geometric artifacts with blur or threshold image cleanup.
+- Known v0.3 accuracy failure: tangent-plane normal offsets can move a shadow ray past a nearby occluder. Do not treat this heuristic as an acceptable fix for terminator artifacts. Preserve geometric visibility; separate shading normals from occlusion and explicitly validate contact/gap shadows. Do not hide geometric artifacts with blur or threshold image cleanup.
 - Shadow verification: scripts/Test-ShadowRhino.py after Test-ComplexRhino.py; independent scripts/Verify-ShadowPsd.py. Retain failed visual/oracle evidence and verify curved receivers as well as planar ground.
+
+- Accuracy audit: scripts/Research-ShadowNative.py, Research-ShadowPlanar.py and Research-ShadowContact.py are B-only research prototypes. Verify-ShadowAlternatives.py records a known CURRENT-backend failure; researchChecksCompleted does not mean currentBackendAccurate. See docs/Shadow-Alternatives.md.
