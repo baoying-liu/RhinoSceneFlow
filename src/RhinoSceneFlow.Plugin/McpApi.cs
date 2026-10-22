@@ -26,13 +26,13 @@ public static class McpApi
             switch (operation)
             {
                 case "describe":
-                    response = new { name = "RhinoSceneFlow", version = "0.4.0", transport = "Rhino-MCP-Platform.run_python",
+                    response = new { name = "RhinoSceneFlow", version = "0.4.1", transport = "Rhino-MCP-Platform.run_python",
                         entryPoint = "RhinoSceneFlow.Plugin.McpApi.Execute(string)",
                         operations = new object[] {
                             new { name="describe", required=Array.Empty<string>(), parameters="apiVersion=1", output="Version, operation contracts, limitations" },
                             new { name="status", required=new[]{"document"}, parameters="document: Rhino runtime serial number", output="Default directory, document and active viewport" },
                             new { name="configure_export", required=new[]{"directory"}, parameters="directory: absolute path; directory is created on export", output="Persisted default export directory" },
-                            new { name="export_shadow_psd", required=new[]{"document"}, parameters="width?, path?, viewportId?, overwrite?; toSun?: [x,y,z] surface-to-sun direction (default enabled Rhino sun or [-1,-1,2]); color?: #RRGGBB (default #5A5A5A); opacity?: (0,1] default 1; includeFormShading?: false; bias?: positive model units; backend?: ray (legacy default) or volume (software z-fail shadow volumes)", output="Export report plus normalized light direction, source, style, bias, backend and empty flag" },
+                            new { name="export_shadow_psd", required=new[]{"document"}, parameters="width?, path?, viewportId?, overwrite?; toSun?: [x,y,z] surface-to-sun direction (default enabled Rhino sun or [-1,-1,2]); color?: #RRGGBB (default #5A5A5A); opacity?: (0,1] default 1; includeFormShading?: false; bias?: positive model units; backend?: ray (legacy default) or volume (z-fail volumes with original-surface refinement)", output="Export report (including surfaceRefinements query count) plus normalized light direction, source, style, bias, backend and empty flag" },
                             new { name="export_psd", required=new[]{"document"}, parameters="width?: 64..8192 (default 2048), path?: absolute .psd (default generated), viewportId?: expected active viewport GUID, overwrite?: false", output="File path, dimensions, layers, object/triangle counts, skipped types, timing" }
                         }, limits = new { maxPixels=8_000_000, maxSide=8192, bitDepth=8, grouping="layer_rgb", appearance="opaque_flat_color" } };
                     break;

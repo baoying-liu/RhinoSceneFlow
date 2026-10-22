@@ -6,8 +6,11 @@ using RhinoSceneFlow.Core;
 
 namespace RhinoSceneFlow.Plugin;
 
-internal sealed class SceneReader(RhinoDoc doc, RhinoViewport viewport, CancellationToken cancellation, bool forShadows = false)
+internal sealed class SceneReader(RhinoDoc doc, RhinoViewport viewport, CancellationToken cancellation, bool forShadows = false,
+    bool captureSurfaces = false) : IDisposable
 {
+    public SurfaceRefiner? Surfaces { get; } = captureSurfaces ? new(viewport.CameraLocation) : null;
+    public void Dispose() => Surfaces?.Dispose();
     private readonly Dictionary<int, int> groupByColor = new();
     private readonly List<ColorGroup> groups = [];
     private readonly List<HashSet<string>> names = [];
@@ -58,16 +61,16 @@ internal sealed class SceneReader(RhinoDoc doc, RhinoViewport viewport, Cancella
         bool owned = true;
         switch (geometry)
         {
-            case Mesh mesh: meshes = [mesh]; owned = false; break;
-            case Brep brep: meshes = MeshBrep(brep); break;
+            case Mesh mesh: meshes = [mesh]; owned = false; Surfaces?.AddMesh(mesh,transform); break;
+            case Brep brep: meshes = MeshBrep(brep); Surfaces?.AddBrep(brep,transform); break;
             case Extrusion extrusion:
-                using (var eb = extrusion.ToBrep()) meshes = MeshBrep(eb);
+                using (var eb = extrusion.ToBrep()) { meshes = MeshBrep(eb); Surfaces?.AddBrep(eb,transform); }
                 break;
             case SubD subd:
                 var sm = Mesh.CreateFromSubD(subd, 2);
-                meshes = sm is null ? [] : [sm]; break;
+                meshes = sm is null ? [] : [sm]; if(sm is not null) Surfaces?.AddMesh(sm,transform); break;
             case Surface surface:
-                using (var sb = surface.ToBrep()) meshes = MeshBrep(sb);
+                using (var sb = surface.ToBrep()) { meshes = MeshBrep(sb); Surfaces?.AddBrep(sb,transform); }
                 break;
             default:
                 string type = obj.ObjectType.ToString();

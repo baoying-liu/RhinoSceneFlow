@@ -11,7 +11,7 @@ folder=os.path.join(OUTPUT_DIR,'alternatives')
 with open(os.path.join(folder,'native-report.json')) as f:report=json.load(f)
 assembly=next(a for a in System.AppDomain.CurrentDomain.GetAssemblies() if a.GetName().Name=='RhinoSceneFlow.Plugin')
 type=assembly.GetType('RhinoSceneFlow.Plugin.SceneReader')
-reader=System.Activator.CreateInstance(type,System.Array[System.Object]([doc,vp,System.Threading.CancellationToken(),False]))
+reader=System.Activator.CreateInstance(type,System.Array[System.Object]([doc,vp,System.Threading.CancellationToken(),False,False]))
 triangles=list(type.GetMethod('Read').Invoke(reader,None));world=type.GetProperty('WorldTriangles').GetValue(reader);camera=type.GetProperty('Camera').GetValue(reader)
 project=Transform.ProjectAlong(Plane(Point3d(0,0,-2),Vector3d.ZAxis),Vector3d(*[-v for v in report['toSun']]))
 width=report['width'];height=report['height']

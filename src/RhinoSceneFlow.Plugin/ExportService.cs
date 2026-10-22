@@ -9,7 +9,7 @@ namespace RhinoSceneFlow.Plugin;
 
 public sealed record ExportReport(string Path, int Width, int Height, int LayerCount, string[] Layers,
     int MeshObjects, int Triangles, long FileBytes, long ElapsedMilliseconds, Dictionary<string, int> Skipped,
-    uint Document, Guid ViewportId, string ViewName, string Projection, string[] Limitations);
+    uint Document, Guid ViewportId, string ViewName, string Projection, string[] Limitations, int SurfaceRefinements = 0);
 
 /// <summary>UI-thread application service shared by commands and the Platform automation bridge.</summary>
 public sealed record ShadowExportReport(ExportReport Export, double[] ToSun, string LightSource, string Color, double Opacity, bool IncludeFormShading, double Bias, bool Empty, string Backend);
@@ -64,10 +64,11 @@ public static class ExportService
             throw new ArgumentException("Output must have a .psd extension.");
         path = System.IO.Path.GetFullPath(path);
         if (!overwrite && File.Exists(path)) throw new IOException("Output already exists; set overwrite=true explicitly.");
-        var reader = new SceneReader(doc, viewport, cancellation, shadow is not null);
+        using var reader = new SceneReader(doc, viewport, cancellation, shadow is not null, shadow is not null && backend=="volume");
         var triangles = reader.Read().ToArray();
         var image = shadow is null ? FlatRasterizer.Render(width, height, reader.Groups, triangles, cancellation) :
-            backend == "volume" ? ShadowVolumeRenderer.Render(width, height, reader.Camera, reader.WorldTriangles, shadow, cancellation) :
+            backend == "volume" ? ShadowVolumeRenderer.Render(width, height, reader.Camera, reader.WorldTriangles, shadow, cancellation,
+                reader.Surfaces!.Evaluator(reader.Camera,width,height,shadow)) :
             ShadowRenderer.Render(width, height, reader.Camera, reader.WorldTriangles, shadow, cancellation);
         var visible = image.GetVisibleLayers(cancellation);
         if (visible.Count == 0 && shadow is null) throw new InvalidOperationException("No visible surface pixels to export.");
@@ -77,6 +78,6 @@ public static class ExportService
             reader.MeshObjects, reader.TriangleCount, new FileInfo(path).Length, watch.ElapsedMilliseconds,
             reader.Skipped, doc.RuntimeSerialNumber, viewport.Id, viewport.Name,
             viewport.IsParallelProjection ? "parallel" : "perspective",
-            shadow is not null ? ["Opaque mesh approximations; no alpha cutouts", "Existing visible surfaces receive shadows; no implicit ground plane", "Directional hard shadows; form shading optional"] : ["Opaque layer-color surfaces only", "Textures, lighting and alpha materials are not exported", "Curves, text, annotations and hatches are skipped"]);
+            shadow is not null ? [backend=="volume" ? "Mesh shadows with original-surface refinement in uncertain curved regions; no alpha cutouts" : "Opaque mesh approximations; no alpha cutouts", "Existing visible surfaces receive shadows; no implicit ground plane", "Directional hard shadows; form shading optional"] : ["Opaque layer-color surfaces only", "Textures, lighting and alpha materials are not exported", "Curves, text, annotations and hatches are skipped"],reader.Surfaces?.Queries ?? 0);
     }
 }

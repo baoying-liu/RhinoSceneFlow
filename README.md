@@ -109,4 +109,6 @@ artifacts/verify-env/Scripts/python.exe scripts/Verify-Psd.py artifacts/validati
 
 新命令：`RhinoSceneFlowExportShadowVolumePSD`，回车采用默认 2048 像素宽度和默认路径。自动化：`_-RhinoSceneFlowExportShadowVolumePSD 1024 _Enter`；同一 MCP API 使用 `backend:"volume"`。旧阴影命令及省略 backend 的 API 仍使用旧射线后端，供对照。
 
-新后端使用 CPU 软件 z-fail 阴影体，已恢复之前确认的近接漏影。在 B 的球体、双曲面、墙面等场景完成 1,564 个原始 Brep 参考采样及独立 PSD 解码；默认 2048 像素导出约 9.1 秒。这不保证任意曲面精度，双曲面分界附近仍有网格近似细碎纹理。完整方法、证据和限制见 [阴影体后端](docs/Shadow-Volumes.md)。
+新后端使用 CPU 软件 z-fail 阴影体，已恢复之前确认的近接漏影。v0.4 的方法与历史证据见 [阴影体后端](docs/Shadow-Volumes.md)。
+
+v0.4.1 增加原始曲面复核，修正测试双曲面上的断续碎影，保留真实投射阴影；没有使用模糊或图像清理。含明暗边界的 9,049 个像素、36,196 个子采样与独立解析参考一致，原有 1,564 个 Brep 稳定区采样也通过。这个场景默认 2048 像素导出约 34 秒，较原型更慢。仍非任意模型的精度保证，SubD、极小特征等有限制。方法、前后对比及复核命令见 [准确性修正](docs/Shadow-Accuracy.md)。

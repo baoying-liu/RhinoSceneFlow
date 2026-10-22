@@ -9,7 +9,8 @@ namespace RhinoSceneFlow.Core;
 public static class ShadowVolumeRenderer
 {
     public static RasterImage Render(int width, int height, CameraProjection camera,
-        IReadOnlyList<WorldTriangle> triangles, ShadowSettings settings, CancellationToken cancellation = default)
+        IReadOnlyList<WorldTriangle> triangles, ShadowSettings settings, CancellationToken cancellation = default,
+        Func<int,int,bool>? refineSurface = null)
     {
         if (width < 1 || height < 1 || width > 8192 || height > 8192 || (long)width * height > 8_000_000)
             throw new ArgumentOutOfRangeException(nameof(width));
@@ -25,6 +26,7 @@ public static class ShadowVolumeRenderer
         var receiver = new int[size]; Array.Fill(receiver, -1);
         var stencil = new int[size];
         var owners = new int[size]; Array.Fill(owners, -1);
+        var evaluated = refineSurface is null ? null : new byte[size];
         if (scene.Length == 0) return new(width,height,[new("Shadow",settings.Color)],owners,settings.Opacity);
         double Distance(double z) => camera.Parallel ? camera.Near+z*(camera.Far-camera.Near) :
             camera.Far*camera.Near/(camera.Far-z*(camera.Far-camera.Near));
@@ -100,7 +102,43 @@ public static class ShadowVolumeRenderer
                 // Backlighting is controlled separately. Geometric backfaces are not
                 // counted as cast shadows from their own faceted approximation.
                 bool form=settings.IncludeFormShading && normal.Dot(sun)<=1e-10;
-                if(form || (geometric.Dot(sun)>1e-10 && stencil[index]!=0)) owners[index]=0;
+                bool shadow=form || (geometric.Dot(sun)>1e-10 && stencil[index]!=0);
+                if(refineSurface is not null && t.NA.HasValue && t.NB.HasValue && t.NC.HasValue)
+                {
+                    Vec3 Orient(Vec3 n) => n.Dot(geometric)<0 ? n*-1 : n;
+                    var na=Orient(t.NA.Value);var nb=Orient(t.NB.Value);var nc=Orient(t.NC.Value);
+                    double variation=Math.Max((na-nb).Length,Math.Max((na-nc).Length,(nb-nc).Length));
+                    double uncertainty=2*Math.Max(Math.Abs(geometric.Dot(sun)-normal.Dot(sun)),variation)+1e-6;
+                    // Re-evaluate actual geometry, not the image, where faceting can
+                    // change terminator classification or create false self-occlusion.
+                    if(variation>1e-6 && (shadow || Math.Abs(normal.Dot(sun))<=uncertainty))
+                    { shadow=refineSurface(x,y);evaluated![index]=1; }
+                }
+                if(shadow) owners[index]=0;
+            }
+        }
+        if(refineSurface is not null)
+        {
+            // A mesh silhouette can also move a shadow between different receivers,
+            // including a flat wall. Select both sides of coverage boundaries, then
+            // classify their 3D rays against the source geometry. Selection is frozen
+            // before any results change; this is not dilation of the output image.
+            for(int y=0;y<sh;y++)
+            {
+                cancellation.ThrowIfCancellationRequested();
+                for(int x=0;x<sw;x++)
+                {
+                    int i=y*sw+x;if(evaluated![i]!=0)continue;
+                    for(int dy=-1;dy<=1 && evaluated[i]==0;dy++)for(int dx=-1;dx<=1;dx++)
+                        if(x+dx>=0&&x+dx<sw&&y+dy>=0&&y+dy<sh&&owners[i]!=owners[(y+dy)*sw+x+dx])
+                        {evaluated[i]=2;break;}
+                }
+            }
+            for(int y=0;y<sh;y++)
+            {
+                cancellation.ThrowIfCancellationRequested();
+                for(int x=0;x<sw;x++)if(evaluated![y*sw+x]==2)
+                    owners[y*sw+x]=refineSurface(x,y)?0:-1;
             }
         }
         return new(width,height,[new("Shadow",settings.Color)],owners,settings.Opacity);

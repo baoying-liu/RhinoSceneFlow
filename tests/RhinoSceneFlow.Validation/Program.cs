@@ -180,3 +180,21 @@ using var volumeCanceled=new CancellationTokenSource();volumeCanceled.Cancel();
 try { ShadowVolumeRenderer.Render(32,32,shadowCamera,shadowScene,volumeSettings,volumeCanceled.Token);throw new Exception("Volume cancellation ignored."); }
 catch(OperationCanceledException) { }
 Console.WriteLine("PASS: volume style, optional smooth form shading, empty mask and cancellation.");
+
+// Surface refinement must be able to remove false faceted occlusion without any
+// displacement, while retaining an independently known thin projected shadow.
+int surfaceQueries=0;
+var refinedGap=ShadowVolumeRenderer.Render(100,100,shadowCamera with { Left=-2,RightEdge=2,Bottom=-2,Top=2 },
+ gapScene,volumeSettings,refineSurface:(sx,sy)=>
+ {
+     surfaceQueries++;
+     double worldX=-2+(sx+.5)/200*4,worldY=2-(sy+.5)/200*4;
+     return worldX>-.1&&worldX<.1&&worldY>-.5&&worldY<.5;
+ });
+Check(surfaceQueries>0 && refinedGap.CompositeChannel(3,50,50)==255,"Surface refinement must preserve the gap shadow.");
+Check(refinedGap.CompositeChannel(3,60,50)==0,"Surface refinement must keep lit receivers clear.");
+int sphereQueries=0;
+var refinedSphere=ShadowVolumeRenderer.Render(96,96,shadowCamera,ball,volumeSettings,
+ refineSurface:(_,_)=>{sphereQueries++;return false;});
+Check(sphereQueries>0&&refinedSphere.GetVisibleLayers().Count==0,"A convex exact sphere has no cast shadows of its own.");
+Console.WriteLine("PASS: source-surface refinement preserves analytic gap shadows and convex-sphere visibility.");

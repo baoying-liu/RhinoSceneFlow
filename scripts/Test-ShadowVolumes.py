@@ -8,7 +8,7 @@ clr.AddReference('RhinoSceneFlow.Plugin')
 from RhinoSceneFlow.Plugin import McpApi
 assert System.Diagnostics.Process.GetCurrentProcess().Id==EXPECTED_PID
 doc=__rhino_doc__;view=doc.Views.ActiveView;vp=view.ActiveViewport
-folder=os.path.join(OUTPUT_DIR,'volumes');os.makedirs(folder,exist_ok=True)
+folder=os.path.join(OUTPUT_DIR,'volumes-v041');os.makedirs(folder,exist_ok=True)
 if doc.Objects.Count==0:
     source=Rhino.FileIO.File3dm.Read(os.path.join(OUTPUT_DIR,'alternatives','Shadow-Alternatives.3dm'))
     assert source is not None
@@ -66,7 +66,7 @@ def oracle(px,py,w,h,sun,form):
     return hit is not None,name
 
 report={'pid':EXPECTED_PID,'version':api('describe')['version'],'cases':[]}
-assert report['version']=='0.4.0'
+assert report['version']=='0.4.1'
 try:
  for name,top,form,width in [('top',True,False,1024),('perspective',False,False,1024),('form',False,True,512)]:
     if top:vp.SetProjection(DefinedViewportProjection.Top,'Volume_Top',True)

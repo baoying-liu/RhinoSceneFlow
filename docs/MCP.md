@@ -1,6 +1,6 @@
 # 原厂 Rhino-MCP-Platform 接入
 
-RhinoSceneFlow v0.4 不启动 MCP 服务，不监听额外端口，不修改 Platform 私有实现。使用已安装的 Rhino-MCP-Platform 的 `run_python` 工具，在 Rhino UI 线程调用公开入口：
+RhinoSceneFlow v0.4.1 不启动 MCP 服务，不监听额外端口，不修改 Platform 私有实现。使用已安装的 Rhino-MCP-Platform 的 `run_python` 工具，在 Rhino UI 线程调用公开入口：
 
 ```csharp
 string RhinoSceneFlow.Plugin.McpApi.Execute(string requestJson)
@@ -86,7 +86,7 @@ print(McpApi.Execute(json.dumps(request)))
 
 ## v0.4 阴影体后端
 
-在 `export_shadow_psd` 请求中加入 `"backend":"volume"`。省略时保持旧版 `"ray"`；未知值返回 `invalid_request`，不回退。结果中的 `backend` 标识实际执行的后端。`describe` 返回版本 0.4.0 和该参数。
+在 `export_shadow_psd` 请求中加入 `"backend":"volume"`。省略时保持旧版 `"ray"`；未知值返回 `invalid_request`，不回退。结果中的 `backend` 标识实际执行的后端。`describe` 返回版本 0.4.1 和该参数。
 
 ```python
 request = {
@@ -98,6 +98,8 @@ request = {
 print(McpApi.Execute(json.dumps(request)))
 ```
 
-`volume` 使用 CPU 软件 z-fail 阴影体，沿光方向建立封闭体并计数，不移动接收点。`bias` 是以模型单位比较相机深度的容差；平滑法线只用于可选本体明暗。默认投射阴影资格根据朝光源的可见几何面判断，曲面网格细分及几何法线仍影响分界，不能保证消除全部碎纹。其余样式、默认路径、太阳方向来源及空 PSD 规则不变。
+`volume` 使用 CPU 软件 z-fail 阴影体，沿光方向建立封闭体并计数。v0.4.1 自动复核曲面上的不确定采样及阴影覆盖边界两侧：重新查询原始 Brep/曲面和真实法线，尊重裁剪环并修正相切交点，不沿平滑法线偏移。平滑法线用于筛选复核位置和可选本体明暗。Mesh/SubD 仍使用实际三角网格，未复核区域仍由网格计算。
 
-原生命令 `RhinoSceneFlowExportShadowVolumePSD` 固定使用 `volume`。新方案较慢，当前同步执行。此后端没有增加 MCP 服务、端口或顶层工具。测试证据与限制见 [Shadow-Volumes.md](Shadow-Volumes.md)。
+`bias` 保留模型单位含义：阴影体比较相机深度时用作容差；原始几何复核中光线起点仅沿太阳方向前进该距离，查询容差更小。返回 `result.export.surfaceRefinements` 为本次原始几何查询的采样数量；色层与旧射线后端为 0。此字段为追加字段，API 仍为 1。其余样式、默认路径、太阳方向来源及空 PSD 规则不变。
+
+原生命令 `RhinoSceneFlowExportShadowVolumePSD` 固定使用 `volume`。新方案较慢，当前同步执行。此后端没有增加 MCP 服务、端口或顶层工具。测试证据与限制见 [Shadow-Accuracy.md](Shadow-Accuracy.md)；[Shadow-Volumes.md](Shadow-Volumes.md)为 v0.4 原型记录。

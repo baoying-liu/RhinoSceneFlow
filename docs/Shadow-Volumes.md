@@ -1,5 +1,7 @@
 # v0.4：独立阴影体后端
 
+本页记录 v0.4 原型。v0.4.1 已加入原始曲面复核，修正下文记录的双曲面碎影；当前方法、耗时和新证据见 [Shadow-Accuracy.md](Shadow-Accuracy.md)。历史 `volumes/` 保留，新回归证据使用 `volumes-v041/`。
+
 2026-10-22，限 RhinoDevSandbox B。新增 `RhinoSceneFlowExportShadowVolumePSD`，原命令仍调用旧射线后端，便于保留对照；旧后端已确认的平滑法线偏移漏影没有被悄悄标为修复。
 
 ## 使用
