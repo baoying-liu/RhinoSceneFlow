@@ -11,7 +11,10 @@ public static class PsdWriter
         var layers = image.GetVisibleLayers(cancellation);
         if (layers.Count == 0 && allowEmpty && image.Groups.Count == 1) layers = [new LayerBounds(0,0,0,1,1)];
         if (layers.Count == 0) throw new InvalidOperationException("No visible surface pixels to export.");
-        if (layers.Count > 32767) throw new InvalidOperationException("PSD layer count exceeded.");
+        var records=image is IPsdHierarchy hierarchy?hierarchy.Records(cancellation):layers.Select(l=>new PsdRecord(l,image.Groups[l.Group].Name)).ToArray();
+        if (records.Count > 32767) throw new InvalidOperationException("PSD layer count exceeded.");
+        if(records.Sum(r=>(long)r.Bounds.Width*r.Bounds.Height*4)+((long)image.Width*image.Height*4)>1_990_000_000)
+            throw new InvalidOperationException("图层像素数据超过 PSD 2 GB 限制，请减少尺寸或显示模式图层。");
         string target = Path.GetFullPath(path);
         string directory = Path.GetDirectoryName(target)!;
         if (!Directory.Exists(directory)) throw new DirectoryNotFoundException(directory);
@@ -19,7 +22,7 @@ public static class PsdWriter
         try
         {
             using (var stream = new FileStream(temporary, FileMode.CreateNew, FileAccess.ReadWrite, FileShare.None))
-                Write(stream, image, layers, cancellation);
+                Write(stream, image, records, cancellation);
             cancellation.ThrowIfCancellationRequested();
             File.Move(temporary, target, overwrite);
         }
@@ -27,7 +30,7 @@ public static class PsdWriter
         return layers.Count;
     }
 
-    private static void Write(Stream stream, IPsdImage image, IReadOnlyList<LayerBounds> layers, CancellationToken cancellation)
+    private static void Write(Stream stream, IPsdImage image, IReadOnlyList<PsdRecord> layers, CancellationToken cancellation)
     {
         var w = new BigEndian(stream);
         w.Ascii("8BPS"); w.U16(1); w.Zero(6); w.U16(4);
@@ -39,16 +42,17 @@ public static class PsdWriter
         w.I16((short)-layers.Count); // Negative count declares merged transparency channel.
         // PSD layer records/channels are stored bottom-to-top; group IDs are top-to-bottom.
         var fileLayers = layers.Reverse().ToArray();
-        foreach (var layer in fileLayers)
+        foreach (var record in fileLayers)
         {
+            var layer=record.Bounds;
             w.U32((uint)layer.Top); w.U32((uint)layer.Left); w.U32((uint)layer.Bottom); w.U32((uint)layer.Right);
             w.U16(4);
             foreach (short channel in new short[] { 0, 1, 2, -1 })
             { w.I16(channel); w.U32(checked((uint)((long)layer.Width * layer.Height + 2))); }
-            w.Ascii("8BIM"); w.Ascii("norm"); w.Byte(255); w.Byte(0); w.Byte(8); w.Byte(0);
+            w.Ascii("8BIM"); w.Ascii(record.Blend); w.Byte(record.Opacity); w.Byte(0); w.Byte(8); w.Byte(0);
             long extra = w.BeginLength();
             w.U32(0); w.U32(0); // No separate masks or blending ranges.
-            string name = image.Groups[layer.Group].Name;
+            string name = record.Name;
             byte[] fallback = Encoding.ASCII.GetBytes(name[..Math.Min(name.Length, 255)]);
             w.Byte((byte)fallback.Length); stream.Write(fallback);
             w.Zero((4 - ((fallback.Length + 1) % 4)) % 4);
@@ -57,21 +61,21 @@ public static class PsdWriter
             w.U32(checked((uint)(4 + unicode.Length)));
             w.U32((uint)name.Length); stream.Write(unicode);
             if (unicode.Length % 2 != 0) w.Byte(0);
+            if(record.Section!=0)
+            {w.Ascii("8BIM");w.Ascii("lsct");w.U32(12);w.U32((uint)record.Section);w.Ascii("8BIM");w.Ascii(record.Blend);}
             w.EndLength(extra);
         }
-        foreach (var layer in fileLayers)
+        foreach (var record in fileLayers)
         {
-            var color = image.Groups[layer.Group].Color;
+            var layer=record.Bounds;
             var row = new byte[layer.Width];
             for (int channel = 0; channel < 4; channel++)
             {
                 w.U16(0); // Raw compression, no per-row headers.
-                if (channel < 3) Array.Fill(row, channel switch { 0 => color.R, 1 => color.G, _ => color.B });
                 for (int y = layer.Top; y < layer.Bottom; y++)
                 {
                     cancellation.ThrowIfCancellationRequested();
-                    if (channel == 3)
-                        for (int x = layer.Left; x < layer.Right; x++) row[x - layer.Left] = image.LayerAlpha(layer.Group, x, y);
+                    image.ReadLayerRow(layer.Group,channel,y,layer.Left,row);
                     stream.Write(row);
                 }
             }
@@ -82,20 +86,26 @@ public static class PsdWriter
         w.EndLength(maskSection);
         w.U16(0); // Merged RGBA, planar raw.
         var mergedRow = new byte[image.Width];
-        for (int channel = 0; channel < 4; channel++)
-            for (int y = 0; y < image.Height; y++)
+        var alphaRow = new byte[image.Width];
+        long mergedStart=stream.Position;
+        for (int y = 0; y < image.Height; y++)
+        {
+            image.ReadCompositeRow(3,y,alphaRow);
+            for (int channel = 0; channel < 4; channel++)
             {
                 cancellation.ThrowIfCancellationRequested();
+                if(channel==3)alphaRow.CopyTo(mergedRow,0);else image.ReadCompositeRow(channel,y,mergedRow);
                 for (int x = 0; x < image.Width; x++)
                 {
-                    byte value = image.CompositeChannel(channel, x, y);
+                    byte value = mergedRow[x];
                     // PSD merged RGB stores a white matte when merged transparency is present.
                     // Individual pixel layers above use ordinary straight RGB + alpha.
-                    byte alpha = image.CompositeChannel(3, x, y);
+                    byte alpha = alphaRow[x];
                     mergedRow[x] = channel == 3 ? value : (byte)Math.Round(value * alpha / 255.0 + 255 - alpha);
                 }
-                stream.Write(mergedRow);
+                stream.Position=mergedStart+((long)channel*image.Height+y)*image.Width;stream.Write(mergedRow);
             }
+        }
         if (stream.Length > 2_000_000_000) throw new InvalidOperationException("Export exceeds the 2 GB PSD limit; reduce resolution or color groups.");
     }
 

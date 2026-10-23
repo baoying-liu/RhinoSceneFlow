@@ -1,5 +1,6 @@
 using RhinoSceneFlow.Core;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using Rhino;
 using Rhino.PlugIns;
 
@@ -26,9 +27,12 @@ public static class McpApi
             switch (operation)
             {
                 case "describe":
-                    response = new { name = "RhinoSceneFlow", version = "0.5.1", transport = "Rhino-MCP-Platform.run_python",
+                    response = new { name = "RhinoSceneFlow", version = "0.6.0", transport = "Rhino-MCP-Platform.run_python",
                         entryPoint = "RhinoSceneFlow.Plugin.McpApi.Execute(string)",
                         operations = new object[] {
+                            new { name="workbench_settings",required=new[]{"document"},parameters="Per-view configuration, exportable display modes and PSD blend keys",output="views, displayModes, blends" },
+                            new { name="configure_view",required=new[]{"document","viewId","settings"},parameters="Patch width,height,mode,layers:[{kind:shadow|material|display,mode:guid,blend:norm|mul |scrn|over|dark|lite,opacity:0..100,enabled:true}], camera:{yaw,pitch,zoom,panX,panY,panZ}, sun:{useDocument,azimuth,altitude},included. Saved per document path, without altering Named Views.",output="Updated view configuration" },
+                            new { name="export_workbench",required=new[]{"document","directory"},parameters="views?: [Named View GUIDs] (otherwise included saved views); collision?: number|overwrite|cancel. Captures RGB display modes and tiled material/shadow passes with per-pass blending and real material groups. Side <=8192; total <=8192 squared; PSD raw <=2GB.",output="Batch report" },
                             new { name="open_panel", required=new[]{"document"}, parameters="Opens or activates the native Eto Named View export panel", output="Panel state" },
                             new { name="panel_status", required=new[]{"document"}, parameters="Read-only panel state", output="Panel state, or open=false" },
                             new { name="named_views", required=new[]{"document"}, parameters="Lists stable named-view IDs and default dimensions", output="Named View entries" },
@@ -38,8 +42,25 @@ public static class McpApi
                             new { name="configure_export", required=new[]{"directory"}, parameters="directory: absolute path; directory is created on export", output="Persisted default export directory" },
                             new { name="export_shadow_psd", required=new[]{"document"}, parameters="width?, path?, viewportId?, overwrite?; toSun?: [x,y,z] surface-to-sun direction (default enabled Rhino sun or [-1,-1,2]); color?: #RRGGBB (default #5A5A5A); opacity?: (0,1] default 1; includeFormShading?: true for volume, false for legacy ray; bias?: positive model units; backend?: ray (legacy default) or volume (z-fail volumes with original-surface refinement)", output="Export report (including surfaceRefinements query count) plus normalized light direction, source, style, bias, backend and empty flag" },
                             new { name="export_psd", required=new[]{"document"}, parameters="width?: 64..8192 (default 2048), path?: absolute .psd (default generated), viewportId?: expected active viewport GUID, overwrite?: false", output="File path, dimensions, layers, object/triangle counts, skipped types, timing" }
-                        }, limits = new { maxPixels=8_000_000, maxSide=8192, bitDepth=8, grouping="layer_rgb", appearance="opaque_flat_color" } };
+                        }, limits = new { maxPixels=8_000_000, workbenchMaxPixels=67_108_864,maxSide=8192, bitDepth=8, grouping="layer_rgb", appearance="opaque_flat_color_and_display_rgb" } };
                     break;
+                case "workbench_settings":
+                    response=new{views=WorkbenchService.Settings(Document(r)),displayModes=WorkbenchService.Modes().Select(m=>new{id=m.Id,name=m.LocalName}),blends=Ui.Blends.Select(b=>new{key=b.Key,name=b.Name})};break;
+                case "configure_view":
+                    var configDoc=Document(r);var configId=Guid.Parse(r.GetProperty("viewId").GetString()!);
+                    var existing=WorkbenchService.Settings(configDoc).FirstOrDefault(v=>v.Id==configId)??throw new ArgumentException("Named View does not exist.");
+                    var node=JsonSerializer.SerializeToNode(existing,WorkbenchStore.Json)!.AsObject();
+                    Merge(node,JsonNode.Parse(r.GetProperty("settings").GetRawText())!.AsObject());
+                    var configured=node.Deserialize<ViewExportRow>(WorkbenchStore.Json)!;configured.Id=configId;
+                    WorkbenchService.Configure(configDoc,configured);response=configured;break;
+                case "export_workbench":
+                    var workDoc=Document(r);var settings=WorkbenchService.Settings(workDoc);
+                    if(r.TryGetProperty("views",out var ids))
+                    {var selected=ids.EnumerateArray().Select(v=>Guid.Parse(v.GetString()!)).ToArray();if(selected.Distinct().Count()!=selected.Length||selected.Any(id=>settings.All(v=>v.Id!=id)))throw new ArgumentException("Invalid or duplicate Named View ID.");foreach(var view in settings)view.Included=selected.Contains(view.Id);}
+                    string workPolicy=r.TryGetProperty("collision",out var workCollision)?workCollision.GetString()??"number":"number";
+                    var workAction=workPolicy switch{"number"=>FileCollision.Number,"overwrite"=>FileCollision.Overwrite,"cancel"=>FileCollision.Cancel,_=>throw new ArgumentException("Invalid collision policy.")};
+                    var workPlan=WorkbenchService.Plan(workDoc,settings,r.GetProperty("directory").GetString()??"",_=>workAction);
+                    response=WorkbenchService.Export(workDoc,workPlan);break;
                 case "open_panel":
                     response=ExportPanelController.Open(Document(r)).GetState();break;
                 case "panel_status":
@@ -118,6 +139,16 @@ public static class McpApi
         var doc = RhinoDoc.FromRuntimeSerialNumber(serial) ?? throw new ApiException("document_not_found", "Document is closed or serial is invalid.");
         if (doc.IsHeadless) throw new ApiException("unsupported_view", "An interactive model viewport is required.");
         return doc;
+    }
+
+    private static void Merge(JsonObject target,JsonObject patch)
+    {
+        foreach(var pair in patch)
+        {
+            if(pair.Key is "id" or "name")continue;
+            if(pair.Value is JsonObject child&&target[pair.Key] is JsonObject old)Merge(old,child);
+            else target[pair.Key]=pair.Value?.DeepClone();
+        }
     }
 
     private sealed class ApiException(string code, string message) : Exception(message) { public string Code { get; } = code; }

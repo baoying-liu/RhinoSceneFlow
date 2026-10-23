@@ -8,7 +8,16 @@ public interface IPsdImage
     IReadOnlyList<LayerBounds> GetVisibleLayers(CancellationToken cancellation = default);
     byte LayerAlpha(int group,int x,int y);
     byte CompositeChannel(int channel,int x,int y);
+    byte LayerChannel(int group,int channel,int x,int y) => channel==3?LayerAlpha(group,x,y):
+        channel==0?Groups[group].Color.R:channel==1?Groups[group].Color.G:Groups[group].Color.B;
+    void ReadLayerRow(int group,int channel,int y,int left,Span<byte> row)
+    {for(int x=0;x<row.Length;x++)row[x]=LayerChannel(group,channel,left+x,y);}
+    void ReadCompositeRow(int channel,int y,Span<byte> row)
+    {for(int x=0;x<row.Length;x++)row[x]=CompositeChannel(channel,x,y);}
 }
+
+public sealed record PsdRecord(LayerBounds Bounds,string Name,string Blend="norm",byte Opacity=255,int Section=0);
+public interface IPsdHierarchy { IReadOnlyList<PsdRecord> Records(CancellationToken cancellation=default); }
 
 /// <summary>Independent image passes, top to bottom. Keeps each pass's pixel layers
 /// and computes the same normal-alpha composite that a PSD editor will display.</summary>

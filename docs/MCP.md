@@ -1,6 +1,6 @@
 # 原厂 Rhino-MCP-Platform 接入
 
-RhinoSceneFlow v0.5.1 不启动 MCP 服务，不监听额外端口，不修改 Platform 私有实现。使用已安装的 Rhino-MCP-Platform 的 `run_python` 工具，在 Rhino UI 线程调用公开入口：
+RhinoSceneFlow v0.6.0 不启动 MCP 服务，不监听额外端口，不修改 Platform 私有实现。使用已安装的 Rhino-MCP-Platform 的 `run_python` 工具，在 Rhino UI 线程调用公开入口：
 
 ```csharp
 string RhinoSceneFlow.Plugin.McpApi.Execute(string requestJson)
@@ -40,6 +40,9 @@ print(McpApi.Execute(json.dumps(request)))
 | `open_panel` | `document` | 打开/激活本地 Eto 批量面板，返回状态 |
 | `panel_status` | `document` | 返回面板视图、尺寸、模式、忙碌状态及上次结果；未打开时为 `open:false` |
 | `named_views` | `document` | 返回稳定 id、名称及默认宽高 |
+| `workbench_settings` | `document` | 返回每视图配置、可导出显示模式及混合模式 key |
+| `configure_view` | `document`, `viewId`, `settings` | 部分更新配置，嵌套对象合并，图层数组整体替换；保存并同步已打开面板，不改 Named View |
+| `export_workbench` | `document`, `directory` | `views:[GUID]` 可选，省略使用配置中勾选视图；`collision` 默认 `number`，支持 `overwrite` / `cancel`；按独立配置导出含显示模式、分组、混合模式和不透明度的 PSD |
 | `export_named_views` | `document`, `directory`, `views:[{viewId,width,height}]` | `channels` 默认 `["material","shadow"]`；`collision` 默认 `number`，也可为 `overwrite`、`cancel` |
 
 所有请求均需要 `apiVersion: 1` 和 `operation`。返回统一为：
@@ -47,6 +50,35 @@ print(McpApi.Execute(json.dumps(request)))
 ```json
 {"apiVersion":1,"ok":true,"result":{}}
 ```
+
+## v0.6 工作台配置示例
+
+先调用 `workbench_settings` 获取视图 ID 与显示模式 ID，再更新指定视图：
+
+```python
+request = {
+    'apiVersion': 1, 'operation': 'configure_view',
+    'document': int(__rhino_doc__.RuntimeSerialNumber),
+    'viewId': 'NAMED-VIEW-GUID',
+    'settings': {
+        'width': 2048, 'height': 1280,
+        'layers': [
+            {'kind': 'shadow', 'blend': 'mul ', 'opacity': 60},
+            {'kind': 'material', 'blend': 'norm', 'opacity': 100},
+            {'kind': 'display', 'mode': 'DISPLAY-MODE-GUID'}
+        ],
+        'camera': {'yaw': 10, 'pitch': -5, 'zoom': 1.2},
+        'sun': {'useDocument': False, 'azimuth': 135, 'altitude': 45}
+    }
+}
+print(McpApi.Execute(json.dumps(request)))
+```
+
+`layers` 从上到下对应 PSD 堆叠。`kind` 为 `shadow`、`material` 或 `display`，显示模式需提供 `mode`。混合 key 为 `norm`、`mul `（末尾空格必须保留）、`scrn`、`over`、`dark`、`lite`；不透明度为 0–100 的整数，`enabled` 默认 true。
+
+相机支持 `yaw`（±180°）、`pitch`（±89°）、`zoom`（0.01–100）、`panX/Y/Z`（模型单位），均为相对已保存 Named View 的覆盖。太阳高度 0.1–90°、方位 0–360°。`mode`（顶层）只控制卡片预览；PSD 中的显示模式由每个图层条目控制。工作台每边 64–8192 像素，PSD 原始像素数据约 2 GB 上限；旧单视图 / `export_named_views` 的 800 万像素限制保留。
+
+`export_workbench` 同步执行，适合可等待的 Platform 调用；面板按钮使用 UI 捕获加后台计算，并支持取消。工作台设置与使用方式见 [Workbench.md](Workbench.md)。
 
 失败返回 `ok:false` 与 `error.code`、`error.message`，不会弹出交互提示。常见错误包括 `platform_unavailable`、`wrong_thread`、`unsupported_version`、`document_not_found`、`unsupported_view`、`invalid_request`、`export_failed`。
 

@@ -198,9 +198,13 @@ internal sealed class SurfaceRefiner(Point3d origin) : IDisposable
         return true;
     }
     private static Point3d Point(Vec3 v)=>new(v.X,v.Y,v.Z);
-    public void Dispose()
+    public void ReleaseEvaluators()
     {
         foreach(var local in workers){foreach(var worker in local.Values)worker.Dispose();local.Dispose();}workers.Clear();
+    }
+    public void Dispose()
+    {
+        ReleaseEvaluators();
         foreach(var s in sources)s.Geometry.Dispose();sources.Clear();
     }
 }

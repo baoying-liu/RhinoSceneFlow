@@ -254,3 +254,43 @@ var bName=OutputNames.Reserve(namesDirectory,"a:b",same,_=>FileCollision.Overwri
 Check(aName.Path!=bName.Path&&!bName.Overwrite,"Sanitized duplicate names must never overwrite another planned view.");
 Check(OutputNames.SafeStem("CON")=="_CON"&&OutputNames.SafeStem("..")!="..","Invalid/device filenames.");
 Console.WriteLine("PASS: multi-pass PSD composition, empty channels, Unicode filenames, suffix reservation, overwrite and cancellation.");
+
+string stage=Directory.CreateTempSubdirectory("SceneFlow-validation-").FullName;
+try
+{
+    using var pixels=new DiskPassImage(stage,96,64,[new("RGB capture",new(0,0,0))],true);
+    for(int y=0;y<64;y++)
+    {
+        var row=new byte[96*4];for(int x=0;x<96;x++){row[x*4]=(byte)(x*2);row[x*4+1]=(byte)(y*3);row[x*4+2]=100;row[x*4+3]=(byte)(x<30?128:255);}pixels.WriteRgbaRow(y,0,row);
+    }
+    using var stored=new DiskPassImage(stage,96,64,groups);
+    stored.WriteTile(0,0,image);
+    for(int y=0;y<64;y++)for(int x=0;x<96;x++)for(int c=0;c<4;c++)
+        Check(stored.CompositeChannel(c,x,y)==image.CompositeChannel(c,x,y),"Disk staging changed a channel.");
+    foreach(string blend in ConfiguredStack.BlendKeys)
+    {
+        var configured=new ConfiguredStack(new("RGB capture",pixels,blend,153),new("Materials",stored,"norm",255,true));
+        PsdWriter.Save(Path.Combine(output,"configured-"+blend.Trim()+".psd"),configured);
+    }
+    var folderBlend=new ConfiguredStack(new("Materials",stored,"mul ",128,true),new("RGB capture",pixels));
+    PsdWriter.Save(Path.Combine(output,"configured-folder.psd"),folderBlend);
+    var cropped=new ImageWindow(image,20,10,40,30);
+    Check(cropped.CompositeChannel(0,5,5)==image.CompositeChannel(0,25,15),"Crop must preserve source pixel coordinates.");
+    try{new ConfiguredStack(new StyledPass("Invalid",pixels,"invalid"));throw new Exception("Invalid PSD blend accepted.");}catch(ArgumentException){}
+}
+finally{Directory.Delete(stage,true);}
+Console.WriteLine("PASS: RGB disk staging, grouped PSD blend metadata, opacity and crop coordinates.");
+
+if(args.Contains("--large"))
+{
+    string largeStage=Directory.CreateTempSubdirectory("SceneFlow-8K-").FullName;
+    try
+    {
+        using var large=new DiskPassImage(largeStage,8192,2048,[new("8K RGB",new(0,0,0))],true);
+        var row=new byte[8192*4];for(int x=0;x<8192;x++){row[x*4]=(byte)(x%256);row[x*4+1]=110;row[x*4+2]=180;row[x*4+3]=255;}
+        for(int y=0;y<2048;y++)large.WriteRgbaRow(y,0,row);
+        PsdWriter.Save(Path.Combine(output,"large-8k.psd"),new ConfiguredStack(new StyledPass("8K RGB",large)));
+        Console.WriteLine("PASS: 8192 x 2048 row-streamed PSD, beyond the old 8 million pixel limit.");
+    }
+    finally{Directory.Delete(largeStage,true);}
+}
