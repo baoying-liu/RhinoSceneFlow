@@ -7,7 +7,7 @@ from pathlib import Path
 
 root = Path(__file__).resolve().parents[1]
 status = json.loads(subprocess.check_output([sys.executable, str(root / 'scripts/Sandbox-Mcp.py'), 'workspace_status']))
-if status['ChannelId'] != '1cee488700ad42f59492743cc4a2a3fe' or not status.get('Pid'):
+if status['ChannelId'] not in ('1cee488700ad42f59492743cc4a2a3fe', '0d327c4c84f644f089b73834ffd93cfe') or not status.get('Pid'):
     raise RuntimeError('B channel is not running')
 monitor = json.loads((Path(status['LastStartupDirectory']) / 'monitor-status.json').read_text(encoding='utf-8-sig'))
 if monitor['Pid'] != status['Pid'] or not monitor.get('PlatformAllowed'):

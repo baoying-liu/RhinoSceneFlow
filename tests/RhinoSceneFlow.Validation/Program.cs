@@ -19,7 +19,7 @@ Check(image.SampleOwner(48, 32, 0) == 0, "Foreground must occlude background.");
 Check(image.SampleOwner(15, 32, 0) == 1, "Exposed background must remain.");
 Check(image.CompositeChannel(3, 0, 0) == 0, "Background must be transparent.");
 Check(image.GetVisibleLayers().Count == 2, "Fully occluded groups must not create layers.");
-var reverse = FlatRasterizer.Render(96, 64, groups, geometry.Reverse());
+var reverse = FlatRasterizer.Render(96, 64, groups, Enumerable.Reverse(geometry));
 for (int y = 0; y < 64; y++) for (int x = 0; x < 96; x++) for (int s = 0; s < 4; s++)
     Check(image.SampleOwner(x, y, s) == reverse.SampleOwner(x, y, s), "Depth must be independent of draw order.");
 

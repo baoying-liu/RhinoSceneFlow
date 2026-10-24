@@ -4,7 +4,7 @@
 - Keep geometry/projection/PSD serialization in Core; Rhino SDK, commands, preferences and the public JSON API belong in Plugin. Commands and automation call ExportService.
 - Depend on the user's installed Rhino-MCP-Platform. Do not start another MCP server, patch Platform private implementations, or edit Codex MCP configuration for this project.
 - Automation entry point: `RhinoSceneFlow.Plugin.McpApi.Execute(JSON)` via Platform `run_python`. Update docs/MCP.md with API changes.
-- Test only in RhinoDevSandbox channel B (`1cee488700ad42f59492743cc4a2a3fe`), management MCP 19540. Discover the actual Rhino MCP port from B's Monitor record and verify PID. Do not assume the launcher's selected UI tab is B.
+- Test only in RhinoDevSandbox channel B (office `1cee488700ad42f59492743cc4a2a3fe`, home `0d327c4c84f644f089b73834ffd93cfe`), management MCP 19540. Resolve the local B catalog entry, then require one of these known IDs. Discover the actual Rhino MCP port from B's Monitor record and verify PID. Do not assume the launcher's selected UI tab is B.
 - Prefer MCP and file-based PSD inspection; avoid taking the user's mouse. Use no save dialogs in automatic exports.
 - Default B export directory is this project's `artifacts/exports`. Generated PSDs, models, receipts and previews stay under ignored artifacts. Never commit credentials.
 - Build/package with scripts/Build.ps1. Validate real exports with scripts/Smoke-Rhino.py (requires a fresh empty B document) and scripts/Verify-RhinoPsd.py (independent psd-tools decoder).

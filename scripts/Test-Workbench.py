@@ -22,7 +22,10 @@ def api(operation,**kwargs):
  return r['result']
 def state():
  v=doc.Views.ActiveView.ActiveViewport
- return (doc.Modified,doc.Objects.Count,str(v.CameraLocation),str(v.CameraDirection),str(v.CameraUp),str(v.GetFrustum()),str(v.Size),v.Name,str(v.DisplayMode.Id),
+ # Rhino normalizes the frustum on SetViewProjection; repeated restores may differ
+ # by ~1e-14 model units without any meaningful camera change.
+ frustum=v.GetFrustum();normalizedFrustum=tuple([bool(frustum[0])]+[round(float(n),10) for n in frustum[1:]])
+ return (doc.Modified,doc.Objects.Count,str(v.CameraLocation),str(v.CameraDirection),str(v.CameraUp),normalizedFrustum,str(v.Size),v.Name,str(v.DisplayMode.Id),
   int(doc.RenderSettings.Sun.Hash),tuple(str(o.Id) for o in doc.Objects.GetSelectedObjects(False,False)),tuple((str(v.MainViewport.Id),v.Floating) for v in doc.Views.GetViewList(True,True)))
 def field(obj,name):return obj.GetType().GetField(name,BindingFlags.Instance|BindingFlags.NonPublic).GetValue(obj)
 def prop(obj,name):return obj.GetType().GetProperty(name,BindingFlags.Instance|BindingFlags.Public|BindingFlags.NonPublic).GetValue(obj)
@@ -38,6 +41,7 @@ shaded=next(m['id'] for m in settings['displayModes'] if m['name']=='Shaded')
 rendered=next(m['id'] for m in settings['displayModes'] if m['name']=='Rendered')
 arctic=next(m['id'] for m in settings['displayModes'] if m['name']=='Arctic')
 before=state();report=dict(pid=EXPECTED_PID,version='0.6.0',original=original)
+report['beforeState']=before
 try:
  first=api('configure_view',viewId=ids[0],settings=dict(width=320,height=200,mode=shaded,layers=[dict(kind='shadow',blend='mul ',opacity=60),dict(kind='material'),dict(kind='display',mode=shaded)],camera=dict(yaw=8,pitch=-4,zoom=1.1),sun=dict(useDocument=False,azimuth=120,altitude=35)))
  second=api('configure_view',viewId=ids[1],settings=dict(width=240,height=240,mode=arctic,layers=[dict(kind='shadow',opacity=50),dict(kind='display',mode=rendered)]))
@@ -74,7 +78,8 @@ try:
  report['seam']=api('export_workbench',directory=os.path.join(out,'tiled'),views=[ids[1]])
  report['seamReference']=api('export_named_views',directory=os.path.join(out,'reference'),views=[dict(viewId=ids[1],width=1200,height=720)],channels=['material','shadow'])
  assert all(f['ok'] for f in report['seam']['files']+report['seamReference']['files'])
- assert state()==before
+ report['afterState']=state()
+ assert report['afterState']==before,dict(before=before,after=report['afterState'])
  report['stateUnchanged']=True;report['complete']=True
 finally:
  for r in original:

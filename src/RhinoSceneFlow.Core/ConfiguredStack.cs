@@ -60,7 +60,7 @@ public sealed class ConfiguredStack : IPsdImage,IPsdHierarchy
     {
         if(cachedY==y)return;
         var rgba=accumulated;Array.Clear(rgba);var source=sourceRow;
-        foreach(var pass in passes.Reverse())
+        foreach(var pass in Enumerable.Reverse(passes))
         {
             for(int c=0;c<4;c++)pass.Image.ReadCompositeRow(c,y,source.AsSpan(c*Width,Width));
             for(int x=0;x<Width;x++)

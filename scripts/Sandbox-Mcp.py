@@ -9,7 +9,7 @@ config_root = Path(os.environ['LOCALAPPDATA']) / 'RhinoDevSandbox'
 catalog = json.loads((config_root / 'config/channels.json').read_text(encoding='utf-8-sig'))
 channel = next(c for c in catalog['Channels'] if c['Name'] == 'B' and not c.get('Archived'))
 channel_id = channel['Id']
-if channel_id != '1cee488700ad42f59492743cc4a2a3fe':
+if channel_id not in ('1cee488700ad42f59492743cc4a2a3fe', '0d327c4c84f644f089b73834ffd93cfe'):
     raise RuntimeError('B channel identity changed; review target before proceeding')
 workspace = json.loads((config_root / 'config/workspace.json').read_text(encoding='utf-8-sig'))
 port = workspace['Mcp']['Port']
