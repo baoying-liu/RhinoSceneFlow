@@ -35,12 +35,12 @@ def walk(obj):
   for c in obj.Controls:
    for v in walk(c):yield v
 def click(button):button.GetType().GetMethod('PerformClick').Invoke(button,None)
-assert api('describe')['version']=='0.6.0'
+assert api('describe')['version'] in ('0.6.0','0.7.0')
 settings=api('workbench_settings');original=settings['views'];ids=[v['id'] for v in original]
 shaded=next(m['id'] for m in settings['displayModes'] if m['name']=='Shaded')
 rendered=next(m['id'] for m in settings['displayModes'] if m['name']=='Rendered')
 arctic=next(m['id'] for m in settings['displayModes'] if m['name']=='Arctic')
-before=state();report=dict(pid=EXPECTED_PID,version='0.6.0',original=original)
+before=state();report=dict(pid=EXPECTED_PID,version=api('describe')['version'],original=original)
 report['beforeState']=before
 try:
  first=api('configure_view',viewId=ids[0],settings=dict(width=320,height=200,mode=shaded,layers=[dict(kind='shadow',blend='mul ',opacity=60),dict(kind='material'),dict(kind='display',mode=shaded)],camera=dict(yaw=8,pitch=-4,zoom=1.1),sun=dict(useDocument=False,azimuth=120,altitude=35)))

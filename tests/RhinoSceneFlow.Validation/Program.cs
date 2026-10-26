@@ -281,6 +281,30 @@ try
 finally{Directory.Delete(stage,true);}
 Console.WriteLine("PASS: RGB disk staging, grouped PSD blend metadata, opacity and crop coordinates.");
 
+string libraryStage=Directory.CreateTempSubdirectory("SceneFlow-library-").FullName;
+try
+{
+    string input=Path.Combine(libraryStage,"source.png");File.WriteAllBytes(input,[1,2,3,4]);
+    var library=new MaterialLibrary(Path.Combine(libraryStage,"library"));
+    var asset=library.Import(new(){Name="600 mm 铺装",WidthMeters=2.4,HeightMeters=1.2,Tags=["stone"]},new Dictionary<string,string>{{"baseColor",input}});
+    library.Verify(asset);Check(!Path.IsPathFullyQualified(asset.Maps["baseColor"])&&library.List("stone").Length==1,"Portable asset paths/search failed.");
+    asset.WidthMeters=1.2;var updated=library.Update(asset);Check(updated.Revision==2&&library.Get(asset.Id).WidthMeters==1.2,"Asset revision/size update failed.");
+    string zip=Path.Combine(libraryStage,"material.zip");library.ExportPackage(asset.Id,zip);
+    var other=new MaterialLibrary(Path.Combine(libraryStage,"other"));var imported=other.ImportPackage(zip);other.Verify(imported);
+    Check(imported.Id!=asset.Id&&imported.WidthMeters==1.2,"Portable package import must retain size and avoid identity collisions.");
+    var invalid=MaterialLibrary.Clone(asset);invalid.Maps["baseColor"]="../outside.png";
+    try{invalid.Validate();throw new Exception("Traversal accepted.");}catch(ArgumentException){}
+    invalid=MaterialLibrary.Clone(asset);invalid.WidthMeters=double.NaN;
+    try{invalid.Validate();throw new Exception("NaN size accepted.");}catch(ArgumentException){}
+    File.WriteAllBytes(library.MapPath(asset,"baseColor"),[9]);
+    try{library.Verify(asset);throw new Exception("Changed texture bytes accepted.");}catch(InvalidDataException){}
+    string malicious=Path.Combine(libraryStage,"traversal.zip");
+    using(var archive=System.IO.Compression.ZipFile.Open(malicious,System.IO.Compression.ZipArchiveMode.Create))archive.CreateEntry("../escape.png");
+    try{other.ImportPackage(malicious);throw new Exception("ZIP traversal accepted.");}catch(InvalidDataException){}
+}
+finally{Directory.Delete(libraryStage,true);}
+Console.WriteLine("PASS: physical-size material assets, relative paths, revisions, portable packages, integrity and path validation.");
+
 if(args.Contains("--large"))
 {
     string largeStage=Directory.CreateTempSubdirectory("SceneFlow-8K-").FullName;

@@ -27,7 +27,7 @@ public static class McpApi
             switch (operation)
             {
                 case "describe":
-                    response = new { name = "RhinoSceneFlow", version = "0.6.0", transport = "Rhino-MCP-Platform.run_python",
+                    response = new { name = "RhinoSceneFlow", version = "0.7.0", transport = "Rhino-MCP-Platform.run_python",materialLibrary=MaterialApi.Contract,
                         entryPoint = "RhinoSceneFlow.Plugin.McpApi.Execute(string)",
                         operations = new object[] {
                             new { name="workbench_settings",required=new[]{"document"},parameters="Per-view configuration, exportable display modes and PSD blend keys",output="views, displayModes, blends" },
@@ -121,7 +121,9 @@ public static class McpApi
                         r.TryGetProperty("overwrite", out var overwrite) && overwrite.GetBoolean(),
                         r.TryGetProperty("viewportId", out var viewport) ? Guid.Parse(viewport.GetString()!) : null);
                     break;
-                default: throw new ApiException("unsupported_operation", "Use describe to discover operations.");
+                default:
+                    if(operation.StartsWith("material_",StringComparison.Ordinal)){response=MaterialApi.Execute(operation,r);break;}
+                    throw new ApiException("unsupported_operation", "Use describe to discover operations.");
             }
             return JsonSerializer.Serialize(new { apiVersion=1, ok=true, result=response }, Json);
         }

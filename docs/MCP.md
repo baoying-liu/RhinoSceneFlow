@@ -1,6 +1,49 @@
 # 原厂 Rhino-MCP-Platform 接入
 
-RhinoSceneFlow v0.6.0 不启动 MCP 服务，不监听额外端口，不修改 Platform 私有实现。使用已安装的 Rhino-MCP-Platform 的 `run_python` 工具，在 Rhino UI 线程调用公开入口：
+## v0.7 材质操作
+
+下列请求仍包含 `apiVersion:1`。涉及文档的操作需要 `document`；对象与图层目标只能选择一种。所有资产尺寸、映射偏移和原点均为**米**，与面板使用 mm 区别。
+
+| operation | 参数与结果 |
+| --- | --- |
+| `material_library` | 可选 `query`；返回 directory、assets 和 contract |
+| `material_configure` | `directory`：库的绝对路径，保存偏好 |
+| `material_import` | `asset` 元数据、`files` 图片路径字典；返回新资产 |
+| `material_update` | `asset`：从库读取的完整资产，修改名称 / 尺寸 / 参数后提交；图片不替换 |
+| `material_preview` / `material_apply` | `document`, `assetId`, `objects:[GUID]` 或 `layers:[GUID]`，可选 `mapping`；preview 只预检，不渲染也不修改文档 |
+| `material_inspect` | `document`, `objects:[GUID]`；返回绑定、可恢复状态及尺寸过期提示 |
+| `material_remap` / `material_restore` | `document`, `objects:[GUID]` 或 `layers:[GUID]`；图层 remap 同步新增对象 |
+| `material_pack` | `assetId`, `path`：新的绝对 ZIP 路径，不覆盖 |
+| `material_unpack` | `path`：ZIP 绝对路径，校验后导入为新资产 |
+| `material_generation_request` | `asset`, `prompt`：建立 pending 任务 |
+| `material_generation_jobs` | 列出任务，包括状态与生成提示词 |
+| `material_generation_complete` | `jobId`, `files`：Agent 生成后回填本地图片，返回入库资产 |
+| `material_generation_cancel` | `jobId`：取消 pending 任务 |
+| `material_open_panel` / `material_panel_status` | `document`：打开材质面板 / 查询面板状态 |
+
+`files` 支持 `baseColor`（必填）、`roughness`、`normal`、`metallic`，值为绝对 PNG / JPEG 路径。Normal 使用 OpenGL RGB 约定。示例通过下文的原厂 Platform 调用入口执行：
+
+```python
+asset = {'name': 'Limestone', 'category': 'Stone', 'tags': ['floor'],
+         'widthMeters': 1.0, 'heightMeters': 1.0,
+         'roughness': 0.8, 'metallic': 0.0, 'recommendedMapping': 'plane'}
+request = {'apiVersion': 1, 'operation': 'material_import',
+           'asset': asset, 'files': {'baseColor': r'C:\Textures\limestone.png'}}
+response = json.loads(McpApi.Execute(json.dumps(request)))
+assert response['ok'], response
+asset_id = response['result']['id']
+request = {'apiVersion': 1, 'operation': 'material_apply',
+           'document': int(__rhino_doc__.RuntimeSerialNumber),
+           'assetId': asset_id, 'objects': ['OBJECT-GUID'],
+           'mapping': {'mode': 'plane', 'alignment': 'continuous', 'axis': 'auto',
+                       'rotation': 0, 'offsetUMeters': 0, 'offsetVMeters': 0,
+                       'originMeters': [0, 0, 0], 'checker': False}}
+print(McpApi.Execute(json.dumps(request)))
+```
+
+`mode` 为 auto / plane / box / cylinder，`alignment` 为 continuous / object，`axis` 为 auto / x / y / z。AI 任务必须由外部 Agent 读取、调用图像工具并回填；pending 不代表已生成。具体映射范围、人工标定与材质显示模式导出见 [Materials.md](Materials.md)。
+
+RhinoSceneFlow v0.7.0 不启动 MCP 服务，不监听额外端口，不修改 Platform 私有实现。使用已安装的 Rhino-MCP-Platform 的 `run_python` 工具，在 Rhino UI 线程调用公开入口：
 
 ```csharp
 string RhinoSceneFlow.Plugin.McpApi.Execute(string requestJson)

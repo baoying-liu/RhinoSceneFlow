@@ -1,6 +1,10 @@
 # RhinoSceneFlow development
 
-- Product scope: AI assets → physical-scale materials → planting → view-layer export → postproduction. Current implemented slice is layer-RGB PSD export, independent hard-shadow PSD export and Platform automation.
+- v0.7 materials: Core owns portable assets/physical metadata; Plugin owns PBR, texture mapping, native undo and persistent restoration. Command: RhinoSceneFlowMaterials. See docs/Materials.md and material_* operations in docs/MCP.md. Test-MaterialLibrary.py preserves existing live objects; Prepare-MaterialDemo.py requires an empty or exclusively owned demo document; Test-MaterialExport.py verifies PSD integration.
+- Use asset-ID-prefixed image basenames: installed Rhino 8 reproduced cross-asset texture aliasing with same basenames in different directories. Preserve the multi-asset simulation regression. Use RenderMaterial.FromMaterial to retain PBR; CreateBasicMaterial loses it. Restore missing RDK materials through indices rather than assigning null. TextureMapping JSON does not round-trip here; MappingSnapshot explicitly serializes supported mapping primitives and transforms.
+- AI generation is an Agent handoff, not an embedded provider. Never label pending jobs completed without actual imported images. Physical size requires calibration; do not infer measured dimensions or PBR maps from pixels. Remap after transforms/units changes; no promise of distortion-free freeform unwrapping. Image/library output and test evidence stay under ignored artifacts.
+
+- Product scope: AI assets → physical-scale materials → planting → view-layer export → postproduction. Implemented: physical-scale material library and Agent generation handoff, layer-RGB/native-display PSD export, independent direct-sun shadows and Platform automation.
 - Keep geometry/projection/PSD serialization in Core; Rhino SDK, commands, preferences and the public JSON API belong in Plugin. Commands and automation call ExportService.
 - Depend on the user's installed Rhino-MCP-Platform. Do not start another MCP server, patch Platform private implementations, or edit Codex MCP configuration for this project.
 - Automation entry point: `RhinoSceneFlow.Plugin.McpApi.Execute(JSON)` via Platform `run_python`. Update docs/MCP.md with API changes.

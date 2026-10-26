@@ -94,3 +94,16 @@ B PID 265612：临时 Named View 写回通过，方向变化约 0.2478 弧度、
 ## 2026-10-26 公司 B 更新复核
 
 同步 `c4e161b` 后重新构建和全部核心回归通过。更新部署 `20261026-134519-79366444417f4ae9ba5bff01b89e1781` 在公司 B 的 PID 108352 加载成功。4 张卡片预览、滚轮事件和 256×160 阴影 / 材质组合 PSD 通过，零浮动视图、文档状态保持；独立解析图层分组 / 阴影层及合成图，最大重新合成差约 1.773/255。记录保存在 `artifacts/rhino-B/office-update-20261026.json`。此次为安装后的短时验证，不替代之前完整测试，也不宣称退出稳定性问题已解决。
+# 2026-10-26 v0.7 材质库验证
+
+最终构建由沙盒 B 的 `build_test` 任务 `cce650d2025042a682a587340470158b` 完成，状态 Succeeded；包含 Build.ps1 核心回归，编译零警告。实际 Rhino PID 116016、原厂 Platform 22801，插件版本 0.7.0。
+
+- `Test-MaterialLibrary.py` 最终证据：`artifacts/rhino-B/materials/run-0481b982/report.json`。原生 PBR 四通道、Normal 识别、平面重复 (1,1)、矩形箱式三个方向、圆柱弧长 / 高度、旋转、毫米 / 米 / 英尺 / 英寸、图层继承与新增对象同步、缩放后重映射、旧 RDK 材质 / 映射恢复、原 Mesh UV 保留、ZIP 跨库导入、真实 Eto 按钮及生成任务回填均通过；测试后原有 live object IDs 保持。
+- 交替模拟两种材质的贴图隔离通过；显式 Rendered 图像 `materials/demo/rendered.png` 人工查看，石材地面与棋盘格物件正确区分。材质 Eto 内容截图 `materials/demo/panel-white.png` 人工查看，1110×900 无水平裁切。
+- 原生 Undo 在命令退出后的 UI timer 执行，`materials/demo/undo-verified.json` 为 undo=true、fixtureExists=true、bindingRemoved=true。重现顺序：通过 Rhino-Mcp.py 分别运行 Test-MaterialUndoStart.py、Test-MaterialUndoApply.py、Test-MaterialUndoQueue.py；timer 回调后再运行 Check-MaterialUndo.py。这些脚本依赖已准备的自有 demo，期间不能插入其他模型编辑。
+- `Test-MaterialExport.py` 导出 320×200 Named View PSD，保留相机、显示尺寸、太阳、Modified 及工作台原配置。`artifacts/verify-env/Scripts/python.exe scripts/Verify-MaterialExport.py` 独立解码通过：自上而下 Rendered / Shadow / 材质图层组，重组与内嵌预览最大误差 1/255。证据 `materials/demo/export-report.json`、`export-verified.json`；未通过 Photoshop UI 打开验收。
+- 使用内置 imagegen 真实生成 1×1 m 浅灰石灰岩颜色图，完成 Agent 回填和入库；源图 SHA-256 为 `99253F390405434F3519C50CE1C99368885DCF1B20E1D1521E9C7AA6B26469FE`。完整提示词与源图保存在 `artifacts/materials/source/`。
+
+保留了早期失败证据：BasicMaterial 丢 PBR、TextureMapping JSON 无法还原、RenderMaterial=null 抛异常、同名贴图串图以及旧 UI 布局裁切。最终实现分别使用 FromMaterial、显式 MappingSnapshot、材质索引恢复、资产唯一文件名与独立布局行修复。没有把这些失败版本记为通过。旧 v0.6 测试实例曾 UnknownExit；原记录仍保留，不能据此宣称旧退出问题已修复。
+
+当前范围及限制见 [Materials.md](Materials.md)：AI 需 Agent 实际处理；物理尺寸需标定；变形后手动重映射；不包含复杂自由曲面无畸变展开、块实例映射或自动云服务。

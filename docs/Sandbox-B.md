@@ -100,3 +100,10 @@ v0.3 的切平面法线偏移在接触反例中会越过遮挡片，导致应为
 更新任务 `cead22d757c2482797b5c2eeb8443350` 成功，部署 `20261026-134519-79366444417f4ae9ba5bff01b89e1781`，PID 108352，原厂 Platform 实际端口 22801。4 张预览、合成滚轮事件、零浮动视图和 256×160 阴影 / 材质 PSD 输出验证通过；文档 / 视图状态保持。文件独立解码及重合成最大预乘 RGBA 误差约 1.773/255。证据：`artifacts/rhino-B/office-update-20261026.json`。
 
 管理服务起初关闭，电脑控制接口报 native pipe unavailable；通过安装版自带 `--start-mcp` 参数开启服务后完成操作，没有模拟鼠标输入。测试实例及工作台保留供用户测试；历史退出问题未在本次短时更新检查中重新验收。
+# 2026-10-26 v0.7 材质库 B 部署
+
+仅办公室 B `1cee488700ad42f59492743cc4a2a3fe`，管理服务 19540。最终任务 `cce650d2025042a682a587340470158b` Succeeded，部署 `20261026-161231-d736d19c7e454145afe95ee34781e070`，实例 `aa211c7d7eb2457fb74610000111e896`，Rhino PID 116016，原厂 Platform 22801。未修改正式 Rhino、其他通道或 Platform 私有实现。
+
+材质库命令 `RhinoSceneFlowMaterials`；B 测试库 `artifacts/materials/library-v07`。自有示例模型 `artifacts/rhino-B/materials/demo/SceneFlow-Materials-Demo.3dm` 包含石材平面、棋盘格箱体 / 圆柱和两个 Named Views，材质面板可直接试用。`Prepare-MaterialDemo.py` 只接受空文档或完全属于该 demo 的文档。
+
+构建、真实 SDK / Eto / Undo 以及独立 PSD 解析记录见 [Validation.md](Validation.md)。v0.7 测试期间未观察到新的异常退出；保留此前 v0.6 UnknownExit 证据，不认定旧问题已修复。
