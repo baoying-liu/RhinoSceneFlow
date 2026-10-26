@@ -107,3 +107,18 @@ B PID 265612：临时 Named View 写回通过，方向变化约 0.2478 弧度、
 保留了早期失败证据：BasicMaterial 丢 PBR、TextureMapping JSON 无法还原、RenderMaterial=null 抛异常、同名贴图串图以及旧 UI 布局裁切。最终实现分别使用 FromMaterial、显式 MappingSnapshot、材质索引恢复、资产唯一文件名与独立布局行修复。没有把这些失败版本记为通过。旧 v0.6 测试实例曾 UnknownExit；原记录仍保留，不能据此宣称旧退出问题已修复。
 
 当前范围及限制见 [Materials.md](Materials.md)：AI 需 Agent 实际处理；物理尺寸需标定；变形后手动重映射；不包含复杂自由曲面无畸变展开、块实例映射或自动云服务。
+# 2026-10-26 v0.8 米制 UV 与简洁窗口
+
+Build.ps1 核心回归通过，编译零警告 / 错误。B 最终使用部署 `20261026-210109-7bc0cdfa2e96465482ea80502974a8b9`，实际加载任务 `b500a553d5f64083b5353de89eafc2cb` Succeeded，Rhino PID 26764、Platform 22801。
+
+- `Test-WorldUv.py`：`artifacts/rhino-B/worlduv/2a21a042/report.json` complete=true、liveIdsRestored=true。独立计算保留材质、1 米 UV 增量 (1,1)、600×300 mm 贴图原生模拟重复 (1.6666667,3.3333333)、换材质复用同一记录、手动改映射 / 同边界内部网格编辑 / 缩放 / 单位改变的失效识别、恢复无 UV 原状、混合图层有效 / 无效 / 缺失对象、参考图复制及 running 状态均通过。
+- 调整后的 `Test-MaterialLibrary.py`：`materials/run-019a5ab7/report.json` 全部通过，保留 PBR 四通道、平面 / 矩形箱式 / 圆柱、英制换算、图层继承、恢复和贴图隔离回归。它现在把米制 UV 与材质物理尺寸组合检查，不再将原始 UV 当作图片重复次数。
+- `Test-MaterialQuickUi.py` / `Check-MaterialQuickUi.py` 实际 Eto 操作通过：`worlduv/quick-ui-verified.json`，图层中计算 1 个、复用 1 个，显示 1/2、2/2 和最终 100，两个对象均 ByLayer。取消首步前不修改 UV；生成任务复制参考图片、显示 Agent 阶段、完成回填后自动选中新资产，证据 `worlduv/quick-generation.json`。回填测试复用先前生成的真实图片，不称为新一轮模型生成。
+- 首轮原生 Undo 四阶段通过；同时断言 WorldUv 记录随应用撤销。证据 `materials/demo/undo-verified.json` 与 `worlduv/quick-generation.json`。逐物件 UI 流程是多个撤销记录，非整个批次一次撤销。
+- `Test-MaterialExport.py` 及独立 `Verify-MaterialExport.py` 再次通过，320×200 PSD 重组最大差 1/255；未打开 Photoshop。Rendered 示例人工查看，石材和矩形棋盘重复正确；580×740 的生成页 / 铺贴页文件截图人工查看，无裁切，应用范围在底部。文件 `worlduv/quick-generation-white.png`、`quick-mapping-white.png`。
+
+保留迭代失败：初版 FromMaterial 丢贴图 UVW，已通过对子纹理 SetRepeat 修复；首次变换测试错误地使用复制模式 False，断言失败并遗留一个自有副本，随后仅按该测试唯一标记清理，改用替换模式 True 后重跑通过。
+
+部署任务 `c8afe7b7d41e43cfa950749515779078` 曾 CloseTimedOut。通过 computer-use 技能检查到 Rhino 退出阶段隐藏的 Update Available 对话框；选择 No 后进程退出，未强杀、未安装更新。保留失败任务及关闭证据，待退出后重新提交 test 才实际加载成功；没有把超时任务标为通过。
+
+撤销复测限制：随后同一实例的重复 SDK / timer 撤销返回 false，等待 recording inactive 和改用脚本命令均未解决。失败证据 worlduv/undo-retry-failure.json，不能认定是定时器竞争，也不能把首轮通过扩展为重复撤销全部通过。保留 Check-MaterialUndo.py 的 WorldUv 移除断言；未修改产品原生撤销机制。显式恢复按钮及材质 / 映射还原测试通过。

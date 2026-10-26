@@ -6,7 +6,7 @@ namespace RhinoSceneFlow.Plugin;
 
 internal static class MaterialApi
 {
-    internal static object Contract=>new{operations=new[]{"material_library","material_configure","material_import","material_update","material_apply","material_preview","material_restore","material_inspect","material_remap","material_pack","material_unpack","material_generation_request","material_generation_jobs","material_generation_complete","material_generation_cancel","material_open_panel","material_panel_status"},
+    internal static object Contract=>new{operations=new[]{"material_prepare_uv","material_uv_status","material_quick_open","material_quick_status","material_generation_progress","material_library","material_configure","material_import","material_update","material_apply","material_preview","material_restore","material_inspect","material_remap","material_pack","material_unpack","material_generation_request","material_generation_jobs","material_generation_complete","material_generation_cancel","material_open_panel","material_panel_status"},
         units="Asset widthMeters/heightMeters and mapping origin/offsets are meters; converted to document units. Channel 1, persistent backup. Whole layers or object IDs, not both.",
         generation="Agent workflow: request -> list pending jobs -> generate image using connected provider -> complete with local files. No embedded API provider or automatic generation claim.",
         imageMaps=new[]{"baseColor","roughness","normal","metallic"}};
@@ -17,6 +17,11 @@ internal static class MaterialApi
     private static MappingSettings Mapping(JsonElement r)=>r.TryGetProperty("mapping",out var m)?JsonSerializer.Deserialize<MappingSettings>(m.GetRawText(),MaterialLibrary.Json)!:new();
     internal static object Execute(string operation,JsonElement r)=>operation switch
     {
+        "material_prepare_uv"=>MaterialService.PrepareWorldUv(Doc(r),Ids(r,"objects"),Ids(r,"layers"),Mapping(r),r.TryGetProperty("force",out var force)&&force.GetBoolean(),r.TryGetProperty("preview",out var preview)&&preview.GetBoolean()),
+        "material_uv_status"=>MaterialService.InspectWorldUv(Doc(r),Ids(r,"objects")??throw new ArgumentException("需要 objects。")),
+        "material_quick_open"=>MaterialQuickController.Open(Doc(r),Ids(r,"objects")).GetState(),
+        "material_quick_status"=>MaterialQuickController.Find(Doc(r).RuntimeSerialNumber)?.GetState()??new{open=false},
+        "material_generation_progress"=>MaterialGeneration.Progress(Id(r,"jobId"),r.GetProperty("stage").GetString()!),
         "material_library"=>new{directory=MaterialService.Library.Root,assets=MaterialService.Library.List(r.TryGetProperty("query",out var q)?q.GetString()??"":""),contract=Contract},
         "material_configure"=>Configure(r.GetProperty("directory").GetString()!),
         "material_import"=>MaterialService.Import(Read<MaterialAsset>(r,"asset"),Read<Dictionary<string,string>>(r,"files")),
@@ -28,7 +33,7 @@ internal static class MaterialApi
         "material_remap"=>r.TryGetProperty("layers",out _)?MaterialService.SyncLayers(Doc(r),Ids(r,"layers")!):MaterialService.Remap(Doc(r),Ids(r,"objects")??throw new ArgumentException("需要 objects 或 layers。")),
         "material_pack"=>Pack(Id(r),r.GetProperty("path").GetString()!),
         "material_unpack"=>MaterialService.Library.ImportPackage(r.GetProperty("path").GetString()!,MaterialService.ValidateImages),
-        "material_generation_request"=>MaterialGeneration.Request(Read<MaterialAsset>(r,"asset"),r.GetProperty("prompt").GetString()!),
+        "material_generation_request"=>MaterialGeneration.Request(Read<MaterialAsset>(r,"asset"),r.GetProperty("prompt").GetString()!,r.TryGetProperty("referenceImages",out var refs)?refs.EnumerateArray().Select(v=>v.GetString()!).ToArray():null),
         "material_generation_jobs"=>MaterialGeneration.List(),
         "material_generation_complete"=>MaterialGeneration.Complete(Id(r,"jobId"),Read<Dictionary<string,string>>(r,"files")),
         "material_generation_cancel"=>MaterialGeneration.Cancel(Id(r,"jobId")),

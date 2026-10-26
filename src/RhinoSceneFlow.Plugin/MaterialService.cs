@@ -41,6 +41,7 @@ internal sealed class MaterialBackup
     public string? Mapping { get; set; }
     public double[] Transform { get; set; } = [];
     public string? Binding { get; set; }
+    public string? WorldUv { get; set; }
 }
 internal sealed class LayerMaterialBackup
 {
@@ -49,7 +50,7 @@ internal sealed class LayerMaterialBackup
     public string? Binding { get; set; }
 }
 
-public static class MaterialService
+public static partial class MaterialService
 {
     internal const string BindingKey="RhinoSceneFlow.Material",BackupKey="RhinoSceneFlow.MaterialBackup",LayerBackupKey="RhinoSceneFlow.LayerMaterialBackup";
     public static MaterialLibrary Library=>new(SceneFlowPlugin.Instance.MaterialDirectory);
@@ -92,48 +93,33 @@ public static class MaterialService
     public static object Apply(RhinoDoc doc,Guid assetId,Guid[]? objects,Guid[]? layers,MappingSettings settings,bool preview=false)
     {
         settings.Validate();double scale=UnitScale(doc);var asset=Library.Get(assetId);Library.Verify(asset);var targets=Targets(doc,objects,layers);
-        var mappings=new List<(RhinoObject Object,TextureMapping Mapping,string Mode)>();
+        using var plan=PlanUv(doc,targets,settings,false);
+        var report=new{asset=asset.Id,revision=asset.Revision,preview,unit=doc.ModelUnitSystem.ToString(),modelUnitsPerMeter=scale,widthInModelUnits=asset.WidthMeters*scale,heightInModelUnits=asset.HeightMeters*scale,
+            uvComputed=plan.Items.Count(t=>t.Mapping!=null),uvReused=plan.Items.Count(t=>t.Mapping==null),
+            objects=plan.Items.Select(t=>new{id=t.Object.Id,mode=t.Record.Mode,willReplaceMapping=t.Mapping!=null,canRestore=t.Object.Attributes.GetUserString(BackupKey)!=null}).ToArray()};
+        if(preview)return report;
+        uint undo=doc.BeginUndoRecord("SceneFlow 应用材质 / 补算真实世界 UV");
         try
         {
-            foreach(var obj in targets){var (map,mode)=BuildMapping(obj,asset,settings,scale);mappings.Add((obj,map,mode));}
-            var backups=new Dictionary<Guid,string>();
-            foreach(var obj in targets)
+            CommitUv(doc,plan);
+            var material=DocumentMaterial(doc,asset,settings.Checker);
+            if(layers is {Length:>0})foreach(var id in layers.Distinct())
             {
-                string? existing=obj.Attributes.GetUserString(BackupKey);if(existing!=null){backups[obj.Id]=existing;continue;}
-                using var previous=obj.GetTextureMapping(1,out var transform);
-                backups[obj.Id]=Serialize(new MaterialBackup{MaterialSource=(int)obj.Attributes.MaterialSource,MaterialIndex=obj.Attributes.MaterialIndex,RenderMaterial=obj.RenderMaterial?.Id??Guid.Empty,
-                    Mapping=previous==null?null:MappingSnapshot.Capture(previous),Transform=ToArray(transform),Binding=obj.Attributes.GetUserString(BindingKey)});
+                var layer=doc.Layers.FindId(id)!;
+                if(layer.GetUserString(LayerBackupKey)==null)layer.SetUserString(LayerBackupKey,Serialize(new LayerMaterialBackup{RenderMaterial=layer.RenderMaterial?.Id??Guid.Empty,MaterialIndex=layer.RenderMaterialIndex,Binding=layer.GetUserString(BindingKey)}));
+                layer.RenderMaterial=material;layer.SetUserString(BindingKey,Serialize(new MaterialBinding{Asset=asset.Id,Revision=asset.Revision,Settings=MaterialLibrary.Clone(settings),UnitScale=scale}));
             }
-            var report=new{asset=asset.Id,revision=asset.Revision,preview,unit=doc.ModelUnitSystem.ToString(),modelUnitsPerMeter=scale,widthInModelUnits=asset.WidthMeters*scale,heightInModelUnits=asset.HeightMeters*scale,
-                objects=mappings.Select(t=>new{id=t.Object.Id,mode=t.Mode,willReplaceMapping=t.Object.GetTextureChannels().Contains(1),canRestore=t.Object.Attributes.GetUserString(BackupKey)!=null}).ToArray(),
-                warning="映射通道 1；映射会备份。移动 / 缩放、修改单位或新增图层对象后，可用重新映射同步真实尺寸。"};
-            if(preview)return report;
-            uint undo=doc.BeginUndoRecord("SceneFlow 应用真实尺寸材质");
-            try
+            foreach(var item in plan.Items)
             {
-                var material=DocumentMaterial(doc,asset,settings.Checker);
-                if(layers is {Length:>0})foreach(var id in layers.Distinct())
-                {
-                    var layer=doc.Layers.FindId(id)!;
-                    if(layer.GetUserString(LayerBackupKey)==null)layer.SetUserString(LayerBackupKey,Serialize(new LayerMaterialBackup{RenderMaterial=layer.RenderMaterial?.Id??Guid.Empty,MaterialIndex=layer.RenderMaterialIndex,Binding=layer.GetUserString(BindingKey)}));
-                    layer.RenderMaterial=material;layer.SetUserString(BindingKey,Serialize(new MaterialBinding{Asset=asset.Id,Revision=asset.Revision,Settings=MaterialLibrary.Clone(settings),UnitScale=scale}));
-                }
-                foreach(var (obj,mapping,_) in mappings)
-                {
-                    var attrs=obj.Attributes.Duplicate();
-                    attrs.SetUserString(BackupKey,backups[obj.Id]);
-                    attrs.SetUserString(BindingKey,Serialize(new MaterialBinding{Asset=asset.Id,Revision=asset.Revision,Settings=MaterialLibrary.Clone(settings),UnitScale=scale,Bounds=Bounds(obj)}));
-                    attrs.MaterialSource=layers is {Length:>0}?ObjectMaterialSource.MaterialFromLayer:ObjectMaterialSource.MaterialFromObject;
-                    if(!doc.Objects.ModifyAttributes(obj,attrs,true))throw new InvalidOperationException("无法修改对象属性。");
-                    if(layers is not {Length:>0}){var current=doc.Objects.FindId(obj.Id)!;current.RenderMaterial=material;current.CommitChanges();}
-                    var mapped=doc.Objects.FindId(obj.Id)!;mapped.SetTextureMapping(1,mapping,Transform.Identity);
-                    using var check=mapped.GetTextureMapping(1);if(check==null)throw new InvalidOperationException("无法设置对象映射。");
-                }
+                var obj=doc.Objects.FindId(item.Object.Id)!;var attrs=obj.Attributes.Duplicate();
+                attrs.SetUserString(BindingKey,Serialize(new MaterialBinding{Asset=asset.Id,Revision=asset.Revision,Settings=item.Record.Settings,UnitScale=scale,Bounds=Bounds(obj)}));
+                attrs.MaterialSource=layers is {Length:>0}?ObjectMaterialSource.MaterialFromLayer:ObjectMaterialSource.MaterialFromObject;
+                if(!doc.Objects.ModifyAttributes(obj,attrs,true))throw new InvalidOperationException("无法修改对象属性。");
+                if(layers is not {Length:>0}){var current=doc.Objects.FindId(obj.Id)!;current.RenderMaterial=material;current.CommitChanges();}
             }
-            finally{if(undo!=0)doc.EndUndoRecord(undo);}
-            doc.Views.Redraw();return report;
         }
-        finally{foreach(var item in mappings)item.Mapping.Dispose();}
+        finally{if(undo!=0)doc.EndUndoRecord(undo);}
+        doc.Views.Redraw();return report;
     }
     public static object Restore(RhinoDoc doc,Guid[]? objects,Guid[]? layers)
     {
@@ -151,7 +137,7 @@ public static class MaterialService
             {
                 using var map=backup.Mapping==null?null:Deserialize<MappingSnapshot>(backup.Mapping).Build();
                 if(backup.RenderMaterial!=Guid.Empty){obj.RenderMaterial=doc.RenderMaterials.Find(backup.RenderMaterial)??throw new InvalidOperationException("原对象材质已删除。");obj.CommitChanges();}
-                var attrs=doc.Objects.FindId(obj.Id)!.Attributes.Duplicate();attrs.MaterialSource=(ObjectMaterialSource)backup.MaterialSource;attrs.MaterialIndex=backup.MaterialIndex;attrs.SetUserString(BindingKey,backup.Binding);attrs.SetUserString(BackupKey,null);
+                var attrs=doc.Objects.FindId(obj.Id)!.Attributes.Duplicate();attrs.MaterialSource=(ObjectMaterialSource)backup.MaterialSource;attrs.MaterialIndex=backup.MaterialIndex;attrs.SetUserString(BindingKey,backup.Binding);attrs.SetUserString(BackupKey,null);attrs.SetUserString(WorldUvKey,backup.WorldUv);
                 if(!doc.Objects.ModifyAttributes(obj.Id,attrs,true))throw new InvalidOperationException("恢复对象属性失败。");
                 doc.Objects.FindId(obj.Id)!.SetTextureMapping(1,map,FromArray(backup.Transform));
             }
@@ -162,28 +148,24 @@ public static class MaterialService
     public static object Inspect(RhinoDoc doc,Guid[] objects)=>objects.Select(id=>
     {
         var o=doc.Objects.FindId(id)??throw new ArgumentException("对象不存在。");var text=o.Attributes.GetUserString(BindingKey);var b=text==null?null:Deserialize<MaterialBinding>(text);
-        return new{id,binding=b,canRestore=o.Attributes.GetUserString(BackupKey)!=null,needsRemap=b!=null&&(b.UnitScale!=UnitScale(doc)||!b.Bounds.SequenceEqual(Bounds(o))),materialSource=o.Attributes.MaterialSource.ToString(),renderMaterial=o.GetRenderMaterial(true)?.Id};
+        return new{id,binding=b,canRestore=o.Attributes.GetUserString(BackupKey)!=null,worldUv=UvStatus(doc,o),needsRemap=!UvValid(doc,o),materialSource=o.Attributes.MaterialSource.ToString(),renderMaterial=o.GetRenderMaterial(true)?.Id};
     }).ToArray();
     public static object Remap(RhinoDoc doc,Guid[] objects)
     {
-        var found=Targets(doc,objects,null).Select(o=>(Id:o.Id,Binding:Deserialize<MaterialBinding>(o.Attributes.GetUserString(BindingKey)??throw new ArgumentException("对象尚未由 SceneFlow 配置。")))).ToArray();
-        double scale=UnitScale(doc);var maps=new List<(Guid Id,MaterialBinding Binding,TextureMapping Mapping)>();
+        var targets=Targets(doc,objects,null);uint undo=doc.BeginUndoRecord("SceneFlow 重新计算真实世界 UV");
         try
         {
-            foreach(var t in found)
-            {
-                t.Binding.Settings.Validate();var a=Library.Get(t.Binding.Asset);Library.Verify(a);
-                var (m,_)=BuildMapping(doc.Objects.FindId(t.Id)!,a,t.Binding.Settings,scale);t.Binding.Revision=a.Revision;t.Binding.UnitScale=scale;t.Binding.Bounds=Bounds(doc.Objects.FindId(t.Id)!);maps.Add((t.Id,t.Binding,m));
-            }
-            uint undo=doc.BeginUndoRecord("SceneFlow 同步映射尺寸");
+            // Preflight all targets before modifying any of them.
+            var plans=new List<UvPlan>();
             try
             {
-                foreach(var t in maps){var o=doc.Objects.FindId(t.Id)!;o.SetTextureMapping(1,t.Mapping,Transform.Identity);var attrs=doc.Objects.FindId(t.Id)!.Attributes.Duplicate();attrs.SetUserString(BindingKey,Serialize(t.Binding));if(!doc.Objects.ModifyAttributes(t.Id,attrs,true))throw new InvalidOperationException("无法同步映射。");}
+                foreach(var obj in targets){var record=ReadUv(obj);plans.Add(PlanUv(doc,[obj],record?.Settings??new MappingSettings(),true));}
+                foreach(var plan in plans)CommitUv(doc,plan);
+                doc.Views.Redraw();return new{remapped=targets.Select(o=>o.Id).ToArray()};
             }
-            finally{if(undo!=0)doc.EndUndoRecord(undo);}
-            doc.Views.Redraw();return new{remapped=maps.Select(m=>m.Id).ToArray()};
+            finally{foreach(var p in plans)p.Dispose();}
         }
-        finally{foreach(var item in maps)item.Mapping.Dispose();}
+        finally{if(undo!=0)doc.EndUndoRecord(undo);}
     }
     public static object SyncLayers(RhinoDoc doc,Guid[] layers)
     {
@@ -262,13 +244,13 @@ public static class MaterialService
     }
     private static RenderMaterial DocumentMaterial(RhinoDoc doc,MaterialAsset asset,bool checker)
     {
-        string name=$"SceneFlow_{asset.Id:N}_r{asset.Revision}"+(checker?"_checker":"");
+        string name=$"SceneFlow_{asset.Id:N}_r{asset.Revision}_meter2"+(checker?"_checker":"");
         var existing=doc.RenderMaterials.FirstOrDefault(m=>m.Name==name);if(existing!=null)return existing;
         using var native=new Material{Name=name};native.ToPhysicallyBased();native.PhysicallyBased.Roughness=asset.Roughness;native.PhysicallyBased.Metallic=asset.Metallic;
         foreach(var (slot,_) in checker?new Dictionary<string,string>{{"baseColor",""}}:asset.Maps)
         {
             string path=checker?CheckerPath():Library.MapPath(asset,slot);
-            using var texture=new Texture{FileName=path,Enabled=true,WrapU=TextureUvwWrapping.Repeat,WrapV=TextureUvwWrapping.Repeat};
+            using var texture=new Texture{FileName=path,Enabled=true,WrapU=TextureUvwWrapping.Repeat,WrapV=TextureUvwWrapping.Repeat,UvwTransform=Transform.Scale(Plane.WorldXY,1/asset.WidthMeters,1/asset.HeightMeters,1)};
             var type=slot switch{"roughness"=>TextureType.PBR_Roughness,"metallic"=>TextureType.PBR_Metallic,"normal"=>TextureType.Bump,_=>TextureType.PBR_BaseColor};
             native.PhysicallyBased.SetTexture(texture,type);
         }
@@ -276,7 +258,12 @@ public static class MaterialService
         foreach(var slot in asset.Maps.Keys)
         {
             var usage=slot switch{"roughness"=>RenderMaterial.StandardChildSlots.PbrRoughness,"metallic"=>RenderMaterial.StandardChildSlots.PbrMetallic,"normal"=>RenderMaterial.StandardChildSlots.Bump,_=>RenderMaterial.StandardChildSlots.PbrBaseColor};
-            var texture=render.GetTextureFromUsage(usage);texture?.SetMappingChannel(1,RenderContent.ChangeContexts.Program);
+            var texture=render.GetTextureFromUsage(usage);if(texture!=null)
+            {
+                texture.SetMappingChannel(1,RenderContent.ChangeContexts.Program);
+                texture.SetRepeatLocked(false,RenderContent.ChangeContexts.Program);
+                texture.SetRepeat(new Vector3d(1/asset.WidthMeters,1/asset.HeightMeters,1),RenderContent.ChangeContexts.Program);
+            }
         }
         if(!doc.RenderMaterials.Add(render)){render.Dispose();throw new InvalidOperationException("无法创建 Rhino 材质。");}return render;
     }

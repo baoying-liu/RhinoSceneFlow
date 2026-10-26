@@ -2,6 +2,12 @@
 
 ## v0.7 材质操作
 
+v0.8 新增：`material_prepare_uv`（document、objects 或 layers、可选 mapping / force / preview）独立计算或检查米制 UV；返回 computed、reused、metersPerUv=1。force=true 显式重算并采用新的 mapping；默认复用有效记录，失效时沿用记录中的投影设置。`material_uv_status`（document、objects）返回有效性和记录。`material_apply` 现在自动补算并返回 uvComputed / uvReused，原接口保留。
+
+`material_quick_open`（document，可选 objects，否则当前选择）打开简洁窗口并固定目标；`material_quick_status` 返回 busy / progress / history 等。旧 `material_open_panel` 仍打开完整材质管理窗口。
+
+`material_generation_request` 可增加 `referenceImages:[绝对图片路径]`；任务返回复制后的参考路径。`material_generation_progress`（jobId、stage，1–200 字）将任务置为 running 并更新阶段；running 与 pending 均可完成 / 取消。后端未提供的生成百分比不应伪造。Agent 必须实际读取参考图片后调用支持图像输入的生成工具。
+
 下列请求仍包含 `apiVersion:1`。涉及文档的操作需要 `document`；对象与图层目标只能选择一种。所有资产尺寸、映射偏移和原点均为**米**，与面板使用 mm 区别。
 
 | operation | 参数与结果 |
@@ -43,7 +49,7 @@ print(McpApi.Execute(json.dumps(request)))
 
 `mode` 为 auto / plane / box / cylinder，`alignment` 为 continuous / object，`axis` 为 auto / x / y / z。AI 任务必须由外部 Agent 读取、调用图像工具并回填；pending 不代表已生成。具体映射范围、人工标定与材质显示模式导出见 [Materials.md](Materials.md)。
 
-RhinoSceneFlow v0.7.0 不启动 MCP 服务，不监听额外端口，不修改 Platform 私有实现。使用已安装的 Rhino-MCP-Platform 的 `run_python` 工具，在 Rhino UI 线程调用公开入口：
+RhinoSceneFlow v0.8.0 不启动 MCP 服务，不监听额外端口，不修改 Platform 私有实现。使用已安装的 Rhino-MCP-Platform 的 `run_python` 工具，在 Rhino UI 线程调用公开入口：
 
 ```csharp
 string RhinoSceneFlow.Plugin.McpApi.Execute(string requestJson)

@@ -31,11 +31,19 @@ def add(geometry,layer_index):
  a=Rhino.DocObjects.ObjectAttributes();a.LayerIndex=layer_index;a.SetUserString('SceneFlow.MaterialTest',stamp);id=doc.Objects.Add(geometry,a);assert id!=System.Guid.Empty;created.append(id);return id
 def uv(id,p,n):
  mapping=doc.Objects.FindId(id).GetTextureMapping(1);assert mapping is not None
- try:side,t=mapping.Evaluate(p,n);assert side!=0;return [t.X,t.Y]
+ try:
+  side,t=mapping.Evaluate(p,n);assert side!=0
+  binding=doc.Objects.FindId(id).Attributes.GetUserString('RhinoSceneFlow.Material')
+  if binding:
+   a=api('material_library')['assets'];asset_id=json.loads(binding)['asset'];current=next(v for v in a if v['id']==asset_id)
+   return [t.X/current['widthMeters'],t.Y/current['heightMeters']]
+  return [t.X,t.Y]
  finally:mapping.Dispose()
 def close(a,b,tol=1e-5):assert abs(a-b)<tol,(a,b)
 def delta(id,a,b,n):return [y-x for x,y in zip(uv(id,a,n),uv(id,b,n))]
-def apply(id,mode,**kw):return api('material_apply',assetId=asset['id'],objects=[str(id)],mapping=dict(mode=mode,**kw))
+def apply(id,mode,**kw):
+ api('material_prepare_uv',objects=[str(id)],mapping=dict(mode=mode,**kw),force=True)
+ return api('material_apply',assetId=asset['id'],objects=[str(id)],mapping=dict(mode=mode,**kw))
 original_library=api('material_library')['directory'];report=dict(pid=EXPECTED_PID,folder=folder)
 try:
  api('material_configure',directory=os.path.join(folder,'library'))

@@ -9,7 +9,7 @@ namespace RhinoSceneFlow.Plugin;
 
 public sealed class MaterialLibraryCommand : Rhino.Commands.Command
 {
-    public override string EnglishName=>"RhinoSceneFlowMaterials";
+    public override string EnglishName=>"RhinoSceneFlowMaterialLibrary";
     protected override Result RunCommand(RhinoDoc doc,RunMode mode)
     {try{MaterialPanelController.Open(doc);return Result.Success;}catch(Exception e){RhinoApp.WriteLine(e.Message);return Result.Failure;}}
 }
@@ -124,7 +124,7 @@ public sealed class MaterialPanel : Form
     private void ExportPackage()=>Guard(()=>{if(selected==null)throw new ArgumentException("请选择材质。");using var d=new SaveFileDialog();d.Filters.Add(new FileFilter("材质包",".zip"));d.FileName=name.Text+".zip";if(d.ShowDialog(this)==DialogResult.Ok){MaterialService.Library.ExportPackage(selected.Value,d.FileName);status.Text="材质包已导出。";}});
     private void ImportPackage()=>Guard(()=>{using var d=new OpenFileDialog();d.Filters.Add(new FileFilter("材质包",".zip"));if(d.ShowDialog(this)==DialogResult.Ok){var a=MaterialService.Library.ImportPackage(d.FileName,MaterialService.ValidateImages);RefreshLibrary();Select(a.Id);}});
     private void ChangeLibrary()=>Guard(()=>{using var d=new SelectFolderDialog{Directory=MaterialService.Library.Root};if(d.ShowDialog(this)==DialogResult.Ok){SceneFlowPlugin.Instance.MaterialDirectory=d.Directory;selected=null;lastJob=null;RefreshLibrary();New();}});
-    private void RequestGeneration()=>Guard(()=>{if(lastJob.HasValue&&MaterialGeneration.Get(lastJob.Value).Status=="pending")throw new ArgumentException("已有等待中的 AI 任务，请先完成或取消。");var job=MaterialGeneration.Request(Descriptor(),prompt.Text);lastJob=job.Id;generation.Text="等待连接的 Agent 生成并回填 · "+job.Id;});
+    private void RequestGeneration()=>Guard(()=>{if(lastJob.HasValue&&MaterialGeneration.Get(lastJob.Value).Status is "pending" or "running")throw new ArgumentException("已有等待中的 AI 任务，请先完成或取消。");var job=MaterialGeneration.Request(Descriptor(),prompt.Text);lastJob=job.Id;generation.Text="等待连接的 Agent 生成并回填 · "+job.Id;});
     private void CancelGeneration()=>Guard(()=>{if(lastJob==null)throw new ArgumentException("没有正在等待的任务。");MaterialGeneration.Cancel(lastJob.Value);generation.Text="任务已取消。";lastJob=null;});
     private void PollGeneration()
     {
