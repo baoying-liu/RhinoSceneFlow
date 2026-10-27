@@ -61,6 +61,7 @@ public static partial class MaterialService
                 if(!force&&UvValid(doc,obj)){plan.Items.Add(new(obj,null,record!,backup));continue;}
                 // A recorded projection survives material changes. Only an explicit UV command changes it.
                 var chosen=force?settings:record?.Settings??settings;
+                if(chosen.Mode=="xatlas")throw new InvalidOperationException("复杂曲面请先启动 xatlas 异步展开，再应用材质。");
                 var (map,mode)=BuildMapping(obj,new MaterialAsset{WidthMeters=1,HeightMeters=1},chosen,scale);
                 plan.Items.Add(new(obj,map,new WorldUvRecord{UnitScale=scale,GeometryCrc=obj.Geometry.DataCRC(0),Mode=mode,Settings=MaterialLibrary.Clone(chosen)},backup));
             }

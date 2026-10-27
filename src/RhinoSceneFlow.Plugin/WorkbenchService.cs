@@ -129,10 +129,11 @@ public static class WorkbenchService
                     finally{bitmap.UnlockBits(bits);}
                 }
             }
-            if(row.Layers.Any(l=>l.Enabled&&l.Kind is "material" or "shadow"))
+            if(row.Layers.Any(l=>l.Enabled&&l.Kind is "material" or "shadow" or "texture"))
             {
                 prepared.Viewport=new RhinoViewport();prepared.Viewport.Size=new(row.Width,row.Height);ApplyCamera(doc,row,prepared.Viewport,row.Width,row.Height);
-                prepared.Reader=new(doc,prepared.Viewport,token,true,row.Layers.Any(l=>l.Enabled&&l.Kind=="shadow")){VisibilityViewport=doc.Views.ActiveView.ActiveViewport};
+                if(row.Layers.Any(l=>l.Enabled&&l.Kind=="texture"))prepared.Textures=new(doc);
+                prepared.Reader=new(doc,prepared.Viewport,token,true,row.Layers.Any(l=>l.Enabled&&l.Kind=="shadow")){VisibilityViewport=doc.Views.ActiveView.ActiveViewport,TextureBuilder=prepared.Textures};
                 prepared.Triangles=prepared.Reader.Read().ToArray();
                 prepared.Shadow=new(prepared.Light,new(90,90,90),true,Math.Max(doc.ModelAbsoluteTolerance*.001,1e-7));
             }
@@ -208,6 +209,8 @@ internal sealed class PreparedWorkbench(WorkbenchPlan plan) : IDisposable
     internal readonly Dictionary<Guid,string> ModeNames=[];
     internal RhinoViewport? Viewport;
     internal SceneReader? Reader;
+    internal TextureSceneBuilder? Textures;
+    private readonly Dictionary<string,SparseRgbImage> texturePasses=[];
     internal Triangle[] Triangles=[];
     internal ShadowSettings? Shadow;
     internal Vec3 Light;
@@ -218,7 +221,12 @@ internal sealed class PreparedWorkbench(WorkbenchPlan plan) : IDisposable
         DiskPassImage? material=null,shadow=null;
         if(row.Layers.Any(l=>l.Enabled&&l.Kind=="material")){material=new(Staging,w,h,Reader!.Groups);staged.Add(material);}
         if(row.Layers.Any(l=>l.Enabled&&l.Kind=="shadow")){shadow=new(Staging,w,h,[new("Shadow",new(90,90,90))]);staged.Add(shadow);}
-        if(material is not null||shadow is not null)
+        if(Textures!=null)foreach(string grouping in row.Layers.Where(l=>l.Enabled&&l.Kind=="texture").Select(l=>l.TextureGrouping).Distinct())
+        {
+            var empty=TexturedRasterizer.Render(1,1,Reader!.Camera,Textures.Surfaces,Textures.Objects,Array.Empty<TextureTriangle>());
+            texturePasses.Add(grouping,new(Staging,w,h,empty.Grouped(grouping).Groups));
+        }
+        if(material is not null||shadow is not null||texturePasses.Count>0)
         {
             var camera=Reader!.Camera;var world=Reader.WorldTriangles;const int tileSize=1024;
             for(int top=0;top<h;top+=tileSize)for(int left=0;left<w;left+=tileSize)
@@ -228,6 +236,13 @@ internal sealed class PreparedWorkbench(WorkbenchPlan plan) : IDisposable
                 int rw=x1-x0,rh=y1-y0;
                 var tile=camera with{Left=camera.Left+(camera.RightEdge-camera.Left)*x0/w,RightEdge=camera.Left+(camera.RightEdge-camera.Left)*x1/w,
                     Top=camera.Top-(camera.Top-camera.Bottom)*y0/h,Bottom=camera.Top-(camera.Top-camera.Bottom)*y1/h};
+                if(texturePasses.Count>0)
+                {
+                    var textureCamera=camera with{Left=camera.Left+(camera.RightEdge-camera.Left)*left/w,RightEdge=camera.Left+(camera.RightEdge-camera.Left)*(left+tw)/w,
+                        Top=camera.Top-(camera.Top-camera.Bottom)*top/h,Bottom=camera.Top-(camera.Top-camera.Bottom)*(top+th)/h};
+                    var samples=TexturedRasterizer.Render(tw,th,textureCamera,Textures!.Surfaces,Textures.Objects,Textures.Triangles,token);
+                    foreach(var (grouping,textureImage) in texturePasses)textureImage.WriteTile(left,top,samples.Grouped(grouping),token);
+                }
                 if(material is not null)
                 {
                     var triangles=world.Select((t,i)=>new Triangle(tile.Project(t.A),tile.Project(t.B),tile.Project(t.C),Triangles[i].Group));
@@ -240,15 +255,15 @@ internal sealed class PreparedWorkbench(WorkbenchPlan plan) : IDisposable
                 }
             }
         }
-        var passes=row.Layers.Where(l=>l.Enabled).Select(l=>new StyledPass(l.Kind=="material"?"材质 / 图层色":l.Kind=="shadow"?"Shadow":ModeNames[l.Mode],
-            l.Kind=="material"?material!:l.Kind=="shadow"?shadow!:Display[l.Mode],l.Blend,(byte)Math.Round(l.Opacity*255.0/100),l.Kind=="material")).ToArray();
+        var passes=row.Layers.Where(l=>l.Enabled).Select(l=>new StyledPass(l.Kind=="texture"?"材质":l.Kind=="material"?"图层颜色":l.Kind=="shadow"?"Shadow":ModeNames[l.Mode],
+            l.Kind=="texture"?(IPsdImage)texturePasses[l.TextureGrouping]:l.Kind=="material"?material!:l.Kind=="shadow"?shadow!:Display[l.Mode],l.Blend,(byte)Math.Round(l.Opacity*255.0/100),l.Kind is "material" or "texture")).ToArray();
         var image=new ConfiguredStack(passes);Directory.CreateDirectory(Path.GetDirectoryName(plan.Path)!);
         int count=PsdWriter.Save(plan.Path,image,token,plan.Overwrite,true);
         return new(row.Id,row.Name,plan.Path,true,w,h,count,watch.ElapsedMilliseconds,null);
     }
     public void Dispose()
     {
-        foreach(var image in staged)image.Dispose();foreach(var image in Display.Values)image.Dispose();
+        foreach(var image in texturePasses.Values)image.Dispose();foreach(var image in staged)image.Dispose();foreach(var image in Display.Values)image.Dispose();
         Reader?.Dispose();Viewport?.Dispose();if(Directory.Exists(Staging))Directory.Delete(Staging,true);
     }
 }

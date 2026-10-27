@@ -70,3 +70,10 @@ MCP 的 `material_generation_start` 与按钮执行相同自动流程。原 `mat
 `Test-LiveMaterialSelection.py` → `Check-LiveMaterialSelection.py` → `Finish-LiveMaterialSelection.py` 分阶段验证当前选择、无选择拒绝、当前图层与点击后的范围快照。`Test-CodexMaterialButton.py` / `Check-CodexMaterialButton.py` 实际启动模型生成并验证新图自动入库，运行会使用 Codex 图片额度；只在需要实机验收时执行。`Test-CodexMaterialFailure.py` / `Check-CodexMaterialFailure.py` 验证失败提示、可重试和取消。
 
 材质显示使用原生 Rhino PBR。原来的“材质 / 图层色”PSD 通道仍是平涂图层 RGB；需要贴图外观时，在导出工作台添加 Rendered 等原生显示模式图层。
+
+## v0.10 材质与 PSD 配合
+
+在 `RhinoSceneFlowMaterials` 应用材质后，打开 `RhinoSceneFlowPanel`，为 Named View 添加“通道 · 材质贴图”。默认按实际材质 ID 合并；可切换为按物件分层，同一个“材质”Group 包含全部像素层。沿用材质阶段计算的 UV 和资产物理尺寸；导出只读，不会重新生成图片或修改映射。阴影独立叠加。详见 [Workbench.md](Workbench.md)。
+
+
+v0.11 ChatKit 对话、参考图片、xatlas 异步展开和新增 `material_chat_*` / `material_unwrap_*` API：[接入与使用说明](ChatKit-Xatlas.md)。

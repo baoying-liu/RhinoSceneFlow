@@ -21,7 +21,7 @@ public sealed class MappingSettings
     public bool Checker { get; set; }
     public void Validate()
     {
-        if(Mode is not ("auto" or "plane" or "box" or "cylinder")||Alignment is not ("continuous" or "object")||Axis is not ("auto" or "x" or "y" or "z"))throw new ArgumentException("无效的映射方式 / 对齐 / 轴向。");
+        if(Mode is not ("auto" or "plane" or "box" or "cylinder" or "xatlas")||Alignment is not ("continuous" or "object")||Axis is not ("auto" or "x" or "y" or "z"))throw new ArgumentException("无效的映射方式 / 对齐 / 轴向。");
         if(OriginMeters is null||OriginMeters.Length!=3||OriginMeters.Any(v=>!double.IsFinite(v))||!double.IsFinite(Rotation)||!double.IsFinite(OffsetUMeters)||!double.IsFinite(OffsetVMeters))throw new ArgumentException("映射参数必须是有限数值。");
     }
 }

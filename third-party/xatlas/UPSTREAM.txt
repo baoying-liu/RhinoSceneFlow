@@ -1,0 +1,3 @@
+https://github.com/jpcy/xatlas
+commit f700c7790aaa030e794b52ba7791a05c085faf0c
+MIT license; original sources unmodified.

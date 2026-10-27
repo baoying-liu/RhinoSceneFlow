@@ -8,9 +8,19 @@
   </PropertyGroup>
   <ItemGroup>
     <FrameworkReference Include="Microsoft.WindowsDesktop.App.WindowsForms" />
+    <FrameworkReference Include="Microsoft.WindowsDesktop.App.WPF" />
+    <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.4314.35" ExcludeAssets="runtime" />
     <ProjectReference Include="../RhinoSceneFlow.Core/RhinoSceneFlow.Core.csproj" />
     <Reference Include="RhinoCommon"><HintPath>$(RhinoSystem)\RhinoCommon.dll</HintPath><Private>false</Private></Reference>
     <Reference Include="Eto"><HintPath>$(RhinoSystem)\Eto.dll</HintPath><Private>false</Private></Reference>
     <Reference Include="Rhino.UI"><HintPath>$(RhinoSystem)\Rhino.UI.dll</HintPath><Private>false</Private></Reference>
   </ItemGroup>
+  <Target Name="BuildNativeUv" BeforeTargets="PrepareForBuild">
+    <Exec Command="powershell -NoProfile -ExecutionPolicy Bypass -File &quot;$(MSBuildProjectDirectory)/../../scripts/Build-NativeUv.ps1&quot; -Configuration $(Configuration)" />
+  </Target>
+  <ItemGroup><None Include="../../artifacts/native-uv-build/$(Configuration)/SceneFlow.UvWorker.exe" Link="SceneFlow.UvWorker.exe" CopyToOutputDirectory="PreserveNewest" /></ItemGroup>
+  <ItemGroup><None Update="ChatKit/*.py;ChatKit/*.html;ChatKit/*.txt" CopyToOutputDirectory="PreserveNewest" /></ItemGroup>
+  <Target Name="KeepOnlyX64Loader" AfterTargets="Build">
+    <Delete Files="$(TargetDir)runtimes/win-x86/native/WebView2Loader.dll;$(TargetDir)runtimes/win-arm64/native/WebView2Loader.dll" />
+  </Target>
 </Project>

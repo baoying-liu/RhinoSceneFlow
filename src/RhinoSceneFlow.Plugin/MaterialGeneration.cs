@@ -28,7 +28,7 @@ public static class MaterialGeneration
     public static MaterialGenerationJob Start(MaterialAsset descriptor,string prompt,string[]? referenceImages=null)
     {
         if(stopping)throw new InvalidOperationException("Rhino 正在关闭。");
-        if(workers.Count>0)throw new InvalidOperationException("已有图片正在生成，请先完成或取消。");
+        if(workers.Count>0||MaterialChat.Busy)throw new InvalidOperationException("已有图片正在生成，请先完成或取消。");
         string executable=CodexImageRunner.FindExecutable()??throw new InvalidOperationException("未找到本机 Codex。请安装 Codex 或 VS Code Codex 扩展并登录；也可用 RHINOSCENEFLOW_CODEX 指定 codex.exe。");
         var job=Request(descriptor,prompt,referenceImages);job.Executor="codex-local";job.Status="running";job.Stage="正在启动本机 Codex";Save(job);
         string root=MaterialService.Library.Root;var cancel=new CancellationTokenSource();workers.Add(job.Id,cancel);

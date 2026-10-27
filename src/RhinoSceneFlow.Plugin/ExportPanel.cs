@@ -39,7 +39,8 @@ public sealed class ExportPanel : Form
     private readonly UITimer previews=new(){Interval=.04},save=new(){Interval=.4},detailTimer=new(){Interval=.2};
     private ViewDetails? detail;
     private CancellationTokenSource? cancellation;
-    private bool busy,shown,documentClosed;
+    private bool busy,shown,documentClosed,closed;
+    internal bool ClosedForUpdates=>closed;
     public BatchReport? LastReport{get;private set;}
     public bool IsExporting=>busy;
     internal RhinoDoc Document=>RhinoDoc.FromRuntimeSerialNumber(document)??throw new InvalidOperationException("文档已关闭。");
@@ -56,21 +57,25 @@ public sealed class ExportPanel : Form
         var root=Ui.Layout();root.AddRow(new Label{Text="Named Views · 每个视图独立设置画幅和 PSD 图层",Font=new Font(SystemFont.Bold,14)});
         root.AddRow(tools);root.Add(body,true,true);root.AddRow(output);root.AddRow(progress);root.AddRow(actions);root.AddRow(log);Content=root;
         export.Click+=async(_,_)=>await StartExport();cancel.Click+=(_,_)=>{cancellation?.Cancel();status.Text="正在取消…";};
-        previews.Elapsed+=(_,_)=>{if(busy||queue.Count==0){previews.Stop();return;}var id=queue.Dequeue();if(cards.TryGetValue(id,out var card))Guard(card.RefreshPreview);};
-        save.Elapsed+=(_,_)=>{save.Stop();Guard(()=>WorkbenchStore.Save(Document,rows));};
-        detailTimer.Elapsed+=(_,_)=>{detailTimer.Stop();if(!busy&&detail is not null)Guard(detail.RefreshPreview);};
-        Shown+=(_,_)=>{shown=true;foreach(var row in rows)Queue(row.Id);};
+        previews.Elapsed+=(_,_)=>{if(closed)return;if(busy||queue.Count==0){previews.Stop();return;}var id=queue.Dequeue();if(cards.TryGetValue(id,out var card))Guard(card.RefreshPreview);};
+        save.Elapsed+=(_,_)=>{if(closed)return;save.Stop();Guard(()=>WorkbenchStore.Save(Document,rows));};
+        detailTimer.Elapsed+=(_,_)=>{if(closed)return;detailTimer.Stop();if(!busy&&detail is not null)Guard(detail.RefreshPreview);};
+        Shown+=(_,_)=>{if(closed)return;shown=true;foreach(var row in rows)Queue(row.Id);};
         Closing+=(_,e)=>{if(busy&&!documentClosed){cancellation?.Cancel();e.Cancel=true;status.Text="正在取消，请完成后再关闭。";}};
         Closed+=(_,_)=>
         {
-            if(!documentClosed)Guard(()=>WorkbenchStore.Save(Document,rows));RhinoDoc.CloseDocument-=OnDocumentClosed;
+            if(closed)return;closed=true;shown=false;queue.Clear();
+            // Form.Close does not imply IsDisposed; child disposal can fire value
+            // events and already queued timer ticks can still reach this window.
+            if(!documentClosed)try{WorkbenchStore.Save(Document,rows);}catch(Exception ex){RhinoApp.WriteLine(ex.Message);}
+            RhinoDoc.CloseDocument-=OnDocumentClosed;
             foreach(var t in new[]{previews,save,detailTimer}){t.Stop();t.Dispose();}
             foreach(var c in cards.Values)c.Dispose();detail?.Dispose();cancellation?.Dispose();
         };
         RhinoDoc.CloseDocument+=OnDocumentClosed;RefreshNamedViews();
     }
-    private void OnDocumentClosed(object? s,DocumentEventArgs e){if(e.Document.RuntimeSerialNumber==document){documentClosed=true;cancellation?.Cancel();Close();}}
-    internal void Guard(Action action){try{action();}catch(Exception ex){status.Text=ex.Message;}}
+    private void OnDocumentClosed(object? s,DocumentEventArgs e){if(!closed&&e.Document.RuntimeSerialNumber==document){documentClosed=true;cancellation?.Cancel();Close();}}
+    internal void Guard(Action action){if(closed||IsDisposed)return;try{action();}catch(Exception ex){if(!closed&&!IsDisposed)status.Text=ex.Message;}}
     private void Include(bool value){foreach(var row in rows){row.Included=value;cards[row.Id].Sync();}Changed(null,false);}
     public void RefreshNamedViews()
     {
@@ -88,10 +93,11 @@ public sealed class ExportPanel : Form
     }
     internal void Changed(ViewExportRow? row,bool refresh=true)
     {
+        if(closed||IsDisposed)return;
         save.Stop();save.Start();if(row is not null){row.Status="设置已更新";if(cards.TryGetValue(row.Id,out var c))c.SyncStatus();if(refresh&&(detail is null||detail.Row!=row))Queue(row.Id);}
         if(detail is not null&&detail.Row==row){detailTimer.Stop();detailTimer.Start();}
     }
-    internal void Queue(Guid id){if(!queue.Contains(id))queue.Enqueue(id);if(shown&&!busy)previews.Start();}
+    internal void Queue(Guid id){if(closed||IsDisposed)return;if(!queue.Contains(id))queue.Enqueue(id);if(shown&&!busy)previews.Start();}
     public void RefreshCard(Guid id){if(!busy)cards[id].RefreshPreview();}
     public void CapturePreview(Guid id,string path)
     {if(!Path.IsPathFullyQualified(path)||!path.EndsWith(".png",StringComparison.OrdinalIgnoreCase))throw new ArgumentException("请输入绝对 PNG 路径。");Directory.CreateDirectory(Path.GetDirectoryName(path)!);using var b=WorkbenchService.Preview(Document,rows.First(r=>r.Id==id),700);b.Save(path,System.Drawing.Imaging.ImageFormat.Png);}
@@ -122,7 +128,7 @@ public sealed class ExportPanel : Form
     }
     public async Task StartExport()
     {
-        if(busy)return;
+        if(busy||closed||IsDisposed)return;
         try
         {
             var plan=WorkbenchService.Plan(Document,rows,folder.Text,Collision);WorkbenchStore.Save(Document,rows);SceneFlowPlugin.Instance.ExportDirectory=Path.GetFullPath(folder.Text);
@@ -133,7 +139,7 @@ public sealed class ExportPanel : Form
                 foreach(var item in plan)
                 {
                     token.ThrowIfCancellationRequested();
-                    var r=await OnUi(()=>{status.Text=$"正在导出 {item.View.Name} · 捕获 / 计算 / 写入";var row=rows.First(v=>v.Id==item.View.Id);row.Status="导出中…";cards[row.Id].SyncStatus();return row;});BatchFileResult result;
+                    var r=await OnUi(()=>{token.ThrowIfCancellationRequested();if(closed||documentClosed)throw new OperationCanceledException(token);status.Text=$"正在导出 {item.View.Name} · 捕获 / 计算 / 写入";var row=rows.First(v=>v.Id==item.View.Id);row.Status="导出中…";cards[row.Id].SyncStatus();return row;});BatchFileResult result;
                     try{using var prepared=await OnUi(()=>WorkbenchService.Prepare(Document,item,token));result=await Task.Run(()=>prepared.Write(token),token);}
                     catch(OperationCanceledException){throw;}
                     catch(Exception ex){result=new(r.Id,r.Name,item.Path,false,r.Width,r.Height,0,0,ex.Message);}
@@ -150,8 +156,8 @@ public sealed class ExportPanel : Form
                     status.Text=$"{(LastReport?.Cancelled==true?"已取消":"完成")} · 成功 {results.Count(r=>r.Ok)} / 失败 {results.Count(r=>!r.Ok)}";if(queue.Count>0)previews.Start();return true;});
             }
         }
-        catch(OperationCanceledException){status.Text="已取消，未写入文件。";}
-        catch(Exception ex){if(!IsDisposed)status.Text=ex.Message;}
+        catch(OperationCanceledException){if(!closed&&!IsDisposed)status.Text="已取消，未写入文件。";}
+        catch(Exception ex){if(!closed&&!IsDisposed)status.Text=ex.Message;}
     }
     public object GetState()=>new{document,busy,visible=Visible,directory=folder.Text,status=status.Text,detail=detail?.Row.Id,views=rows.ToArray(),
         previews=cards.Values.Select(c=>new{id=c.Row.Id,loaded=c.Loaded}).ToArray(),displayModes=WorkbenchService.Modes().Select(m=>new{id=m.Id,name=m.LocalName}).ToArray(),lastReport=LastReport};
@@ -205,18 +211,25 @@ internal sealed class ViewCard : IDisposable
     internal void SyncStatus()=>status.Text=Row.Status;
     internal void RebuildLayers()
     {
+        if(owner.ClosedForUpdates)return;
         var layout=Ui.Layout();layout.Spacing=new(3,5);
         for(int index=0;index<Row.Layers.Count;index++)
         {
             int i=index;var l=Row.Layers[i];var enabled=new CheckBox{Checked=l.Enabled};var type=new DropDown{Width=160};
-            type.Items.Add(new ListItem{Key="",Text="请选择通道 / 显示模式…"});type.Items.Add(new ListItem{Key="shadow",Text="通道 · 阴影"});type.Items.Add(new ListItem{Key="material",Text="通道 · 材质 / 图层色"});
+            type.Items.Add(new ListItem{Key="",Text="请选择通道 / 显示模式…"});type.Items.Add(new ListItem{Key="shadow",Text="通道 · 阴影"});type.Items.Add(new ListItem{Key="texture",Text="通道 · 材质贴图"});type.Items.Add(new ListItem{Key="material",Text="通道 · 图层颜色"});
             foreach(var m in WorkbenchService.Modes())type.Items.Add(new ListItem{Key="display:"+m.Id,Text="模式 · "+m.LocalName});type.SelectedKey=l.Kind=="display"?"display:"+l.Mode:l.Kind;
             var blend=new DropDown{Width=96};foreach(var b in Ui.Blends)blend.Items.Add(new ListItem{Key=b.Key,Text=b.Name});blend.SelectedKey=l.Blend;
             var opacity=Ui.Number(0,100,0,55);opacity.Value=l.Opacity;
-            type.SelectedValueChanged+=(_,_)=>{var key=type.SelectedKey??"";l.Kind=key.StartsWith("display:",StringComparison.Ordinal)?"display":key;l.Mode=l.Kind=="display"?Guid.Parse(key[8..]):Guid.Empty;owner.Changed(Row,false);};
+            type.SelectedValueChanged+=(_,_)=>{if(owner.ClosedForUpdates)return;var key=type.SelectedKey??"";l.Kind=key.StartsWith("display:",StringComparison.Ordinal)?"display":key;l.Mode=l.Kind=="display"?Guid.Parse(key[8..]):Guid.Empty;owner.Changed(Row,false);RebuildLayers();};
             enabled.CheckedChanged+=(_,_)=>{l.Enabled=enabled.Checked==true;owner.Changed(Row,false);};blend.SelectedValueChanged+=(_,_)=>{l.Blend=blend.SelectedKey??"norm";owner.Changed(Row,false);};opacity.ValueChanged+=(_,_)=>{l.Opacity=(int)opacity.Value;owner.Changed(Row,false);};
             var up=Ui.Button("↑",()=>Move(i,-1),25);up.Enabled=i>0;var down=Ui.Button("↓",()=>Move(i,1),25);down.Enabled=i+1<Row.Layers.Count;
             layout.AddRow(enabled,type,blend,opacity,new Label{Text="%"},up,down,Ui.Button("×",()=>{Row.Layers.RemoveAt(i);RebuildLayers();owner.Changed(Row,false);},25));
+            if(l.Kind=="texture")
+            {
+                var grouping=new DropDown{Width=230};grouping.Items.Add(new ListItem{Key="material",Text="相同材质合并（默认）"});grouping.Items.Add(new ListItem{Key="object",Text="按物件分开 · 同一 Group"});grouping.SelectedKey=l.TextureGrouping;
+                grouping.SelectedValueChanged+=(_,_)=>{l.TextureGrouping=grouping.SelectedKey??"material";owner.Changed(Row,false);};
+                var sub=Ui.Layout();sub.AddRow(new Label{Text="材质分层"},grouping,null);layout.AddRow(sub);
+            }
         }
         layerHost.Content=layout;
     }

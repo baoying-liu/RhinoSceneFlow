@@ -134,3 +134,28 @@ Build.ps1 核心回归通过，编译零警告 / 错误。B 最终使用部署 `
 - PSD 联动与独立解析再次通过，320×200，Rendered / Shadow / 材质组，最大重组差 1/255；文件 `materials/demo/export-5003362c/Materials_Perspective.psd`。未以独立解析代替 Photoshop UI 验收。
 
 本次未修复历史重复 Undo 自动化不稳定问题，原记录保留。中间旧 PID 59516 被管理端记为 UnknownExit，已检查 ExitCode=0、无 CrashEvents / NewDumps 并保留 `artifacts/codex-ui-prior-exit.json` 后确认退出，再重试加载；未强杀 Rhino，未改其他通道。首轮实际生成 PID 42296 也成功完成后正常经管理端切换至最终构建，首轮与最终请求均保留于材质库。
+
+# 2026-10-27 v0.10 材质贴图分层
+
+本地 `scripts/Build.ps1`：零警告、零错误，既有验证及新增 TextureValidation 通过。新增独立世界射线 / 三角形重心 UV oracle、正负重复 / Clamp / V 方向、近侧裁剪、遮挡、按实际材质 / 按物件合成一致、每层独立 RGBA、1030 像素跨 1024 tile 边界以及取消验证。PSD 内每层保留自己的 RGB，不借用整幅合成图。
+
+首轮 B PID 70328 完成平面、箱体、圆柱、球体和对象 / 图层材质继承；两视图各导出合并 / 拆分。6 物件同材质合并成 2 层，同名但 ID 不同的材质保持独立；按物件为 6 层且直接位于单一“材质”Group。两种分层的合成 RGBA 逐字节相同，太阳变化不影响底色；独立 psd-tools 重合成的最大预乘 RGBA 差异为 1/255（Core 交错遮挡夹具约 1.82/255）。真实 Eto 复制粘贴保留分层方式并深复制；失效 UV 只读拒绝。该轮仍有 PBR 默认灰色重复相乘造成的偏暗，不能作为颜色正确的验收；后续独立物理像素 oracle 发现并修正此问题。证据：`artifacts/texture-native-run2.json`、`artifacts/texture-verified-run2.json`。独立文件解码不等于 Photoshop 界面验收。
+
+部署更换时保留失败结果：旧 PID 60896 UnknownExit（code 0）；PID 70328、68588 AbnormalExit（code 3）。均未发现新的 CrashEvents / Dumps；这些结果没有计作测试成功，也没有足够证据归因于某个模块。原始记录：`artifacts/texture-exit-evidence.json`、`texture-exit2-evidence.json`、`texture-exit3-evidence.json`；失败任务 `5393d822c0364f548a8cc35b65b7cf79`、`97b878058d8542bf8a1793750242e54c`、`6e092d218bf34d0081f14ce9b0111dd1`。已审阅并通过管理器确认后重新测试，未强制结束 Rhino；关闭稳定性仍未验收。
+
+本版只支持不透明颜色位图 / 实体颜色，不含光照、粗糙度 / 法线照明、反射、透明裁片、块实例、Brep 面级多材质或程序纹理烘焙。真实 UV 缺失 / 失效和图片丢失必须先修复。并未重做 AI 生成或消耗图片额度。
+
+
+## v0.11 ChatKit / xatlas 实机验证（2026-10-27）
+
+`Build.ps1` 零警告 / 零错误；原有验证及新增原生 xatlas、真实尺度面积、源面对应、23,040 面三叶结、76,800 面毫米浮点网格、局部重切和取消验证通过。后者故意模拟文档浮点坐标，95 分位拉伸 1.1304、最大 1.9978。`Test-ChatKitProtocol.py` 用明确的 fixture agent 验证真实 SDK SSE、参考图上传、生成图事件、SQLite 持久化、端口 / token 轮换及鉴权；该协议测试不调用模型。真实 Codex 文本调用另经 `--chat-smoke` 通过。
+
+最终办公室 B：PID **78296**、Platform **22801**，任务 `9e9c822a08f94c7580b151c647d3bbba` 成功，部署 `20261027-221139-9a8160dde1a04d5d8307f2195e6d4db6`。76,800 面三叶结 + NURBS 球体网格化 16,128 面，共 **92,928 面，26.112 秒**；原网格 / Brep 类型和 geometry DataCRC 不变。三叶结 465 岛，95 分位拉伸 **1.11477**，最大 **1.99669**，重切 16 面（原最大 107.274）；球体 7 岛，95 分位 1.10142，最大 1.18837，不需重切。总 UV 面积与三维面积一致。这是面积校准，有接缝和局部变形，不能宣称逐点等尺。
+
+真实 ChatKit WebView2 组件 ready / error=null；文本讨论完成且不产生图片；通过组件 `setComposerValue(files)` 上传参考图，再用 `sendUserMessage` 请求生成，两个 response.start/end 成对完成。新 PNG 自动验证、入库、选中，实际资产 `0adc969a-9be0-4a09-9dcc-05b19cc7afac`。Native WebView2 截图见 `artifacts/rhino-B/xatlas/chatkit-ui.png`，回复与图片实际可见；关闭重开后 `setThreadId` 恢复会话和图片。源码中的 stdio 桥使用单行紧凑 JSON，修复首轮“图片已入库但聊天仍停在启动”的问题；首轮失败记录保留在 baseline 中。
+
+材质应用复用 xatlas 记录；3dm 读回的自定义映射网格、纹理坐标和 mapping hash 保留；计算期间替换源几何会拒绝提交，取消不留下 UV 记录。实际 Rendered / Arctic 显示后校准记录仍有效。全程用 Platform、SDK、文件检查，未使用鼠标；仅将 B 测试窗口显示出来初始化 GPU 视图。隐藏的新建 Rhino 在初始化前的原生截图曾只显示平涂 / 线框，不能作为材质可视验证；显示 B 后的真实 Rendered 截图为 `native-unselected.png`，最终 PSD 已重新导出。
+
+完整样例：`artifacts/examples/ChatKit-Xatlas/AI_Complex_Merged.psd` 与 `AI_Complex_ByObject.psd`，含真实 AI 材质、独立 Shadow（正片叠底 75%）和 Arctic。前者材质 Group 一个子层，后者两个直接物件子层。强制独立 psd-tools 重合成两种分层差异 **0**，与存储预览最大预乘 RGBA 差 **1.867/255**；不是打开 Photoshop 界面验收。证据：`artifacts/rhino-B/xatlas/{verified,workflow-verified,guards-verified,persistence-verified}.json`、`artifacts/examples/ChatKit-Xatlas/decoded.json`。
+
+部署期间保留 WebView2 多架构 DLL 冲突、旧 PID 61196 UnknownExit（code 0、无 CrashEvents / NewDumps）、主动取消的中间任务；没有把这些计为通过，也未强制结束 Rhino。WebView2 现仅部署 x64 loader；任务 05 为收拢最终修正主动取消，任务 06 才是最终成功验收。

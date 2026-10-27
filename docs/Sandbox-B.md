@@ -121,3 +121,12 @@ v0.3 的切平面法线偏移在接触反例中会越过遮挡片，导致应为
 `RhinoSceneFlowMaterials` 现在自动调用本机已登录的 Codex 生成图片，并跟随当前 Rhino 选择。实测参考图 → 新 PNG → 自动入库 / 选中、失败 / 重试 / 取消、重开面板继续显示任务、A/B 切换及图层范围均通过。旧手动 Agent API 保留，按钮不再只提交等待任务。无额外 MCP 服务、无独立 API key。详见 Validation.md / Materials.md。
 
 示例模型仍在 `artifacts/rhino-B/materials/demo/SceneFlow-Materials-Demo.3dm`，材质库仍为 `artifacts/materials/library-v07`。本轮旧退出记录与失败任务保留，未把 UnknownExit 记为测试通过。
+
+
+## 最新 v0.11（2026-10-27）
+
+办公室 B，管理 MCP 19540，原厂 Platform 22801。最终成功任务 `9e9c822a08f94c7580b151c647d3bbba`；部署 `20261027-221139-9a8160dde1a04d5d8307f2195e6d4db6`；实例 `d0f4cd958d9c4e909360e13dff6c334f`；PID **78296**。仅更新测试沙盒，未发布正式 Rhino。
+
+ChatKit 实际对话、上传参考图、真实新图片、入库 / 选中和重开历史均通过。xatlas 92,928 面组合约 26.112 秒，原几何未变，3dm 映射 / hash 持久化、取消及过期输入拒绝通过。材质库仍为 `artifacts/materials/library-v07`。测试模型 `artifacts/rhino-B/xatlas/Xatlas_0b67f78e.3dm`；完整样例在 `artifacts/examples/ChatKit-Xatlas`。详情与限制见 Validation.md 和 ChatKit-Xatlas.md。
+
+通过管理器显示了 B 窗口以初始化原生 GPU 视图；没有使用鼠标。当前 B 模型 / 面板保留供手工尝试。旧失败、未知退出和主动取消记录保留，不视为成功。

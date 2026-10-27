@@ -59,7 +59,7 @@ print(McpApi.Execute(json.dumps(request)))
 
 `mode` 为 auto / plane / box / cylinder，`alignment` 为 continuous / object，`axis` 为 auto / x / y / z。AI 任务必须由外部 Agent 读取、调用图像工具并回填；pending 不代表已生成。具体映射范围、人工标定与材质显示模式导出见 [Materials.md](Materials.md)。
 
-RhinoSceneFlow v0.9.0 不启动 MCP 服务，不监听额外端口，不修改 Platform 私有实现。使用已安装的 Rhino-MCP-Platform 的 `run_python` 工具，在 Rhino UI 线程调用公开入口：
+RhinoSceneFlow v0.10.0 不启动 MCP 服务，不监听额外端口，不修改 Platform 私有实现。使用已安装的 Rhino-MCP-Platform 的 `run_python` 工具，在 Rhino UI 线程调用公开入口：
 
 ```csharp
 string RhinoSceneFlow.Plugin.McpApi.Execute(string requestJson)
@@ -123,7 +123,7 @@ request = {
         'width': 2048, 'height': 1280,
         'layers': [
             {'kind': 'shadow', 'blend': 'mul ', 'opacity': 60},
-            {'kind': 'material', 'blend': 'norm', 'opacity': 100},
+            {'kind': 'texture', 'textureGrouping': 'material', 'blend': 'norm', 'opacity': 100},
             {'kind': 'display', 'mode': 'DISPLAY-MODE-GUID'}
         ],
         'camera': {'yaw': 10, 'pitch': -5, 'zoom': 1.2},
@@ -133,7 +133,7 @@ request = {
 print(McpApi.Execute(json.dumps(request)))
 ```
 
-`layers` 从上到下对应 PSD 堆叠。`kind` 为 `shadow`、`material` 或 `display`，显示模式需提供 `mode`。混合 key 为 `norm`、`mul `（末尾空格必须保留）、`scrn`、`over`、`dark`、`lite`；不透明度为 0–100 的整数，`enabled` 默认 true。
+`layers` 从上到下对应 PSD 堆叠。`kind` 为 `shadow`、`texture`（真实贴图）、`material`（兼容图层色）或 `display`，显示模式需提供 `mode`。混合 key 为 `norm`、`mul `（末尾空格必须保留）、`scrn`、`over`、`dark`、`lite`；不透明度为 0–100 的整数，`enabled` 默认 true。
 
 相机支持 `yaw`（±180°）、`pitch`（±89°）、`zoom`（0.01–100）、`panX/Y/Z`（模型单位），均为相对已保存 Named View 的覆盖。太阳高度 0.1–90°、方位 0–360°。`mode`（顶层）只控制卡片预览；PSD 中的显示模式由每个图层条目控制。工作台每边 64–8192 像素，PSD 原始像素数据约 2 GB 上限；旧单视图 / `export_named_views` 的 800 万像素限制保留。
 
@@ -201,8 +201,17 @@ print(McpApi.Execute(json.dumps(request)))
 
 ## v0.5 Named View 批量导出
 
-`export_named_views` 每个视图写一个 PSD，选中的材质色层和阴影层组合到同一文件。材质通道当前是图层色，不是纹理或渲染截图。`views` 使用 `named_views` 返回的 id 作为 viewId，宽高均显式给出；按请求画幅调整相机，保持文档主视图不变。
+`export_named_views` 每个视图写一个 PSD，选中的材质色层和阴影层组合到同一文件。此旧接口的 material 通道是图层色；真实贴图请用 export_workbench 的 texture 通道。`views` 使用 `named_views` 返回的 id 作为 viewId，宽高均显式给出；按请求画幅调整相机，保持文档主视图不变。
 
 API 不弹覆盖窗口，默认重名编号；显式 `collision:"overwrite"` 才允许覆盖已有原名文件。同一批次的清理后同名视图仍编号避免互相覆盖。`collision:"cancel"` 在遇到已有文件时整体拒绝预检，返回 `ok:false`，不写入文件。所有尺寸、视图、通道先预检；运行中单项失败则记录该项错误并继续其余视图。
 
 `result.files` 含 `viewId/name/path/ok/width/height/layers/milliseconds/error`，`result.cancelled` 为执行取消标记。API 目前同步执行；Eto 面板使用共享服务的后台任务路径，支持响应式取消。完整示例及测试见 [Export-Panel.md](Export-Panel.md)。
+
+## v0.10 真实材质通道
+
+`configure_view` 的图层新增 `{"kind":"texture","textureGrouping":"material"}`；`textureGrouping` 可选 `material`（默认，同一有效 RenderMaterial.Id 合并）或 `object`（每个物件一层，全部置于一个“材质”Group）。`blend`、`opacity`、`enabled` 及复制粘贴保持相同契约。`export_workbench` 按保存配置输出真实颜色贴图与现有 UV，不含光照。旧 `kind:material` 与 `export_psd` / `export_named_views` 继续输出图层颜色。新视图默认阴影 `mul ` 在上、材质贴图在下；旧保存配置保持原样。
+
+例如 `settings:{"width":2048,"height":1280,"layers":[{"kind":"shadow","blend":"mul "},{"kind":"texture","textureGrouping":"object"}]}`。只读导出遇到 SceneFlow UV 失效、图片丢失或不支持的透明/块/面级材质会报错，须在材质阶段先修复。
+
+
+v0.11 ChatKit 对话、参考图片、xatlas 异步展开和新增 `material_chat_*` / `material_unwrap_*` API：[接入与使用说明](ChatKit-Xatlas.md)。

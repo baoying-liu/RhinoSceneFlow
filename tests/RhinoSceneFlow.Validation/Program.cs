@@ -1,5 +1,21 @@
 using RhinoSceneFlow.Core;
 
+if(args.FirstOrDefault()=="--uv-file")
+{
+    using var r=new BinaryReader(File.OpenRead(args[1]));if(r.ReadUInt32()!=0x31565553u)throw new Exception("Invalid mesh input");
+    int nv=r.ReadInt32(),ni=r.ReadInt32();var points=new Vec3[nv];for(int i=0;i<nv;i++)points[i]=new(r.ReadSingle(),r.ReadSingle(),r.ReadSingle());var indices=new int[ni];for(int i=0;i<ni;i++)indices[i]=r.ReadInt32();
+    var result=await XatlasRunner.RunAsync(Path.GetFullPath("artifacts/native-uv-build/Release/SceneFlow.UvWorker.exe"),points,indices);
+    string json=System.Text.Json.JsonSerializer.Serialize(new{result.Charts,result.SurfaceArea,result.UvArea,result.StretchMedian,result.Stretch95,result.StretchMax,result.RepairedTriangles,result.RawStretchMax});Console.WriteLine(json);File.WriteAllText(args[2],json);return;
+}
+
+if(args.FirstOrDefault()=="--chat-smoke")
+{
+    string dir=Path.GetFullPath("artifacts/chat-real-smoke");Directory.CreateDirectory(dir);
+    var reply=await CodexMaterialChatRunner.RunAsync(dir,"USER: 请用一句中文解释复杂双曲面为什么需要 UV 接缝。这是讨论，不要生成图片。",[],Console.WriteLine,CancellationToken.None);
+    if(reply.ImagePath!=null||string.IsNullOrWhiteSpace(reply.Reply))throw new Exception("Discussion unexpectedly generated an image or returned no reply.");
+    File.WriteAllText(Path.Combine(dir,"reply.json"),System.Text.Json.JsonSerializer.Serialize(reply));Console.WriteLine(reply.Reply);return;
+}
+
 static void Check(bool condition, string message)
 { if (!condition) throw new Exception(message); }
 static ClipVertex V(double x, double y, double z = .6, double w = 1) => new(x, y, z, w);
@@ -333,3 +349,5 @@ if(args.Contains("--large"))
     }
     finally{Directory.Delete(largeStage,true);}
 }
+TextureValidation.Run(output);
+await UnwrapValidation.Run(output);

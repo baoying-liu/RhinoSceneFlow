@@ -1,0 +1,20 @@
+<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<style>html,body{margin:0;width:100%;height:100%;background:#fff;font:14px system-ui}openai-chatkit{display:block;width:100%;height:100%}#error{padding:20px;color:#983535;display:none}</style>
+<div id="error"></div><openai-chatkit id="chat"></openai-chatkit>
+<script src="https://cdn.platform.openai.com/deployments/chatkit/chatkit.js"></script>
+<script>
+const token='__TOKEN__',base='__BASE__';window.chatkitState={ready:false,error:null,thread:null};
+function fail(e){window.chatkitState.error=String(e);const el=document.getElementById('error');el.style.display='block';el.textContent='ChatKit 加载失败：'+e;}
+customElements.whenDefined('openai-chatkit').then(()=>{
+ const chat=document.getElementById('chat');window.chat=chat;
+ chat.addEventListener('chatkit.error',e=>fail(e.detail.error?.message??JSON.stringify(e.detail)));
+ chat.addEventListener('chatkit.ready',()=>window.chatkitState.ready=true);
+ chat.addEventListener('chatkit.thread.change',e=>window.chatkitState.thread=e.detail.threadId);
+ chat.setOptions({api:{url:base+'/chatkit',domainKey:'domain_pk_localhost_dev',fetch:(url,init={})=>{const headers=new Headers(init.headers);headers.set('Authorization','Bearer '+token);return fetch(url,{...init,headers});},uploadStrategy:{type:'direct',uploadUrl:base+'/upload?token='+token}},
+  locale:'zh-CN',theme:{colorScheme:'light',radius:'round'},header:{title:{text:'SceneFlow 材质助手'}},
+  startScreen:{greeting:'描述材质，或添加参考图片。可以连续修改同一方案；确认后用下方按钮应用到当前物件或图层。',prompts:[{label:'生成清水混凝土',prompt:'生成浅灰清水混凝土，无接缝，纹理均匀',icon:'sparkle'},{label:'先讨论材质方案',prompt:'复杂双曲面适合什么材质和展开方式？请先讨论，不要生成图片。',icon:'lightbulb'}]},
+  composer:{placeholder:'描述材质或继续修改，支持图片参考…',attachments:{enabled:true,maxCount:8,maxSize:33554432,accept:{'image/png':['.png'],'image/jpeg':['.jpg','.jpeg']}}},
+  threadItemActions:{feedback:false,retry:true}});
+}).catch(fail);
+setTimeout(()=>{if(!window.customElements.get('openai-chatkit'))fail('无法访问 OpenAI ChatKit 组件，请检查网络。');},20000);
+</script></html>

@@ -27,12 +27,12 @@ public static class McpApi
             switch (operation)
             {
                 case "describe":
-                    response = new { name = "RhinoSceneFlow", version = "0.9.0", transport = "Rhino-MCP-Platform.run_python",materialLibrary=MaterialApi.Contract,
+                    response = new { name = "RhinoSceneFlow", version = "0.11.0", transport = "Rhino-MCP-Platform.run_python",materialLibrary=MaterialApi.Contract,
                         entryPoint = "RhinoSceneFlow.Plugin.McpApi.Execute(string)",
                         operations = new object[] {
                             new { name="workbench_settings",required=new[]{"document"},parameters="Per-view configuration, exportable display modes and PSD blend keys",output="views, displayModes, blends" },
-                            new { name="configure_view",required=new[]{"document","viewId","settings"},parameters="Patch width,height,mode,layers:[{kind:shadow|material|display,mode:guid,blend:norm|mul |scrn|over|dark|lite,opacity:0..100,enabled:true}], camera:{yaw,pitch,zoom,panX,panY,panZ}, sun:{useDocument,azimuth,altitude},included. Saved per document path, without altering Named Views.",output="Updated view configuration" },
-                            new { name="export_workbench",required=new[]{"document","directory"},parameters="views?: [Named View GUIDs] (otherwise included saved views); collision?: number|overwrite|cancel. Captures RGB display modes and tiled material/shadow passes with per-pass blending and real material groups. Side <=8192; total <=8192 squared; PSD raw <=2GB.",output="Batch report" },
+                            new { name="configure_view",required=new[]{"document","viewId","settings"},parameters="Patch width,height,mode,layers:[{kind:shadow|texture|material|display,textureGrouping:material(default)|object,mode:guid,blend:norm|mul |scrn|over|dark|lite,opacity:0..100,enabled:true}], camera:{yaw,pitch,zoom,panX,panY,panZ}, sun:{useDocument,azimuth,altitude},included. Saved per document path, without altering Named Views.",output="Updated view configuration" },
+                            new { name="export_workbench",required=new[]{"document","directory"},parameters="views?: [Named View GUIDs] (otherwise included saved views); collision?: number|overwrite|cancel. Captures RGB display modes, unlit bitmap albedo (kind:texture, material-ID merge or per-object children in one group), legacy layer RGB (kind:material), and tiled shadows. Independent pass blend/opacity. Side <=8192; total <=8192 squared; PSD raw <=2GB.",output="Batch report" },
                             new { name="open_panel", required=new[]{"document"}, parameters="Opens or activates the native Eto Named View export panel", output="Panel state" },
                             new { name="panel_status", required=new[]{"document"}, parameters="Read-only panel state", output="Panel state, or open=false" },
                             new { name="named_views", required=new[]{"document"}, parameters="Lists stable named-view IDs and default dimensions", output="Named View entries" },

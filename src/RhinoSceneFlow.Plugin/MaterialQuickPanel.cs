@@ -70,7 +70,10 @@ public sealed class MaterialQuickPanel : Form
 {
     private readonly uint document;
     private Guid[] targets=[];
-    private Guid? selected,jobId;
+    private Guid? selected,jobId,unwrapJob,chatJob;
+    private Action? afterUnwrap;
+    private readonly MaterialChatView chat;
+    private bool closed;
     private readonly TextArea prompt=new(){Height=90,Wrap=true,Text="浅暖灰石灰岩，均匀纹理，无接缝"};
     private readonly Label targetLabel=new(),status=new(){Text="输入描述或选择已有材质。",Wrap=WrapMode.Word,Width=530},referenceLabel=new(){Text="未添加参考图片",Wrap=WrapMode.Word,Width=510};
     private readonly ImageView image=new(){Size=new(500,260)};
@@ -85,7 +88,7 @@ public sealed class MaterialQuickPanel : Form
     private Queue<Action>? steps;
     private DateTime started;
     private bool selecting;
-    public bool Busy=>steps!=null;
+    public bool Busy=>steps!=null||unwrapJob.HasValue;
     private RhinoDoc Doc=>RhinoDoc.FromRuntimeSerialNumber(document)??throw new InvalidOperationException("文档已关闭。");
     private static TableLayout Row(params Control?[] controls)=>new(){Spacing=new(6,4),Rows={new TableRow(controls.Select(c=>new TableCell(c,c==null)).ToArray())}};
     public MaterialQuickPanel(RhinoDoc doc,Guid[] ids)
@@ -93,7 +96,7 @@ public sealed class MaterialQuickPanel : Form
         document=doc.RuntimeSerialNumber;Title="RhinoSceneFlow · 给物件上材质";ClientSize=new(580,740);MinimumSize=new(570,690);Padding=new(14);
         width.Value=height.Value=1000;
         scope.Items.Add(new ListItem{Key="object",Text="应用到该物体"});scope.Items.Add(new ListItem{Key="layer",Text="应用到该物体所在图层"});scope.SelectedIndex=0;
-        foreach(var t in new[]{("auto","自动"),("plane","平面"),("box","箱式"),("cylinder","圆柱侧面")})mode.Items.Add(new ListItem{Key=t.Item1,Text=t.Item2});mode.SelectedIndex=0;
+        foreach(var t in new[]{("auto","自动"),("plane","平面"),("box","箱式"),("cylinder","圆柱侧面"),("xatlas","xatlas 复杂曲面展开")})mode.Items.Add(new ListItem{Key=t.Item1,Text=t.Item2});mode.SelectedIndex=0;
         apply=Ui.Button("应用材质",()=>Start(false));generate=Ui.Button("生成材质",Generate);prepare=Ui.Button("计算 / 更新真实世界 UV",()=>Start(true));
         var main=Ui.Layout();main.AddRow(targetLabel);main.AddRow(image);main.AddRow(Row(assets,Ui.Button("刷新",RefreshAssets),null));
         main.AddRow(prompt);main.AddRow(Row(Ui.Button("＋参考图片",AddReferences),Ui.Button("清除图片",()=>{references.Clear();RefreshReferences();}),generate,null));main.AddRow(referenceLabel);
@@ -104,13 +107,15 @@ public sealed class MaterialQuickPanel : Form
         details.AddRow(Ui.Button("恢复应用前材质与 UV",()=>Guard(()=>{var t=Target();MaterialService.Restore(Doc,t.Objects,t.Layers);SetStatus("已恢复原材质与 UV。");})));
         details.AddRow(new Label{Text="这里修改的映射参数通过“计算 / 更新”生效。复杂曲面可能有接缝或拉伸。",Width=510,Wrap=WrapMode.Word});
         var library=Ui.Layout();library.AddRow(new Label{Text="导入图片、材质属性、分类和材质包管理"});library.AddRow(new Label{Text="图片生成使用本机 Codex 的 ChatGPT 登录；未安装或未登录时会明确提示。",Width=510,Wrap=WrapMode.Word});library.AddRow(Ui.Button("打开完整材质库",()=>MaterialPanelController.Open(Doc)));
-        tabs.Pages.Add(new TabPage{Text="生成",Content=main});tabs.Pages.Add(new TabPage{Text="尺寸与铺贴",Content=details});tabs.Pages.Add(new TabPage{Text="材质库 / 属性",Content=library});
+        chat=new(document,()=> (width.Value/1000,height.Value/1000),id=>{chatJob=id;progress.Indeterminate=true;});
+        tabs.Pages.Add(new TabPage{Text="对话生成",Content=chat});tabs.Pages.Add(new TabPage{Text="快捷生成",Content=main});
+        Shown+=async(_,_)=>{if(!closed)await chat.StartAsync();};tabs.Pages.Add(new TabPage{Text="尺寸与铺贴",Content=details});tabs.Pages.Add(new TabPage{Text="材质库 / 属性",Content=library});
         var root=Ui.Layout();root.Add(tabs,true,true);root.AddRow(Row(new Label{Text="应用范围"},scope,null));root.AddRow(progress);root.AddRow(status);root.AddRow(Row(Ui.Button("取消后续步骤",Cancel),null,apply));Content=root;
         assets.SelectedValueChanged+=(_,_)=>{if(!selecting)Guard(()=>{if(Guid.TryParse(assets.SelectedKey,out var id))SelectAsset(id);});};
         timer.Elapsed+=(_,_)=>Tick();timer.Start();SetTargets(ids);RefreshAssets();
         jobId=MaterialGeneration.ActiveJobId;
         if(jobId.HasValue){started=MaterialGeneration.Get(jobId.Value).CreatedUtc;progress.Indeterminate=true;apply.Enabled=generate.Enabled=false;SetStatus("继续显示正在进行的图片生成任务。");}
-        RhinoDoc.CloseDocument+=ClosedDoc;Closed+=(_,_)=>{RhinoDoc.CloseDocument-=ClosedDoc;steps=null;timer.Stop();timer.Dispose();var b=image.Image;image.Image=null;b?.Dispose();};
+        RhinoDoc.CloseDocument+=ClosedDoc;Closed+=(_,_)=>{closed=true;chat.Dispose();RhinoDoc.CloseDocument-=ClosedDoc;steps=null;timer.Stop();timer.Dispose();var b=image.Image;image.Image=null;b?.Dispose();};
         Closing+=(_,e)=>{if(Busy){e.Cancel=true;SetStatus("正在处理，请先取消后续步骤。");}};
     }
     private void ClosedDoc(object? s,DocumentEventArgs e){if(e.Document.RuntimeSerialNumber==document){steps=null;Close();}}
@@ -159,6 +164,12 @@ public sealed class MaterialQuickPanel : Form
             if(a.WidthMeters!=width.Value/1000||a.HeightMeters!=height.Value/1000)throw new ArgumentException("尺寸已修改，请先在“尺寸与铺贴”保存。");
         }
         // Snapshot the current selection once for this operation; later clicks use a fresh selection.
+        if(settings.Mode=="xatlas"||ids.Any(id=>MaterialService.ReadUv(Doc.Objects.FindId(id)!)?.Mode=="xatlas"&&!MaterialService.UvValid(Doc,Doc.Objects.FindId(id)!)))
+        {
+            var job=UnwrapService.Start(Doc,t.Objects,t.Layers);unwrapJob=job.Id;
+            afterUnwrap=uvOnly?null:()=>MaterialService.Apply(Doc,asset!.Value,t.Objects,t.Layers,new MappingSettings());
+            apply.Enabled=generate.Enabled=prepare.Enabled=scope.Enabled=tabs.Enabled=false;SetStatus("正在用 xatlas 展开复杂曲面…");return;
+        }
         if(uvOnly)MaterialService.PrepareWorldUv(Doc,t.Objects,t.Layers,settings,true,true);
         else MaterialService.Apply(Doc,asset!.Value,t.Objects,t.Layers,settings,true);
         var queue=new Queue<Action>();int computed=0,reused=0,done=0;
@@ -171,10 +182,22 @@ public sealed class MaterialQuickPanel : Form
         queue.Enqueue(()=>{if(!uvOnly){MaterialService.Apply(Doc,asset!.Value,t.Objects,t.Layers,settings);SetStatus($"材质已应用。UV 计算 {computed}，复用 {reused}。");}else SetStatus($"UV 已完成。计算 {computed}，复用 {reused}。");progress.Value=100;});
         steps=queue;progress.Indeterminate=false;apply.Enabled=generate.Enabled=prepare.Enabled=scope.Enabled=tabs.Enabled=false;progress.Value=0;SetStatus("检查真实世界 UV…");
     });
-    private void Cancel()=>Guard(()=>{if(steps!=null){steps=null;Unlock();SetStatus("后续步骤已取消，已完成的 UV 可保留或用 Rhino 撤销。");}if(jobId.HasValue){var j=MaterialGeneration.Get(jobId.Value);if(j.Status is "pending" or "running")MaterialGeneration.Cancel(j.Id);jobId=null;progress.Indeterminate=false;progress.Value=0;SetStatus("生成任务已取消。");}Unlock();});
+    private void Cancel()=>Guard(()=>{if(unwrapJob.HasValue)UnwrapService.Cancel(unwrapJob.Value);if(chatJob.HasValue)MaterialChat.Cancel(chatJob.Value);if(steps!=null){steps=null;Unlock();SetStatus("后续步骤已取消，已完成的 UV 可保留或用 Rhino 撤销。");}if(jobId.HasValue){var j=MaterialGeneration.Get(jobId.Value);if(j.Status is "pending" or "running")MaterialGeneration.Cancel(j.Id);jobId=null;progress.Indeterminate=false;progress.Value=0;SetStatus("生成任务已取消。");}Unlock();});
     private void Unlock(){apply.Enabled=generate.Enabled=prepare.Enabled=scope.Enabled=tabs.Enabled=true;apply.Enabled=generate.Enabled=jobId==null;}
     private void Tick()
     {
+        if(closed)return;
+        if(chatJob.HasValue)
+        {
+            var j=MaterialChat.Get(chatJob.Value);status.Text=j.Stage;
+            if(j.Status!="running"){chatJob=null;progress.Indeterminate=false;SetStatus(j.Stage);if(j.Material.HasValue){RefreshAssets();SelectAsset(j.Material.Value);}}
+        }
+        if(unwrapJob.HasValue)
+        {
+            var j=UnwrapService.Get(unwrapJob.Value);status.Text=j.Stage;progress.Value=j.Percent;
+            if(j.Status!="running"){unwrapJob=null;var action=afterUnwrap;afterUnwrap=null;Unlock();if(j.Status=="completed")Guard(()=>{action?.Invoke();SetStatus("xatlas 展开完成"+(action==null?"。":"，材质已应用。"));});else SetStatus(j.Stage);}
+            return;
+        }
         if(steps!=null)
         {
             try{if(steps.Count>0)steps.Dequeue()();if(steps.Count==0){steps=null;Unlock();}}
@@ -188,5 +211,15 @@ public sealed class MaterialQuickPanel : Form
             else if(job.Status=="cancelled"){jobId=null;progress.Indeterminate=false;progress.Value=0;Unlock();SetStatus("生成任务已取消。");}
             else if(job.Status=="failed"){jobId=null;progress.Indeterminate=false;progress.Value=0;Unlock();SetStatus(job.Stage+"；可点击生成材质重试。");}});
     }
-    public object GetState()=>new{open=true,document,targets,selected,jobId,busy=Busy,scope=scope.SelectedKey,progress=progress.Value,status=status.Text,history=history.ToArray()};
+    public object GetState()=>new{open=true,document,targets,selected,jobId,unwrapJob,chatJob,chatKit=chat.State,busy=Busy,scope=scope.SelectedKey,progress=progress.Value,status=status.Text,history=history.ToArray()};
+}
+
+public sealed class UnwrapCommand : Rhino.Commands.Command
+{
+    public override string EnglishName=>"RhinoSceneFlowUnwrap";
+    protected override Result RunCommand(RhinoDoc doc,RunMode mode)
+    {
+        try{var ids=MaterialSelection.Get(doc);if(ids.Length==0)return Result.Cancel;var job=UnwrapService.Start(doc,ids,null);RhinoApp.WriteLine("xatlas 后台展开已启动："+job.Id);return Result.Success;}
+        catch(Exception e){RhinoApp.WriteLine(e.Message);return Result.Failure;}
+    }
 }

@@ -6,7 +6,7 @@ namespace RhinoSceneFlow.Plugin;
 
 internal static class MaterialApi
 {
-    internal static object Contract=>new{operations=new[]{"material_generation_start","material_generation_executor","material_prepare_uv","material_uv_status","material_quick_open","material_quick_status","material_generation_progress","material_library","material_configure","material_import","material_update","material_apply","material_preview","material_restore","material_inspect","material_remap","material_pack","material_unpack","material_generation_request","material_generation_jobs","material_generation_complete","material_generation_cancel","material_open_panel","material_panel_status"},
+    internal static object Contract=>new{operations=new[]{"material_chat_start","material_chat_status","material_chat_cancel","material_unwrap_start","material_unwrap_status","material_unwrap_cancel","material_generation_start","material_generation_executor","material_prepare_uv","material_uv_status","material_quick_open","material_quick_status","material_generation_progress","material_library","material_configure","material_import","material_update","material_apply","material_preview","material_restore","material_inspect","material_remap","material_pack","material_unpack","material_generation_request","material_generation_jobs","material_generation_complete","material_generation_cancel","material_open_panel","material_panel_status"},
         units="Asset widthMeters/heightMeters and mapping origin/offsets are meters; converted to document units. Channel 1, persistent backup. Whole layers or object IDs, not both.",
         generation="material_generation_start runs local Codex image generation using existing ChatGPT login and imports a fresh PNG automatically. material_generation_request retains manual Agent handoff. Terminal states: completed, failed, cancelled.",
         imageMaps=new[]{"baseColor","roughness","normal","metallic"}};
@@ -17,6 +17,12 @@ internal static class MaterialApi
     private static MappingSettings Mapping(JsonElement r)=>r.TryGetProperty("mapping",out var m)?JsonSerializer.Deserialize<MappingSettings>(m.GetRawText(),MaterialLibrary.Json)!:new();
     internal static object Execute(string operation,JsonElement r)=>operation switch
     {
+        "material_chat_start"=>MaterialChat.Start(r.GetProperty("conversation").GetString()!,r.TryGetProperty("referenceImages",out var chatRefs)?chatRefs.EnumerateArray().Select(v=>v.GetString()!).ToArray():[],r.TryGetProperty("widthMeters",out var cw)?cw.GetDouble():1,r.TryGetProperty("heightMeters",out var ch)?ch.GetDouble():1),
+        "material_chat_status"=>MaterialChat.Get(Id(r,"jobId")),
+        "material_chat_cancel"=>MaterialChat.Cancel(Id(r,"jobId")),
+        "material_unwrap_start"=>UnwrapService.Start(Doc(r),Ids(r,"objects"),Ids(r,"layers")),
+        "material_unwrap_status"=>UnwrapService.Get(Id(r,"jobId")),
+        "material_unwrap_cancel"=>UnwrapService.Cancel(Id(r,"jobId")),
         "material_prepare_uv"=>MaterialService.PrepareWorldUv(Doc(r),Ids(r,"objects"),Ids(r,"layers"),Mapping(r),r.TryGetProperty("force",out var force)&&force.GetBoolean(),r.TryGetProperty("preview",out var preview)&&preview.GetBoolean()),
         "material_uv_status"=>MaterialService.InspectWorldUv(Doc(r),Ids(r,"objects")??throw new ArgumentException("需要 objects。")),
         "material_quick_open"=>MaterialQuickController.Open(Doc(r),Ids(r,"objects")).GetState(),
