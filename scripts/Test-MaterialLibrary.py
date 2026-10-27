@@ -110,7 +110,9 @@ try:
  package=os.path.join(folder,'calibration.zip');api('material_pack',assetId=asset['id'],path=package);unpacked=api('material_unpack',path=package);close(unpacked['widthMeters'],.6);report['package']=True
  api('material_open_panel');panel=MaterialPanelController.Find(doc.RuntimeSerialNumber);panel.Select(System.Guid(asset['id']))
  doc.Objects.UnselectAll();doc.Objects.FindId(plane_id).Select(True);click('应用材质');assert doc.Objects.FindId(plane_id).Attributes.GetUserString('RhinoSceneFlow.Material') is not None
- field(panel,'name').Text='AI Limestone 1 m';field(panel,'prompt').Text='浅暖灰石灰岩，均匀中性光，无接缝，完整贴图代表 1×1 米。';field(panel,'width').Value=1000;field(panel,'height').Value=1000;click('请求 Agent 生成')
+ field(panel,'name').Text='AI Limestone 1 m';field(panel,'prompt').Text='浅暖灰石灰岩，均匀中性光，无接缝，完整贴图代表 1×1 米。';field(panel,'width').Value=1000;field(panel,'height').Value=1000
+ manual=api('material_generation_request',asset=dict(name='Manual Agent test',widthMeters=1,heightMeters=1),prompt='Fine neutral limestone')
+ panel.GetType().GetField('lastJob',BindingFlags.Instance|BindingFlags.NonPublic).SetValue(panel,System.Guid(manual['id']))
  state=api('material_panel_status');job=state['lastJob'];assert next(j for j in api('material_generation_jobs') if j['id']==job)['status']=='pending'
  ai_path=os.path.join(os.path.dirname(OUTPUT_DIR),'materials','source','ai-limestone-basecolor.png')
  ai=api('material_generation_complete',jobId=job,files=dict(baseColor=ai_path));assert ai['source']=='ai-agent' and ai['widthMeters']==1

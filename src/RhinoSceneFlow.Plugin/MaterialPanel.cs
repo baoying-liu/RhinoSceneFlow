@@ -38,7 +38,7 @@ public sealed class MaterialPanel : Form
     private readonly NumericStepper rotation=Ui.Number(-360,360,1),offsetU=Ui.Number(-1e12,1e12,2),offsetV=Ui.Number(-1e12,1e12,2);
     private readonly NumericStepper originX=Ui.Number(-1e12,1e12,2),originY=Ui.Number(-1e12,1e12,2),originZ=Ui.Number(-1e12,1e12,2);
     private readonly TextArea prompt=new(){Height=65,Wrap=true};
-    private readonly Label generation=new(){Text="创建任务后，请让 Agent 处理；完成后自动入库。也可直接导入 AI 图片。",Wrap=WrapMode.Word};
+    private readonly Label generation=new(){Text="使用本机 Codex 登录生成图片，完成后自动入库。也可直接导入图片。",Wrap=WrapMode.Word};
     private readonly UITimer poll=new(){Interval=2};
     private MaterialAsset[] assets=[];
     private Guid? selected,lastJob;
@@ -72,7 +72,7 @@ public sealed class MaterialPanel : Form
         mapping.AddRow(Row(Ui.Button("检查应用范围",()=>Apply(false,true)),Ui.Button("应用尺寸棋盘格",()=>Apply(true,false)),Ui.Button("应用材质",()=>Apply(false,false)),null));
         mapping.AddRow(Row(Ui.Button("重新映射 / 同步尺寸",Remap),Ui.Button("恢复应用前材质与映射",Restore),null));
         mapping.AddRow(new Label{Text="移动 / 缩放、改变单位、图层新增物件后，请重新映射或再次应用。块实例暂不支持。",Wrap=WrapMode.Word,Width=700});
-        var ai=Ui.Layout();ai.AddRow(new Label{Text="AI 生成描述",Font=new Font(SystemFont.Bold,12)});ai.AddRow(prompt);ai.AddRow(Row(Ui.Button("请求 Agent 生成",RequestGeneration),Ui.Button("取消等待任务",CancelGeneration),null));ai.AddRow(generation);
+        var ai=Ui.Layout();ai.AddRow(new Label{Text="AI 生成描述",Font=new Font(SystemFont.Bold,12)});ai.AddRow(prompt);ai.AddRow(Row(Ui.Button("生成材质",RequestGeneration),Ui.Button("取消等待任务",CancelGeneration),null));ai.AddRow(generation);
         var right=Ui.Layout();right.Width=730;right.AddRow(upper);right.AddRow(mapping);right.AddRow(ai);right.AddRow(null);
         var content=Ui.Layout();content.AddRow(left,new Scrollable{Content=right,ExpandContentWidth=true});
         var root=Ui.Layout();root.Add(content,true,true);root.AddRow(Row(directory,Ui.Button("切换材质库…",ChangeLibrary),null));root.AddRow(status);Content=root;
@@ -124,11 +124,13 @@ public sealed class MaterialPanel : Form
     private void ExportPackage()=>Guard(()=>{if(selected==null)throw new ArgumentException("请选择材质。");using var d=new SaveFileDialog();d.Filters.Add(new FileFilter("材质包",".zip"));d.FileName=name.Text+".zip";if(d.ShowDialog(this)==DialogResult.Ok){MaterialService.Library.ExportPackage(selected.Value,d.FileName);status.Text="材质包已导出。";}});
     private void ImportPackage()=>Guard(()=>{using var d=new OpenFileDialog();d.Filters.Add(new FileFilter("材质包",".zip"));if(d.ShowDialog(this)==DialogResult.Ok){var a=MaterialService.Library.ImportPackage(d.FileName,MaterialService.ValidateImages);RefreshLibrary();Select(a.Id);}});
     private void ChangeLibrary()=>Guard(()=>{using var d=new SelectFolderDialog{Directory=MaterialService.Library.Root};if(d.ShowDialog(this)==DialogResult.Ok){SceneFlowPlugin.Instance.MaterialDirectory=d.Directory;selected=null;lastJob=null;RefreshLibrary();New();}});
-    private void RequestGeneration()=>Guard(()=>{if(lastJob.HasValue&&MaterialGeneration.Get(lastJob.Value).Status is "pending" or "running")throw new ArgumentException("已有等待中的 AI 任务，请先完成或取消。");var job=MaterialGeneration.Request(Descriptor(),prompt.Text);lastJob=job.Id;generation.Text="等待连接的 Agent 生成并回填 · "+job.Id;});
+    private void RequestGeneration()=>Guard(()=>{if(lastJob.HasValue&&MaterialGeneration.Get(lastJob.Value).Status is "pending" or "running")throw new ArgumentException("已有等待中的 AI 任务，请先完成或取消。");var job=MaterialGeneration.Start(Descriptor(),prompt.Text);lastJob=job.Id;generation.Text="正在启动本机 Codex · "+job.Id;});
     private void CancelGeneration()=>Guard(()=>{if(lastJob==null)throw new ArgumentException("没有正在等待的任务。");MaterialGeneration.Cancel(lastJob.Value);generation.Text="任务已取消。";lastJob=null;});
     private void PollGeneration()
     {
         if(lastJob==null)return;var job=MaterialGeneration.Get(lastJob.Value);
+        generation.Text=job.Stage;
+        if(job.Status=="failed"){lastJob=null;return;}
         if(job.Status=="completed"&&job.Material.HasValue){RefreshLibrary();Select(job.Material.Value);generation.Text="AI 材质已生成并入库，请检查接缝与物理尺寸。";lastJob=null;}
         else if(job.Status=="cancelled"){generation.Text="任务已取消。";lastJob=null;}
     }

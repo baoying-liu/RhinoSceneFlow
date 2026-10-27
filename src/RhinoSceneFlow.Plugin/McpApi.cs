@@ -27,7 +27,7 @@ public static class McpApi
             switch (operation)
             {
                 case "describe":
-                    response = new { name = "RhinoSceneFlow", version = "0.8.0", transport = "Rhino-MCP-Platform.run_python",materialLibrary=MaterialApi.Contract,
+                    response = new { name = "RhinoSceneFlow", version = "0.9.0", transport = "Rhino-MCP-Platform.run_python",materialLibrary=MaterialApi.Contract,
                         entryPoint = "RhinoSceneFlow.Plugin.McpApi.Execute(string)",
                         operations = new object[] {
                             new { name="workbench_settings",required=new[]{"document"},parameters="Per-view configuration, exportable display modes and PSD blend keys",output="views, displayModes, blends" },

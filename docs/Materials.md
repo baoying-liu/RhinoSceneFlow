@@ -1,6 +1,6 @@
-# v0.8 真实世界 UV 与材质
+# v0.9 真实世界 UV 与材质
 
-选中物件后执行 `RhinoSceneFlowMaterials`，打开简洁材质窗口，固定本次选择；底部选择“应用到该物体 / 应用到该物体所在图层”。生成页包含描述、参考图片文件和结果，尺寸 / 铺贴参数位于另一页；完整管理窗口使用 `RhinoSceneFlowMaterialLibrary`。原有视图导出工作台命令 `RhinoSceneFlowPanel` 保留。
+选中物件后执行 `RhinoSceneFlowMaterials`，打开简洁材质窗口，目标跟随 Rhino 当前选择；底部选择“应用到该物体 / 应用到该物体所在图层”。生成页包含描述、参考图片文件和结果，尺寸 / 铺贴参数位于另一页；完整管理窗口使用 `RhinoSceneFlowMaterialLibrary`。原有视图导出工作台命令 `RhinoSceneFlowPanel` 保留。
 
 ## 先计算 UV，再应用材质
 
@@ -10,9 +10,9 @@
 
 有效 UV 以已有投影为准，换材质不改变投影。要调整方向等参数，在“尺寸与铺贴”页点击“计算 / 更新真实世界 UV”；它会强制重算。更改材质宽高后保存并重新应用即可，无需重算 UV。简洁窗口采用每个物件一个 UI timer 步骤，允许在步骤间取消，已完成步骤可用 Rhino 撤销。单个复杂物件的网格计算仍在 UI 线程，期间可能短暂等待；没有虚构连续百分比。
 
-图层范围指启动时所选物件直接所属图层的现有物件，不递归子图层；只接受可编辑面 / 网格 / SubD，遇到不支持的目标会在预检中拒绝。生成期间切换 Rhino 选择不改变原操作目标；再次执行命令可切换目标。
+图层范围按点击应用时当前所选物件的直接所属图层计算，不递归子图层；只接受可编辑面 / 网格 / SubD，遇到不支持的目标会在预检中拒绝。面板保持打开时，选择从 A 改成 B，下一次应用即作用于 B；没有选择时拒绝应用，不回退旧对象。每一次点击后冻结该次处理范围，处理中改变选择不会重定向已经开始的操作。生成图片不绑定旧物件，完成后可选择其他物件应用。
 
-参考图片通过“＋参考图片”选择 PNG / JPEG，最多 8 张，复制到任务目录。Agent 可通过 `material_generation_progress` 上报真实阶段，面板显示阶段与已用时间；无人接手时显示等待。当前没有嵌入 GPT 原生网页或自动常驻生成执行端，也未实现参考图粘贴 / 拖拽。生成完成后确认尺寸并点击应用，不自动覆盖模型。
+参考图片通过“＋参考图片”选择 PNG / JPEG，最多 8 张，复制到任务目录，并作为图像附件交给本机 Codex。面板显示实际阶段和已用时间，不虚构生成百分比。当前没有嵌入 GPT 原生网页，也未实现参考图粘贴 / 拖拽。生成完成后确认尺寸并点击应用，不自动覆盖模型。
 
 ## 导入与管理
 
@@ -49,18 +49,24 @@
 
 备份使用显式的映射类型、变换、投影参数和必要的自定义网格；没有使用当前 Rhino 无法正确往返读取的 `TextureMapping.ToJSON / CommonObject.FromJSON` 组合。平面、箱式、球面、圆柱、表面参数和网格映射受支持，其他原映射会在预检中拒绝。
 
-## AI 与 Agent
+## 软件内自动生成
 
-面板输入描述与物理尺寸，点击“请求 Agent 生成”会建立一个等待任务。**此按钮不会单独调用付费 API，也不代表图片已经生成。** 请让连接的 Agent 处理待生成任务；Agent 读取提示词、调用图像工具、将本地图片回填后，面板会自动刷新并选中新材质。也可直接导入已经生成的图片。
+简洁窗口和完整材质库中的“生成材质”都会启动本机 Codex，在后台调用其内置 image_gen 图片工具。需要本机已经安装 Codex / VS Code Codex 扩展，并使用 ChatGPT 账号登录；插件不要求 API key，不自动切换到其他付费 API。已在本机 codex-cli 0.164.0-alpha.11.1 验证。账号是否具备图片权限、可用额度及网络状态仍由 Codex 服务决定，插件会显示执行失败，不假报完成。
 
-任务状态为 pending、completed、cancelled。可取消等待任务；已取消或完成的任务不能再次回填。材质库记录 `ai-agent` 来源与提示词。当前无内置云服务密钥、独立 MCP 服务、ComfyUI 或后台常驻 Codex 进程。无人处理任务时会保持等待，软件不会把它标成完成。
+程序自动从 PATH、`~/.codex/bin/codex.exe` 和 VS Code 的 Codex 扩展目录寻找原生 exe。特殊安装可设置进程继承的 `RHINOSCENEFLOW_CODEX` 为 codex.exe 绝对路径。只为每个请求启动隐藏的 `codex exec` 子进程，使用 JSONL 标准输出和 stdin；不新建 MCP 服务、不改用户 Codex 配置、不读取或复制认证令牌。任务使用 read-only sandbox，关闭 shell、浏览器、电脑操作、MCP Apps、子 Agent 和 hooks；用户描述只用于图片外观。
 
-公开 API 仍通过原厂 Rhino-MCP-Platform 的 `run_python` 调用 `McpApi.Execute(JSON)`。材质操作及示例见 [MCP.md](MCP.md)。`material_library` 返回资产、库目录和调用约定；`describe.materialLibrary` 提供操作发现入口。
+执行阶段为启动 / 检查登录 / 连接 / 生成 / 校验入库。只接受本次 Codex thread 对应目录中生成的新 PNG，核对任务 ID、文件路径及时间，再验证图片并复制进材质库。失败显示错误并允许重试；取消只终止本次 Codex 子进程树；10 分钟超时停止任务。关闭 Rhino 会取消执行，重新打开面板可继续显示仍在运行的任务。进程异常中断后的孤立 running 记录会改为 failed，不自动重新消耗额度。生成期间不能切换材质库。
 
-本次使用内置 imagegen 生成浅暖灰石灰岩示例，按整张 1×1 m 入库。项目源图在 `artifacts/materials/source/ai-limestone-basecolor.png`，完整生成提示词在同目录 `ai-limestone-prompt.txt`。它是颜色贴图示例；未虚构 Normal / Roughness 测量数据。
+任务状态为 pending、running、completed、failed、cancelled。材质资产仍记录 `ai-agent` 来源、物理尺寸及提示词；任务额外记录 `codex-local` 执行端。`<材质库>/requests/<任务ID>/runner/` 保存本次提示词、JSONL 事件和诊断日志，生成源图仍保留在 Codex 的 generated_images 中，使用的图片另存到资产目录。
+
+MCP 的 `material_generation_start` 与按钮执行相同自动流程。原 `material_generation_request` / progress / complete 接口继续保留，专门用于外部 Agent 手动交接，不与自动按钮混淆。公开入口仍由原厂 Rhino-MCP-Platform 的 `run_python` 调用 `McpApi.Execute(JSON)`，见 [MCP.md](MCP.md)。
+
+初始石灰岩示例源图和提示词位于 `artifacts/materials/source/`。本次自动流程的混凝土图片、任务及实机证据见 Validation.md；生成的是 Base Color，不虚构 Normal / Roughness 测量数据。生成提示要求无缝，仍应通过重复预览人工验收接缝。
 
 ## 验证入口
 
 `Build.ps1` 包含材质资产物理尺寸、相对路径、修订、包跨库导入、校验值、路径穿越拒绝等核心回归。`Test-MaterialLibrary.py` 在 B 生成独有测试物件，并验证真实 Rhino PBR、各类映射的单位重复量、旋转、恢复、图层继承、物件缩放后重算、英制换算、材质包和真实 Eto 按钮 / Agent 回填。测试只清理自身标记的物件，保留原有模型。
+
+`Test-LiveMaterialSelection.py` → `Check-LiveMaterialSelection.py` → `Finish-LiveMaterialSelection.py` 分阶段验证当前选择、无选择拒绝、当前图层与点击后的范围快照。`Test-CodexMaterialButton.py` / `Check-CodexMaterialButton.py` 实际启动模型生成并验证新图自动入库，运行会使用 Codex 图片额度；只在需要实机验收时执行。`Test-CodexMaterialFailure.py` / `Check-CodexMaterialFailure.py` 验证失败提示、可重试和取消。
 
 材质显示使用原生 Rhino PBR。原来的“材质 / 图层色”PSD 通道仍是平涂图层 RGB；需要贴图外观时，在导出工作台添加 Rendered 等原生显示模式图层。

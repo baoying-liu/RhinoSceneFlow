@@ -1,10 +1,20 @@
 # 原厂 Rhino-MCP-Platform 接入
 
+## v0.9 自动生成与当前选择
+
+`material_generation_start`：`asset`、`prompt`、可选 `referenceImages:[绝对路径]`。实际启动本机 Codex 子进程，使用现有 ChatGPT 登录调用内置 image_gen，新 PNG 经校验后自动入库。返回 running 任务，后续用 `material_generation_jobs` 查询。失败为 failed 并附 error，取消为 cancelled。不需要外部 Agent 手动 complete。
+
+`material_generation_executor`：只读返回执行端类型、可执行文件发现结果及当前运行任务，不导出账号凭据。路径不正确 / 未登录 / 无图片工具 / 服务失败 / 超时会明确失败；不会用旧图作为结果。非标准安装可通过继承的 `RHINOSCENEFLOW_CODEX` 指定 exe。`material_generation_cancel` 会同时取消该任务自己的 Codex 子进程。
+
+原 `material_generation_request` / progress / complete 保留给手动 Agent 交接，其 pending 不会自动消费。两个入口用途不同。参考 [官方非交互 CLI 文档](https://learn.chatgpt.com/docs/developer-commands)；本机实测版本 0.164.0-alpha.11.1，stdio JSONL，无新增 MCP 端口。
+
+`material_quick_open` 可传 objects 以同步 Rhino 当前选择；面板不再固定启动对象。后续面板应用 / UV / 恢复动作每次读取当前选择，无选择时拒绝操作；点击后该次队列范围固定。低层 `material_apply` / prepare_uv API 仍严格按显式 objects / layers 执行，不隐式替换调用者提供的 IDs。
+
 ## v0.7 材质操作
 
 v0.8 新增：`material_prepare_uv`（document、objects 或 layers、可选 mapping / force / preview）独立计算或检查米制 UV；返回 computed、reused、metersPerUv=1。force=true 显式重算并采用新的 mapping；默认复用有效记录，失效时沿用记录中的投影设置。`material_uv_status`（document、objects）返回有效性和记录。`material_apply` 现在自动补算并返回 uvComputed / uvReused，原接口保留。
 
-`material_quick_open`（document，可选 objects，否则当前选择）打开简洁窗口并固定目标；`material_quick_status` 返回 busy / progress / history 等。旧 `material_open_panel` 仍打开完整材质管理窗口。
+`material_quick_open`（document，可选 objects，否则当前选择）打开简洁窗口并同步当前选择（v0.9 起不固定启动目标）；`material_quick_status` 返回 busy / progress / history 等。旧 `material_open_panel` 仍打开完整材质管理窗口。
 
 `material_generation_request` 可增加 `referenceImages:[绝对图片路径]`；任务返回复制后的参考路径。`material_generation_progress`（jobId、stage，1–200 字）将任务置为 running 并更新阶段；running 与 pending 均可完成 / 取消。后端未提供的生成百分比不应伪造。Agent 必须实际读取参考图片后调用支持图像输入的生成工具。
 
@@ -49,7 +59,7 @@ print(McpApi.Execute(json.dumps(request)))
 
 `mode` 为 auto / plane / box / cylinder，`alignment` 为 continuous / object，`axis` 为 auto / x / y / z。AI 任务必须由外部 Agent 读取、调用图像工具并回填；pending 不代表已生成。具体映射范围、人工标定与材质显示模式导出见 [Materials.md](Materials.md)。
 
-RhinoSceneFlow v0.8.0 不启动 MCP 服务，不监听额外端口，不修改 Platform 私有实现。使用已安装的 Rhino-MCP-Platform 的 `run_python` 工具，在 Rhino UI 线程调用公开入口：
+RhinoSceneFlow v0.9.0 不启动 MCP 服务，不监听额外端口，不修改 Platform 私有实现。使用已安装的 Rhino-MCP-Platform 的 `run_python` 工具，在 Rhino UI 线程调用公开入口：
 
 ```csharp
 string RhinoSceneFlow.Plugin.McpApi.Execute(string requestJson)

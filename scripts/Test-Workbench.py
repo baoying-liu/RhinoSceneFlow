@@ -35,7 +35,7 @@ def walk(obj):
   for c in obj.Controls:
    for v in walk(c):yield v
 def click(button):button.GetType().GetMethod('PerformClick').Invoke(button,None)
-assert api('describe')['version'] in ('0.6.0','0.7.0','0.8.0')
+assert api('describe')['version'] in ('0.6.0','0.7.0','0.8.0','0.9.0')
 settings=api('workbench_settings');original=settings['views'];ids=[v['id'] for v in original]
 shaded=next(m['id'] for m in settings['displayModes'] if m['name']=='Shaded')
 rendered=next(m['id'] for m in settings['displayModes'] if m['name']=='Rendered')

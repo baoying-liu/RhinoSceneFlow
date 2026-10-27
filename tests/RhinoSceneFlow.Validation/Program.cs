@@ -305,6 +305,21 @@ try
 finally{Directory.Delete(libraryStage,true);}
 Console.WriteLine("PASS: physical-size material assets, relative paths, revisions, portable packages, integrity and path validation.");
 
+string imageStage=Directory.CreateTempSubdirectory("SceneFlow-image-result-").FullName;
+try
+{
+    string thread=Guid.NewGuid().ToString();string dir=Path.Combine(imageStage,"generated_images",thread);Directory.CreateDirectory(dir);
+    string generatedImagePath=Path.Combine(dir,"result.png");File.WriteAllBytes(generatedImagePath,[137,80,78,71]);DateTime started=DateTime.UtcNow.AddSeconds(-1);
+    Check(CodexImageRunner.ValidateResult(generatedImagePath,thread,started,imageStage)==generatedImagePath,"Fresh Codex image result rejected.");
+    try{CodexImageRunner.ValidateResult(generatedImagePath,Guid.NewGuid().ToString(),started,imageStage);throw new Exception("Another task's image accepted.");}catch(InvalidDataException){}
+    File.SetLastWriteTimeUtc(generatedImagePath,DateTime.UtcNow.AddDays(-1));
+    try{CodexImageRunner.ValidateResult(generatedImagePath,thread,started,imageStage);throw new Exception("Old image substituted for generation.");}catch(InvalidDataException){}
+    try{CodexImageRunner.ValidateResult(Path.Combine(imageStage,"outside.png"),thread,started,imageStage);throw new Exception("Outside image path accepted.");}catch(InvalidDataException){}
+    try{CodexImageRunner.ValidateResult(generatedImagePath,null,started,imageStage);throw new Exception("Missing task identity accepted.");}catch(InvalidDataException){}
+}
+finally{Directory.Delete(imageStage,true);}
+Console.WriteLine("PASS: generated images require a fresh PNG in the current Codex thread; stale/unrelated results rejected.");
+
 if(args.Contains("--large"))
 {
     string largeStage=Directory.CreateTempSubdirectory("SceneFlow-8K-").FullName;

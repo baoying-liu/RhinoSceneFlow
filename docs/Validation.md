@@ -122,3 +122,15 @@ Build.ps1 核心回归通过，编译零警告 / 错误。B 最终使用部署 `
 部署任务 `c8afe7b7d41e43cfa950749515779078` 曾 CloseTimedOut。通过 computer-use 技能检查到 Rhino 退出阶段隐藏的 Update Available 对话框；选择 No 后进程退出，未强杀、未安装更新。保留失败任务及关闭证据，待退出后重新提交 test 才实际加载成功；没有把超时任务标为通过。
 
 撤销复测限制：随后同一实例的重复 SDK / timer 撤销返回 false，等待 recording inactive 和改用脚本命令均未解决。失败证据 worlduv/undo-retry-failure.json，不能认定是定时器竞争，也不能把首轮通过扩展为重复撤销全部通过。保留 Check-MaterialUndo.py 的 WorldUv 移除断言；未修改产品原生撤销机制。显式恢复按钮及材质 / 映射还原测试通过。
+# 2026-10-27 v0.9 软件内生成与当前选择修复
+
+最终沙盒 B 部署：`20261027-184155-039d831265654c26a3e66ba84c83977b`，任务 `18c79b8b12a04b568a5a8c96f5374fca` Succeeded，实例 `ebc9d2917aff4beb8a71b5934b2dbca9`，PID 60896，Platform 22801。Build.ps1 编译零警告 / 错误，原有核心回归及新增 Codex 新图片结果校验通过。
+
+- 当前选择：`Test-LiveMaterialSelection.py` → `Check-LiveMaterialSelection.py` → `Finish-LiveMaterialSelection.py`，证据 `artifacts/rhino-B/materials-v09/selection-verified.json`。同一面板从 A 改选 B 后只修改 B；无选择拒绝且无旧对象回退；图层应用按点击时当前对象的图层计算；点击后再改选择不重定向已运行队列。只清理测试唯一标记的对象与图层。
+- 实际自动生成：`Test-CodexMaterialButton.py` / `Check-CodexMaterialButton.py` 调用真实 Eto 生成处理器，传入一张混凝土参考图片。最终任务 `e071ed37-d6fe-4098-8d5a-d512e7e7a9f5` 自动启动本机 codex-cli 0.164.0-alpha.11.1，以 ChatGPT 登录生成新 PNG，再由插件自行校验、入库并选中新资产。**没有调用人工 complete 回填**。Codex thread `01a17ead-53a3-78b0-8e9e-9f951f88715e`，资产 `3a0a8f48-9813-4c12-af0b-270bd3ebe26c`。输出 SHA-256 `fa8acfe275afaabcf47102d4ac5814381778c389a161111f19656810f4384e5e`，与参考图片的 `94f4eb73c02ddbef23297a02b504d2b80f7ce2c9bda02fb1a7e76f2c597c458c` 不同。证据 `materials-v09/generation-verified.json` 与对应库请求目录 runner/events.jsonl、generation-prompt.txt。
+- 关闭并重新打开简洁面板时，同一实际生成任务继续显示，同时目标切换到新选中的圆柱，证据 `materials-v09/reopen-verified.json`。
+- 失败与取消：`Test-CodexMaterialFailure.py` / `Check-CodexMaterialFailure.py` 只为一次请求将进程内执行路径临时指向非 Codex exe，并立即恢复。任务进入 failed，面板显示登录检查失败，按钮恢复可重试；随后启动正常重试并在首阶段取消，进入 cancelled，没有导入图片。证据 `materials-v09/failure-verified.json`。未修改用户认证文件或机器环境变量。
+- 原有功能：最终 PID 上 `Test-WorldUv.py`（worlduv/a5a57e3a/report.json）、`Test-MaterialLibrary.py`（materials/run-dafac5a0/report.json）均 complete=true，恢复原 live objects / selection。完整材质库中的实际应用按钮仍覆盖；手动 Agent 交接回归改为明确调用 request API，避免测试误启动真实图片任务。
+- PSD 联动与独立解析再次通过，320×200，Rendered / Shadow / 材质组，最大重组差 1/255；文件 `materials/demo/export-5003362c/Materials_Perspective.psd`。未以独立解析代替 Photoshop UI 验收。
+
+本次未修复历史重复 Undo 自动化不稳定问题，原记录保留。中间旧 PID 59516 被管理端记为 UnknownExit，已检查 ExitCode=0、无 CrashEvents / NewDumps 并保留 `artifacts/codex-ui-prior-exit.json` 后确认退出，再重试加载；未强杀 Rhino，未改其他通道。首轮实际生成 PID 42296 也成功完成后正常经管理端切换至最终构建，首轮与最终请求均保留于材质库。

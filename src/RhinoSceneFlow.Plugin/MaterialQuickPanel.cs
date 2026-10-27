@@ -50,13 +50,20 @@ public static class MaterialQuickController
     {
         NamedViewExportService.RequireActive(doc);ids??=doc.Objects.GetSelectedObjects(false,false).Select(o=>o.Id).ToArray();
         MaterialService.ResolveTargets(doc,ids,null);
+        if(windows.TryGetValue(doc.RuntimeSerialNumber,out var running)&&running.Busy)throw new ArgumentException("当前操作尚未完成。");
+        if(!doc.Objects.GetSelectedObjects(false,false).Select(o=>o.Id).ToHashSet().SetEquals(ids))
+        {doc.Objects.UnselectAll();foreach(var id in ids)doc.Objects.FindId(id)!.Select(true);doc.Views.Redraw();}
         if(windows.TryGetValue(doc.RuntimeSerialNumber,out var old))
         {
             if(old.Busy)throw new ArgumentException("当前任务进行中，请完成后切换目标。");
             old.SetTargets(ids);old.BringToFront();return old;
         }
         var p=new MaterialQuickPanel(doc,ids);windows.Add(doc.RuntimeSerialNumber,p);p.Closed+=(_,_)=>windows.Remove(doc.RuntimeSerialNumber);
-        p.Owner=Rhino.UI.RhinoEtoApp.MainWindowForDocument(doc);p.Show();return p;
+        p.Owner=Rhino.UI.RhinoEtoApp.MainWindowForDocument(doc);p.Show();
+        var area=Eto.Forms.Screen.PrimaryScreen.WorkingArea;
+        if(p.Location.X<area.Left||p.Location.Y<area.Top||p.Location.X+p.Width>area.Right||p.Location.Y+p.Height>area.Bottom)
+            p.Location=new Point((int)(area.X+(area.Width-p.Width)/2),(int)(area.Y+(area.Height-p.Height)/2));
+        return p;
     }
 }
 public sealed class MaterialQuickPanel : Form
@@ -96,21 +103,31 @@ public sealed class MaterialQuickPanel : Form
         details.AddRow(Row(new Label{Text="旋转 °"},rotation,null));details.AddRow(Row(new Label{Text="偏移 U / V（mm）"},offsetU,offsetV,null));details.AddRow(prepare);
         details.AddRow(Ui.Button("恢复应用前材质与 UV",()=>Guard(()=>{var t=Target();MaterialService.Restore(Doc,t.Objects,t.Layers);SetStatus("已恢复原材质与 UV。");})));
         details.AddRow(new Label{Text="这里修改的映射参数通过“计算 / 更新”生效。复杂曲面可能有接缝或拉伸。",Width=510,Wrap=WrapMode.Word});
-        var library=Ui.Layout();library.AddRow(new Label{Text="导入图片、材质属性、分类和材质包管理"});library.AddRow(Ui.Button("打开完整材质库",()=>MaterialPanelController.Open(Doc)));
+        var library=Ui.Layout();library.AddRow(new Label{Text="导入图片、材质属性、分类和材质包管理"});library.AddRow(new Label{Text="图片生成使用本机 Codex 的 ChatGPT 登录；未安装或未登录时会明确提示。",Width=510,Wrap=WrapMode.Word});library.AddRow(Ui.Button("打开完整材质库",()=>MaterialPanelController.Open(Doc)));
         tabs.Pages.Add(new TabPage{Text="生成",Content=main});tabs.Pages.Add(new TabPage{Text="尺寸与铺贴",Content=details});tabs.Pages.Add(new TabPage{Text="材质库 / 属性",Content=library});
         var root=Ui.Layout();root.Add(tabs,true,true);root.AddRow(Row(new Label{Text="应用范围"},scope,null));root.AddRow(progress);root.AddRow(status);root.AddRow(Row(Ui.Button("取消后续步骤",Cancel),null,apply));Content=root;
         assets.SelectedValueChanged+=(_,_)=>{if(!selecting)Guard(()=>{if(Guid.TryParse(assets.SelectedKey,out var id))SelectAsset(id);});};
         timer.Elapsed+=(_,_)=>Tick();timer.Start();SetTargets(ids);RefreshAssets();
+        jobId=MaterialGeneration.ActiveJobId;
+        if(jobId.HasValue){started=MaterialGeneration.Get(jobId.Value).CreatedUtc;progress.Indeterminate=true;apply.Enabled=generate.Enabled=false;SetStatus("继续显示正在进行的图片生成任务。");}
         RhinoDoc.CloseDocument+=ClosedDoc;Closed+=(_,_)=>{RhinoDoc.CloseDocument-=ClosedDoc;steps=null;timer.Stop();timer.Dispose();var b=image.Image;image.Image=null;b?.Dispose();};
         Closing+=(_,e)=>{if(Busy){e.Cancel=true;SetStatus("正在处理，请先取消后续步骤。");}};
     }
     private void ClosedDoc(object? s,DocumentEventArgs e){if(e.Document.RuntimeSerialNumber==document){steps=null;Close();}}
     private void Guard(Action action){try{action();}catch(Exception e){SetStatus(e.Message);}}
     private void SetStatus(string text){status.Text=text;history.Add(text);if(history.Count>100)history.RemoveAt(0);}
-    public void SetTargets(Guid[] ids){targets=ids.Distinct().ToArray();targetLabel.Text=$"本次目标：{targets.Length} 个物件（固定启动时的选择）";}
+    public void SetTargets(Guid[] ids){targets=ids.Distinct().Order().ToArray();UpdateTargetLabel();}
+    private void UpdateTargetLabel()=>targetLabel.Text=targets.Length==0?"当前未选中物体，请先在 Rhino 中选择。":$"当前选择：{targets.Length} 个物体 · {string.Join("、",targets.Take(2).Select(id=>Doc.Objects.FindId(id)?.Attributes.Name is {Length:>0} name?name:id.ToString()[..8]))}";
+    private void RefreshTargets()
+    {
+        var current=Doc.Objects.GetSelectedObjects(false,false).Select(o=>o.Id).Distinct().Order().ToArray();
+        if(!targets.SequenceEqual(current)){targets=current;UpdateTargetLabel();}
+    }
     private (Guid[]? Objects,Guid[]? Layers) Target()
     {
-        if(scope.SelectedKey!="layer")return(targets,null);
+        RefreshTargets();
+        if(targets.Length==0)throw new ArgumentException("当前没有选中的物体。请先在 Rhino 中选择，再应用材质。");
+        if(scope.SelectedKey!="layer")return(targets.ToArray(),null);
         return(null,targets.Select(id=>Doc.Objects.FindId(id)??throw new ArgumentException("原物件已删除。")).Select(o=>Doc.Layers[o.Attributes.LayerIndex].Id).Distinct().ToArray());
     }
     public void RefreshAssets()
@@ -129,7 +146,7 @@ public sealed class MaterialQuickPanel : Form
     private void Generate()=>Guard(()=>
     {
         if(Busy)throw new ArgumentException("请先等待当前操作完成。");if(jobId.HasValue&&MaterialGeneration.Get(jobId.Value).Status is "pending" or "running")throw new ArgumentException("已有生成任务，请先完成或取消。");
-        var job=MaterialGeneration.Request(new MaterialAsset{Name="AI 材质 "+DateTime.Now.ToString("HHmmss"),WidthMeters=width.Value/1000,HeightMeters=height.Value/1000},prompt.Text,references.ToArray());jobId=job.Id;started=DateTime.UtcNow;SetStatus("等待 Agent 接手生成。参考图片已随任务保存。");
+        var job=MaterialGeneration.Start(new MaterialAsset{Name="AI 材质 "+DateTime.Now.ToString("HHmmss"),WidthMeters=width.Value/1000,HeightMeters=height.Value/1000},prompt.Text,references.ToArray());jobId=job.Id;started=DateTime.UtcNow;progress.Value=0;progress.Indeterminate=true;apply.Enabled=generate.Enabled=false;SetStatus("正在启动本机 Codex，生成完成后会自动显示新图片。");
     });
     private void SaveSize()=>Guard(()=>{if(selected==null)throw new ArgumentException("请先选择材质。");var a=MaterialService.Library.Get(selected.Value);a.WidthMeters=width.Value/1000;a.HeightMeters=height.Value/1000;a=MaterialService.Library.Update(a);RefreshAssets();SelectAsset(a.Id);SetStatus("材质尺寸已保存，应用后生效；不需要重新计算 UV。");});
     private MappingSettings Settings()=>new(){Mode=mode.SelectedKey??"auto",Rotation=rotation.Value,OffsetUMeters=offsetU.Value/1000,OffsetVMeters=offsetV.Value/1000};
@@ -141,8 +158,9 @@ public sealed class MaterialQuickPanel : Form
             if(asset==null)throw new ArgumentException("请先生成或选择材质。");var a=MaterialService.Library.Get(asset.Value);
             if(a.WidthMeters!=width.Value/1000||a.HeightMeters!=height.Value/1000)throw new ArgumentException("尺寸已修改，请先在“尺寸与铺贴”保存。");
         }
-        // Preflight the complete scope before beginning per-object work.
-        MaterialService.PrepareWorldUv(Doc,t.Objects,t.Layers,settings,uvOnly,true);
+        // Snapshot the current selection once for this operation; later clicks use a fresh selection.
+        if(uvOnly)MaterialService.PrepareWorldUv(Doc,t.Objects,t.Layers,settings,true,true);
+        else MaterialService.Apply(Doc,asset!.Value,t.Objects,t.Layers,settings,true);
         var queue=new Queue<Action>();int computed=0,reused=0,done=0;
         foreach(var id in ids)queue.Enqueue(()=>
         {
@@ -151,10 +169,10 @@ public sealed class MaterialQuickPanel : Form
             progress.Value=(int)(90.0*done/ids.Length);SetStatus($"真实世界 UV {done}/{ids.Length}：计算 {computed}，复用 {reused}。");
         });
         queue.Enqueue(()=>{if(!uvOnly){MaterialService.Apply(Doc,asset!.Value,t.Objects,t.Layers,settings);SetStatus($"材质已应用。UV 计算 {computed}，复用 {reused}。");}else SetStatus($"UV 已完成。计算 {computed}，复用 {reused}。");progress.Value=100;});
-        steps=queue;apply.Enabled=generate.Enabled=prepare.Enabled=scope.Enabled=tabs.Enabled=false;progress.Value=0;SetStatus("检查真实世界 UV…");
+        steps=queue;progress.Indeterminate=false;apply.Enabled=generate.Enabled=prepare.Enabled=scope.Enabled=tabs.Enabled=false;progress.Value=0;SetStatus("检查真实世界 UV…");
     });
-    private void Cancel()=>Guard(()=>{if(steps!=null){steps=null;Unlock();SetStatus("后续步骤已取消，已完成的 UV 可保留或用 Rhino 撤销。");}if(jobId.HasValue){var j=MaterialGeneration.Get(jobId.Value);if(j.Status is "pending" or "running")MaterialGeneration.Cancel(j.Id);jobId=null;SetStatus("生成任务已取消。");}});
-    private void Unlock(){apply.Enabled=generate.Enabled=prepare.Enabled=scope.Enabled=tabs.Enabled=true;}
+    private void Cancel()=>Guard(()=>{if(steps!=null){steps=null;Unlock();SetStatus("后续步骤已取消，已完成的 UV 可保留或用 Rhino 撤销。");}if(jobId.HasValue){var j=MaterialGeneration.Get(jobId.Value);if(j.Status is "pending" or "running")MaterialGeneration.Cancel(j.Id);jobId=null;progress.Indeterminate=false;progress.Value=0;SetStatus("生成任务已取消。");}Unlock();});
+    private void Unlock(){apply.Enabled=generate.Enabled=prepare.Enabled=scope.Enabled=tabs.Enabled=true;apply.Enabled=generate.Enabled=jobId==null;}
     private void Tick()
     {
         if(steps!=null)
@@ -163,10 +181,12 @@ public sealed class MaterialQuickPanel : Form
             catch(Exception e){steps=null;Unlock();SetStatus("处理失败："+e.Message+"；已完成步骤可用 Rhino 撤销。");}
             return;
         }
+        Guard(RefreshTargets);
         if(jobId==null)return;
         Guard(()=>{var job=MaterialGeneration.Get(jobId.Value);status.Text=$"{job.Stage} · 已用 {(DateTime.UtcNow-started).TotalSeconds:F0} 秒";
-            if(job.Status=="completed"&&job.Material.HasValue){RefreshAssets();SelectAsset(job.Material.Value);jobId=null;SetStatus("材质已生成。请确认物理尺寸，再应用。 ");}
-            else if(job.Status=="cancelled"){jobId=null;SetStatus("生成任务已取消。");}});
+            if(job.Status=="completed"&&job.Material.HasValue){RefreshAssets();SelectAsset(job.Material.Value);jobId=null;progress.Indeterminate=false;progress.Value=100;Unlock();SetStatus("材质已生成。请确认物理尺寸，再应用。 ");}
+            else if(job.Status=="cancelled"){jobId=null;progress.Indeterminate=false;progress.Value=0;Unlock();SetStatus("生成任务已取消。");}
+            else if(job.Status=="failed"){jobId=null;progress.Indeterminate=false;progress.Value=0;Unlock();SetStatus(job.Stage+"；可点击生成材质重试。");}});
     }
     public object GetState()=>new{open=true,document,targets,selected,jobId,busy=Busy,scope=scope.SelectedKey,progress=progress.Value,status=status.Text,history=history.ToArray()};
 }

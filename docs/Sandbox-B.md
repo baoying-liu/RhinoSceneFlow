@@ -114,3 +114,10 @@ v0.3 的切平面法线偏移在接触反例中会越过遮挡片，导致应为
 `RhinoSceneFlowWorldUV`：独立米制 UV。`RhinoSceneFlowMaterials`：先选对象，打开简洁生成 / 应用窗口。`RhinoSceneFlowMaterialLibrary`：原完整材质编辑器。示例仍是 `artifacts/rhino-B/materials/demo/SceneFlow-Materials-Demo.3dm`，库仍为 `artifacts/materials/library-v07`（名称沿用，不代表当前插件版本）。
 
 验收覆盖有效 UV 复用、失效补算、图层混合对象进度、真实 Eto 阶段刷新 / 参考图片 / 回填 / 取消及原生 Undo。详见 Validation.md。中间部署因 Rhino 隐藏更新询问而关闭超时，选择不安装后正常退出再重试；未强制结束进程，未改其他通道。
+# 2026-10-27 v0.9 B 更新
+
+仅办公室 B `1cee488700ad42f59492743cc4a2a3fe`，19540 管理端、22801 原厂 Platform。最终构建任务 `18c79b8b12a04b568a5a8c96f5374fca` 成功，部署 `20261027-184155-039d831265654c26a3e66ba84c83977b`，实例 `ebc9d2917aff4beb8a71b5934b2dbca9`，PID 60896。
+
+`RhinoSceneFlowMaterials` 现在自动调用本机已登录的 Codex 生成图片，并跟随当前 Rhino 选择。实测参考图 → 新 PNG → 自动入库 / 选中、失败 / 重试 / 取消、重开面板继续显示任务、A/B 切换及图层范围均通过。旧手动 Agent API 保留，按钮不再只提交等待任务。无额外 MCP 服务、无独立 API key。详见 Validation.md / Materials.md。
+
+示例模型仍在 `artifacts/rhino-B/materials/demo/SceneFlow-Materials-Demo.3dm`，材质库仍为 `artifacts/materials/library-v07`。本轮旧退出记录与失败任务保留，未把 UnknownExit 记为测试通过。

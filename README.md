@@ -2,7 +2,7 @@
 
 Rhino 场景表现工作流：**AI 素材 → 真实尺度材质 → 植物布置 → 视图分层导出 → 后期编辑**，由 Codex / Agent 编排。名称中的 Scene 表示材质与植物组成的场景，Flow 表示从 Rhino 到后期编辑的连续流程。
 
-当前为 Rhino 8 / Windows v0.8.0 原型，已实现 **真实尺寸材质库**、Agent 生成任务交接、平面 / 箱式 / 圆柱映射、Eto 多视图卡片工作台、可排序通道 / 显示模式 PSD 图层，以及原厂 Rhino-MCP-Platform 自动化适配。植物布置等模块尚未实现；不依赖 ComfyUI，不启动额外 MCP 服务。
+当前为 Rhino 8 / Windows v0.9.0 原型，已实现 **真实尺寸材质库**、本机 Codex 自动图片生成、平面 / 箱式 / 圆柱映射、Eto 多视图卡片工作台、可排序通道 / 显示模式 PSD 图层，以及原厂 Rhino-MCP-Platform 自动化适配。植物布置等模块尚未实现；不依赖 ComfyUI，不启动额外 MCP 服务。
 
 项目位置：`00_DevProjects/C#/RhinoSceneFlow`，独立 Git 仓库；与 `00_DevProjects/C++/RhinoBIM` 在语言目录下层级一致。
 
@@ -39,7 +39,7 @@ dotnet build RhinoSceneFlow.sln -c Release '-p:RhinoSystem=D:\Rhino 8\System'
 
 ## 使用
 
-选中物件后执行 **`RhinoSceneFlowMaterials`** 打开简洁材质窗口，底部选择应用到物件或其所在图层。可输入描述、添加参考图片、选择生成结果；应用时自动检查并补算真实世界 UV，显示计算 / 复用进度。尺寸与铺贴参数放在独立页面。AI 仍通过 Agent 接手生成并回填，当前未内置常驻执行端。
+选中物件后执行 **`RhinoSceneFlowMaterials`** 打开简洁材质窗口，底部选择应用到物件或其所在图层。可输入描述、添加参考图片、选择生成结果；应用时自动检查并补算真实世界 UV，显示计算 / 复用进度。尺寸与铺贴参数放在独立页面。“生成材质”直接启动本机已登录的 Codex，自动生成新图并入库；应用范围跟随当前选择，无选择时不会沿用旧物件。
 
 **`RhinoSceneFlowWorldUV`** 可独立计算米制 UV，不分配材质；换材质复用有效 UV。完整材质库改用 **`RhinoSceneFlowMaterialLibrary`**。详细用法见 [材质与 UV 说明](docs/Materials.md)。
 

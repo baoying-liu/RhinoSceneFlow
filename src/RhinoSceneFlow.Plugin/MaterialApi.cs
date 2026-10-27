@@ -6,9 +6,9 @@ namespace RhinoSceneFlow.Plugin;
 
 internal static class MaterialApi
 {
-    internal static object Contract=>new{operations=new[]{"material_prepare_uv","material_uv_status","material_quick_open","material_quick_status","material_generation_progress","material_library","material_configure","material_import","material_update","material_apply","material_preview","material_restore","material_inspect","material_remap","material_pack","material_unpack","material_generation_request","material_generation_jobs","material_generation_complete","material_generation_cancel","material_open_panel","material_panel_status"},
+    internal static object Contract=>new{operations=new[]{"material_generation_start","material_generation_executor","material_prepare_uv","material_uv_status","material_quick_open","material_quick_status","material_generation_progress","material_library","material_configure","material_import","material_update","material_apply","material_preview","material_restore","material_inspect","material_remap","material_pack","material_unpack","material_generation_request","material_generation_jobs","material_generation_complete","material_generation_cancel","material_open_panel","material_panel_status"},
         units="Asset widthMeters/heightMeters and mapping origin/offsets are meters; converted to document units. Channel 1, persistent backup. Whole layers or object IDs, not both.",
-        generation="Agent workflow: request -> list pending jobs -> generate image using connected provider -> complete with local files. No embedded API provider or automatic generation claim.",
+        generation="material_generation_start runs local Codex image generation using existing ChatGPT login and imports a fresh PNG automatically. material_generation_request retains manual Agent handoff. Terminal states: completed, failed, cancelled.",
         imageMaps=new[]{"baseColor","roughness","normal","metallic"}};
     private static T Read<T>(JsonElement r,string key)=>JsonSerializer.Deserialize<T>(r.GetProperty(key).GetRawText(),MaterialLibrary.Json)??throw new ArgumentException("缺少参数："+key);
     private static Guid Id(JsonElement r,string key="assetId")=>Guid.Parse(r.GetProperty(key).GetString()!);
@@ -33,6 +33,8 @@ internal static class MaterialApi
         "material_remap"=>r.TryGetProperty("layers",out _)?MaterialService.SyncLayers(Doc(r),Ids(r,"layers")!):MaterialService.Remap(Doc(r),Ids(r,"objects")??throw new ArgumentException("需要 objects 或 layers。")),
         "material_pack"=>Pack(Id(r),r.GetProperty("path").GetString()!),
         "material_unpack"=>MaterialService.Library.ImportPackage(r.GetProperty("path").GetString()!,MaterialService.ValidateImages),
+        "material_generation_executor"=>MaterialGeneration.ExecutorStatus(),
+        "material_generation_start"=>MaterialGeneration.Start(Read<MaterialAsset>(r,"asset"),r.GetProperty("prompt").GetString()!,r.TryGetProperty("referenceImages",out var startRefs)?startRefs.EnumerateArray().Select(v=>v.GetString()!).ToArray():null),
         "material_generation_request"=>MaterialGeneration.Request(Read<MaterialAsset>(r,"asset"),r.GetProperty("prompt").GetString()!,r.TryGetProperty("referenceImages",out var refs)?refs.EnumerateArray().Select(v=>v.GetString()!).ToArray():null),
         "material_generation_jobs"=>MaterialGeneration.List(),
         "material_generation_complete"=>MaterialGeneration.Complete(Id(r,"jobId"),Read<Dictionary<string,string>>(r,"files")),
