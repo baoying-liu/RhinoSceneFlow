@@ -9,6 +9,7 @@ public sealed class MaterialAsset
     public int SchemaVersion { get; set; } = 1;
     public Guid Id { get; set; } = Guid.NewGuid();
     public int Revision { get; set; } = 1;
+    public int CatalogRevision { get; set; } = 1;
     public string Name { get; set; } = "Material";
     public string Category { get; set; } = "";
     public string[] Tags { get; set; } = [];
@@ -67,7 +68,7 @@ public sealed class MaterialLibrary
     public MaterialAsset Import(MaterialAsset descriptor,IReadOnlyDictionary<string,string> files)
     {
         if(!files.ContainsKey("baseColor")||files.Keys.Any(k=>!Slots.Contains(k)))throw new ArgumentException("Select baseColor and supported optional maps.");
-        var a=Clone(descriptor);a.Id=Guid.NewGuid();a.Revision=1;a.CreatedUtc=DateTime.UtcNow;a.Maps=[];a.Sha256=[];
+        var a=Clone(descriptor);a.Id=Guid.NewGuid();a.Revision=1;a.CatalogRevision=1;a.CreatedUtc=DateTime.UtcNow;a.Maps=[];a.Sha256=[];
         foreach(var (slot,path) in files)
         {if(!Path.IsPathFullyQualified(path)||!File.Exists(path))throw new FileNotFoundException("Image not found.",path);string ext=Path.GetExtension(path).ToLowerInvariant();if(ext is not (".png" or ".jpg" or ".jpeg"))throw new ArgumentException("Use PNG or JPEG images.");if(new FileInfo(path).Length>256L*1024*1024)throw new ArgumentException("Individual map limit: 256 MiB.");a.Maps[slot]=a.Id.ToString("N")+"_"+slot+ext;}
         a.Validate();Directory.CreateDirectory(Path.Combine(Root,"assets"));string target=AssetDirectory(a.Id),staging=target+".staging";Directory.CreateDirectory(staging);
@@ -80,8 +81,14 @@ public sealed class MaterialLibrary
     }
     public MaterialAsset Update(MaterialAsset descriptor)
     {
-        var old=Get(descriptor.Id);var a=Clone(descriptor);a.Maps=old.Maps;a.Sha256=old.Sha256;a.Source=old.Source;a.Prompt=old.Prompt;a.CreatedUtc=old.CreatedUtc;a.Revision=old.Revision+1;a.Validate();Verify(a);
+        var old=Get(descriptor.Id);var a=Clone(descriptor);a.Maps=old.Maps;a.Sha256=old.Sha256;a.Source=old.Source;a.Prompt=old.Prompt;a.CreatedUtc=old.CreatedUtc;a.Revision=old.Revision+1;a.CatalogRevision=old.CatalogRevision+1;a.Validate();Verify(a);
         string path=Path.Combine(AssetDirectory(a.Id),"asset.json"),temp=path+".tmp";File.WriteAllText(temp,JsonSerializer.Serialize(a,Json));File.Move(temp,path,true);return a;
+    }
+    public MaterialAsset UpdateLabels(Guid id,string name,string category,string[] tags)
+    {
+        var a=Get(id);var label=MaterialCatalog.ValidatePlan([a],[new(id,name,category,tags)]).Single();
+        a.Name=label.Name;a.Category=label.Category;a.Tags=label.Tags;a.CatalogRevision++;a.Validate();
+        string path=Path.Combine(AssetDirectory(id),"asset.json");File.WriteAllText(path+".tmp",JsonSerializer.Serialize(a,Json));File.Move(path+".tmp",path,true);return a;
     }
     public void ExportPackage(Guid id,string path)
     {

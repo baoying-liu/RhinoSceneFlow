@@ -1,5 +1,22 @@
 # v0.2.1 验收清单
 
+## v0.13 工作区验收（2026-10-28）
+
+最终安装 PID 44696 / 22801（任务 `c75f0220677448cd9f8f9df98badbc96`）。实际重开自有模型后验证选择状态与材质库同步、错误文档 ID 拒绝；窄页 / 824 宽并排库自动切换和不相似红铜描述返回零匹配通过。最终两视图工作台实际操作 2K 预设、尺寸复制、图层深复制和细节页返回，两个独立预览均加载；批量生成两份 PSD 并独立解码。证据 ready / layout-verified / batch-ui-verified / export-verified / decoded.json。
+
+最终模型另存为 `SceneFlow-Workspace013-ready-abd18a35.3dm`。对打开的旧 fixture 原路径保存曾出现原生只读文件锁对话框，导致 MCP 查询等待；Live dump / cdb 栈确认 `CRhLockFile.DisplayReadOnlyMessage → RhinoDoc.WriteFile`，不是 PSD 写入或 UI 卡死。通过 computer-use 只读窗口状态，没有鼠标输入；改存新路径后 MCP、保存和解码均通过。测试保存脚本已改用新唯一文件名，未删除锁或覆盖原文件。原厂 Open 命令的 HTTP reset 仍按 PID / 文档重查处理。
+
+- Release 零警告 / 错误与全套 Core 回归通过，新增分类筛选交集、完整 ID 集、去重词汇、图片 / 尺寸 / 外观版本不变、元数据过期拒绝测试。最新完整日志 `artifacts/ui013-delivery-validation.log`。
+- B PID 49928 实测四个原生 Eto 标签同一 dockBar；材质 / UV / 种植占位 / PSD 导航、库展开、连续三次选择、原生 RDK 球体预览、实时选择 A→B 与自动补算米制 UV，通过原厂 Platform API / WebView2 SDK 完成，没有鼠标输入。
+- 实际 ChatKit 发送石灰岩请求，Codex 返回两个可信已有候选，未生成新图；关闭复用后仅请求一次真实新图，生成深蓝陶瓷 PNG，自动命名 / 归类 / 六个标签、导入、选择与应用成功。独立 SHA256 / PNG 解码通过。
+- 实际点击 AI 整理，三个资产的三类（天然石头、石材、陶瓷）统一为石材 / 陶瓷；全部图片哈希、尺寸、PBR 参数、外观 revision、文档材质绑定、几何 CRC 不变，仅 catalogRevision 增加。分类 / 标签筛选和空选择拒绝通过。
+- 新侧栏工作台实际启动异步 320×240 PSD 导出，包含真实石材与新生成陶瓷、独立阴影（正片叠底 75%）、极地模式。psd-tools 独立解码与强制合成通过，材质组 3 个子层、蓝色材质 2529 个可见像素、阴影 alpha 非空。导出保留文档修改标记、数量、相机、太阳状态。没有使用 Photoshop UI 验证。
+- 主要证据在 `artifacts/rhino-B/workspace013/`：setup / reuse-verified / generation-verified / organize-verified / export-verified / decoded.json；可查看样例 `artifacts/examples/Workspace013/SceneFlow-Workspace.psd` 与 PNG。WPF 截图不含 WebView2 的 HWND 内容；材质球和 PSD 使用独立原生 / 文件验证。
+
+本轮开发失败记录保留：早期 RDK 预览前使用独立 viewport 的 DrawToBitmap 返回 null，已改用实际 RDK 缩略图接口。一次本地分类测试在 OneDrive staging 文件夹改名被拒绝，测试改为独立临时目录后通过；另有预览 Color4f 编译错误任务失败，未部署该版本。
+
+B PID 58024 在管理器关闭时超时，随后异常退出（0xC000041D），不是通过。已保存原模型恢复备份和退出 / dump 分析证据；`ui013-shutdown-dump.log` 定位 `ObjectDisposedException → Eto.Panel.Controls → Native TabPanel OnUnLoad / DataContext`。修复注册面板生命周期：Rhino 保有宿主所有权，插件关闭只停止任务、先脱离内容再释放；文档关闭不释放仍挂在宿主上的 ExportPanel。修复后 PID 49928、4344 均由管理器记录 NormalExit / code 0；不据此宣称更早历史的所有崩溃原因均已解决。
+
 ## 自动验证
 
 - [x] .NET Release 编译通过，无警告。
@@ -159,3 +176,27 @@ Build.ps1 核心回归通过，编译零警告 / 错误。B 最终使用部署 `
 完整样例：`artifacts/examples/ChatKit-Xatlas/AI_Complex_Merged.psd` 与 `AI_Complex_ByObject.psd`，含真实 AI 材质、独立 Shadow（正片叠底 75%）和 Arctic。前者材质 Group 一个子层，后者两个直接物件子层。强制独立 psd-tools 重合成两种分层差异 **0**，与存储预览最大预乘 RGBA 差 **1.867/255**；不是打开 Photoshop 界面验收。证据：`artifacts/rhino-B/xatlas/{verified,workflow-verified,guards-verified,persistence-verified}.json`、`artifacts/examples/ChatKit-Xatlas/decoded.json`。
 
 部署期间保留 WebView2 多架构 DLL 冲突、旧 PID 61196 UnknownExit（code 0、无 CrashEvents / NewDumps）、主动取消的中间任务；没有把这些计为通过，也未强制结束 Rhino。WebView2 现仅部署 x64 loader；任务 05 为收拢最终修正主动取消，任务 06 才是最终成功验收。
+
+
+## 2026-10-28 砖纹与朝向复查：v0.11 尚不能视为原生 UV 完整验收
+
+用户用砖纹暴露了随机混凝土未充分检出的缺陷。办公室 B PID 78296，源对象 `ff19aeaf-aace-4dfa-ae66-d27056ffe7f4`：38400 顶点 / 76800 面，闭合但 SolidOrientation=-1，有向体积 -132889894146.61641 文档单位³；custom mapping primitive 同样为 -1。原因是测试三叶结生成器的绕序朝内，不是 xatlas 把原源几何翻转。已修正生成脚本的绕序并增加正体积 / 外向断言。在未修改活动文档的独立副本中显式反向面索引，验证 orientation=+1、正体积。`Mesh.Flip` 后本次 SDK 的 SolidOrientation 查询仍返回旧值，因此证明使用重建网格与体积两项，不能只读可能缓存的标志。
+
+第二个已确认的接入缺陷：原始共享顶点网格经 native `SetTextureCoordinates(customMeshMapping, Identity, false, true)` 后，23633/76800 面的 UV 边梯度与 atlas 原面 UV 不一致，最大差 30.4118 UV 单位。诊断副本先 `Unweld(0,true)` 再映射，76800 面的梯度误差全部为 0（顶点变为 230400）。该实验同时改变了每面顶点及法线，证明原生回映射不能忠实保持当前分岛 UV，不表示逐面硬法线是正式解决方案。Rhino SDK XML 对 seamCheck 的描述明确只覆盖 Box / Sphere / Cylinder，不包括 custom mesh mapping。
+
+正式修复仍需直接保留分岛 UV 的渲染网格 / 正确的 UV seam 顶点，并保留原平滑法线；不能只靠 custom mesh projector 回套共享顶点原网格。Mesh 和 Brep 必须分别验证原生显示、PSD、保存重开与恢复。砖纹还要求方向 / 相位连续；现有 465 岛 + 异常面再切缝只约束局部尺度，没有约束跨岛图案连续。管状结构可采用沿中心线的连续展开和隐蔽接缝，通用曲面需方向引导分区；不承诺双曲率表面全局无缝且逐点等距。
+
+本轮仅诊断、修正后续 fixture 生成器并保存几何诊断副本；未替换用户当前物件 / 材质，也未宣称插件运行时已修好。证据在 `artifacts/rhino-B/uv-orientation/{diagnosis,outward-verified,native-seam-transfer}.json`。此前面积 / 拉伸 / PSD 检查仍是那些具体检查的通过记录，不构成砖纹连续性或原生回映射正确的证据。
+
+
+## v0.12 连续管体与原生 UV 修复验收（2026-10-28）
+
+办公室 B，最终任务 `66d93f90374a428da0df53aafd58251b` 成功；部署 `20261028-151756-6ecc52b29a834dfc84d2c06fc3de60ed`；实例 `47abcdb63065428687fc43d77752e42e`，PID 66776，Platform 22801。完整串行 Build.ps1 零警告 / 零错误，原有检查、xatlas 及新增 TubeValidation 通过。一次与管理端重叠的本地构建遇到 CS0006 中间文件竞争，保留失败日志，随后串行重跑通过；未将该失败记为通过。旧 PID 78296 UnknownExit（code 0，无新事件 / 转储）已审阅并确认，不归因于本次修复。
+
+新 RenderMeshProvider 使用接缝拓扑 / UV 与平滑法线，不再把图集重新投影到共享顶点源网格。辅助存储避开已有通道，通道 1 为 surface parameters。原生管线检查：两件 Mesh 与一件 NURBS 球体返回的 UV / 法线误差均 0，闭合渲染网格体积为正；源 geometry CRC 不变。三叶结原源仍朝内，修正只发生在渲染快照中；原几何保留。
+
+76,800 面管体沿中心线展开 4.2282591 秒，长度 86.478382 m、半径 0.699998 m；1 岛，95 分位拉伸 1.178998、最大 1.364121；UV 面积与源面积差约 0.0445%。原生砖纹和 PSD 材质通道均实际检查；有闭合收口、内外弯局部拉伸，不是通用无缝等距参数化。自动 xatlas 测试仍 1197 岛、最大拉伸约 2.0076，不应选作管状砖纹连续性方案。
+
+取消、计算中修改中心线、改动辅助映射 hash 拒绝、恢复、保留无关 1000 通道（本插件使用 1001）通过。六次材质切换保留原 UV，原生 provider 的实际材质重复分别正确为 1/0.6、1/0.3 和 1、1。退休缓存在等待后回到 0，未持续累积。实际保存并重开自己的 3dm 后文档 serial 268435458，三个对象原生 UV / 法线误差仍 0，源 CRC 未变，读取后 modified=false。第一次 Open 因未设置保存选项进入保存提示，取消宏被当作测试文件名，保留诊断；正确设置 UpdateDocumentPath / SuppressDialogBoxes 并确认 modified=false 后 Open 成功。重开期间 HTTP 一次断开，PID 未退出，重连后继续通过，未强制结束 Rhino。
+
+1600×1200 的 atlas / tube 各导出真实材质、Rendered、Shadow+材质+Arctic 六份 PSD，并由 psd-tools 强制独立合成 / 图层解析。预览含采样、色调、光照差异，不宣称逐像素同色；SDK 返回 UV 与法线才作数值一致性检查。证据：`artifacts/rhino-B/uv-v012/{ready,export-verified,guards-verified,reopen-verified}.json`、`artifacts/examples/UV-v012/decoded.json`；原生截图 `tube-rendered.png`，示例 `tube-stack.psd`。仅 B 部署，正式 Rhino 未改。详情见 UV-Continuity.md。

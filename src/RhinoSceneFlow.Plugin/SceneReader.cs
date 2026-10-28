@@ -61,19 +61,29 @@ internal sealed class SceneReader(RhinoDoc doc, RhinoViewport viewport, Cancella
         int group = Group(obj.Attributes.LayerIndex);
         var geometry = obj.Geometry;
         Mesh[] meshes;
+        Mesh? unwrapped=null;
         bool owned = true;
+        void AddSurface(Brep brep)
+        {
+            if(Surfaces==null)return;
+            if(MaterialService.ReadUv(obj) is {Version:2,OrientationCorrected:true})
+            {using var outward=brep.DuplicateBrep();outward.Flip();Surfaces.AddBrep(outward,transform);}
+            else Surfaces.AddBrep(brep,transform);
+        }
         switch (geometry)
         {
-            case Mesh mesh: meshes = [mesh]; owned = false; Surfaces?.AddMesh(mesh,transform); break;
-            case Brep brep: meshes = MeshBrep(brep); Surfaces?.AddBrep(brep,transform); break;
+            case Mesh mesh:
+                unwrapped=MaterialService.UnwrappedMesh(doc,obj);
+                meshes = [mesh]; owned = false; Surfaces?.AddMesh(unwrapped??mesh,transform); break;
+            case Brep brep: meshes = MeshBrep(brep); AddSurface(brep); break;
             case Extrusion extrusion:
-                using (var eb = extrusion.ToBrep()) { meshes = MeshBrep(eb); Surfaces?.AddBrep(eb,transform); }
+                using (var eb = extrusion.ToBrep()) { meshes = MeshBrep(eb); AddSurface(eb); }
                 break;
             case SubD subd:
                 var sm = Mesh.CreateFromSubD(subd, 2);
-                meshes = sm is null ? [] : [sm]; if(sm is not null) Surfaces?.AddMesh(sm,transform); break;
+                meshes = sm is null ? [] : [sm];unwrapped=MaterialService.UnwrappedMesh(doc,obj); if(sm is not null) Surfaces?.AddMesh(unwrapped??sm,transform); break;
             case Surface surface:
-                using (var sb = surface.ToBrep()) { meshes = MeshBrep(sb); Surfaces?.AddBrep(sb,transform); }
+                using (var sb = surface.ToBrep()) { meshes = MeshBrep(sb); AddSurface(sb); }
                 break;
             default:
                 string type = obj.ObjectType.ToString();
@@ -82,7 +92,7 @@ internal sealed class SceneReader(RhinoDoc doc, RhinoViewport viewport, Cancella
         }
         try
         {
-            var unwrapped=MaterialService.UnwrappedMesh(doc,obj);
+            unwrapped??=MaterialService.UnwrappedMesh(doc,obj);
             if(unwrapped!=null){if(owned)foreach(var old in meshes)old.Dispose();meshes=[unwrapped];owned=true;}
             TextureBuilder?.Add(obj,meshes);
             if (meshes.Length == 0) throw new InvalidOperationException($"对象 {obj.Id} 无法生成显示网格。");

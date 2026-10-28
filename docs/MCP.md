@@ -1,5 +1,29 @@
 # 原厂 Rhino-MCP-Platform 接入
 
+## v0.13 停靠工作区与材质检索 / 分类
+
+以下操作继续经过 `McpApi.Execute`；请求带 `apiVersion:1`。涉及模型 / UI 的请求带当前 `document`（RhinoDoc RuntimeSerialNumber）。
+
+| operation | 参数与返回 |
+| --- | --- |
+| `material_workspace_open` | `page:materials\|uv\|planting\|export`，默认 materials；返回四个原生 panelId、dockBars、工具状态 |
+| `material_workspace_status` | 只读；材质状态包含 selected、job、lastJob、scope、reuseSimilar、shelf |
+| `material_workspace_group` | 显式将四个工具组合进材质面板所在原生容器 |
+| `material_shelf_open` | `visible?:bool`，默认 true；宽屏侧边展开，窄栏进入材质库页 |
+| `material_tool_select` | `assetId`，设置待应用材质 |
+| `material_tool_settings` | `scope?:object\|layer`、`reuseSimilar?:bool` |
+| `material_tool_apply` | 从本次实时 Rhino 选择启动 UV / 应用队列；状态中 busy 与 status 跟踪 |
+| `material_library` | `query?`、`category?`、`tag?`，三个条件取交集 |
+| `material_update_labels` | `assetId,name,category,tags:[string]`；仅增加 catalogRevision，不改变外观 revision |
+| `material_catalog_organize` | 启动实际本机 Codex 整库整理，返回 id / running |
+| `material_catalog_status` | `jobId`；running / completed / failed / cancelled |
+| `material_catalog_cancel` | `jobId`，取消本任务，提交前不修改分类 |
+| `material_native_preview` | `assetId,path:绝对PNG路径`，Rhino 原生 RDK 球体缩略图，不添加文档内容 |
+
+`material_chat_start` 新增 `reuseSimilar?:bool`（默认 true）。有可信匹配时任务 completed，`matches:[{id,score,reason}]`，`material:null`，不生成图片；无匹配时才进入原有生成链。分数阈值 0.82，最多六项。任务生成 / 编辑图片后自动命名、归类和生成标签，分类失败仍保存新图并明确标为待分类。无新图的普通讨论仍是 `material:null`。检索 / 分类用本机已登录 Codex，不新增 API key 或 MCP 服务。
+
+兼容命令：RhinoSceneFlow、RhinoSceneFlowMaterials、RhinoSceneFlowMaterialLibrary、RhinoSceneFlowPanel。旧窗口状态别名现在返回侧栏状态；旧的窗口反射用例需改用工作区接口。具体流程见 [Workspace.md](Workspace.md)。
+
 ## v0.9 自动生成与当前选择
 
 `material_generation_start`：`asset`、`prompt`、可选 `referenceImages:[绝对路径]`。实际启动本机 Codex 子进程，使用现有 ChatGPT 登录调用内置 image_gen，新 PNG 经校验后自动入库。返回 running 任务，后续用 `material_generation_jobs` 查询。失败为 failed 并附 error，取消为 cancelled。不需要外部 Agent 手动 complete。
@@ -215,3 +239,6 @@ API 不弹覆盖窗口，默认重名编号；显式 `collision:"overwrite"` 才
 
 
 v0.11 ChatKit 对话、参考图片、xatlas 异步展开和新增 `material_chat_*` / `material_unwrap_*` API：[接入与使用说明](ChatKit-Xatlas.md)。
+
+
+v0.12 原生渲染网格、管体展开和 `material_uv_renderer`：[接缝 UV 与连续管体](UV-Continuity.md)。

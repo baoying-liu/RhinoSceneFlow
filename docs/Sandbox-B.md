@@ -1,5 +1,15 @@
 # 沙盒 B：v0.2 自动化验收
 
+## 最新 v0.13 工作区（2026-10-28）
+
+公司 B `1cee488700ad42f59492743cc4a2a3fe`，管理 MCP 19540；最终任务 `c75f0220677448cd9f8f9df98badbc96` Succeeded，部署 `20261028-213610-15e5ab02ec0e4bdc908e1bffc9ac57ba`，实例 `8378141635a1464eb07802da92e2f479`，PID **44696**，原厂 Platform **22801**。没有正式部署或改动其他通道。
+
+输入 **RhinoSceneFlow** 打开四工具原生停靠工作区；旧材质、材质库与 PSD 命令仍可用。当前 B 为自有三物件 / 两个 Named Views 测试模型，最终保存 `artifacts/rhino-B/workspace013/SceneFlow-Workspace013-ready-abd18a35.3dm`；材质侧栏保留深蓝陶瓷选中和库预览，默认复用开启。B 测试库为 `artifacts/rhino-B/workspace013/library`，包含两种石材和本轮实际 AI 生成的陶瓷；早期 `library-v07` 原库保留。
+
+实际 ChatKit 生成 / 检索、自动分类标签、整库整理、A→B 实时选择、窄 / 宽布局自动转换（宽 824）、模型重开、双预览 / 2K 预设 / 独立配置复制、两视图异步 PSD 及独立文件解码通过。样例 `artifacts/examples/Workspace013`。材质球用 Rhino 原生 RDK；没有鼠标操作，末尾只通过 computer-use 读取了一次原生保存文件锁状态。
+
+本轮 PID 58024 的关闭异常与 dump 保留；修复宿主生命周期后 PID 49928 / 4344 两次正常关闭。对旧模型同路径保存曾触发原生只读文件锁提示，属于测试保存步骤；检查原生调用栈后改存新文件，没有覆盖被锁定文件。更多证据和限制见 Validation.md。
+
 日期：2026-10-21。项目名称统一为 RhinoSceneFlow，原 RhinoPSD Git 历史保留。
 
 ## 环境与加载证据
@@ -130,3 +140,8 @@ v0.3 的切平面法线偏移在接触反例中会越过遮挡片，导致应为
 ChatKit 实际对话、上传参考图、真实新图片、入库 / 选中和重开历史均通过。xatlas 92,928 面组合约 26.112 秒，原几何未变，3dm 映射 / hash 持久化、取消及过期输入拒绝通过。材质库仍为 `artifacts/materials/library-v07`。测试模型 `artifacts/rhino-B/xatlas/Xatlas_0b67f78e.3dm`；完整样例在 `artifacts/examples/ChatKit-Xatlas`。详情与限制见 Validation.md 和 ChatKit-Xatlas.md。
 
 通过管理器显示了 B 窗口以初始化原生 GPU 视图；没有使用鼠标。当前 B 模型 / 面板保留供手工尝试。旧失败、未知退出和主动取消记录保留，不视为成功。
+
+
+## 最新 v0.12（2026-10-28）
+
+任务 `66d93f90374a428da0df53aafd58251b`，部署 `20261028-151756-6ecc52b29a834dfc84d2c06fc3de60ed`，实例 `47abcdb63065428687fc43d77752e42e`，PID 66776 / Platform 22801。已修复原生 UV 回投影与渲染朝向，新增沿中心线管体展开；实测及限制见 UV-Continuity.md / Validation.md。示例模型 `artifacts/rhino-B/uv-v012/UV-Continuity-Brick.3dm`，预览 / PSD 在 `artifacts/examples/UV-v012`。已实际重开并检查恢复后的原生网格；没有使用鼠标或修改正式 Rhino。

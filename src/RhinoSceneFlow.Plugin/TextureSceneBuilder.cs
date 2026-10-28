@@ -76,7 +76,7 @@ internal sealed class TextureSceneBuilder(RhinoDoc doc)
             if(textured)
             {
                 mesh.Unweld(0,true);
-                if(mapping!=null&&MaterialService.ReadUv(obj)?.Mode!="xatlas")mesh.SetTextureCoordinates(mapping,mappingTransform,false,true);
+                if(mapping!=null&&MaterialService.ReadUv(obj)?.Version!=2)mesh.SetTextureCoordinates(mapping,mappingTransform,false,true);
                 if(mesh.TextureCoordinates.Count!=mesh.Vertices.Count)throw new NotSupportedException($"{obj.Id} 缺少可用的贴图 UV，请先配置映射。");
             }
             var points=mesh.Vertices.Select(p=>new Vec3(p.X,p.Y,p.Z)).ToArray();

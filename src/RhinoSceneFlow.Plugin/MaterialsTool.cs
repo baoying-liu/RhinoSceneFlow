@@ -1,0 +1,163 @@
+using Eto.Drawing;
+using Eto.Forms;
+using Rhino;
+using RhinoSceneFlow.Core;
+
+namespace RhinoSceneFlow.Plugin;
+
+public sealed class MaterialsTool:Panel
+{
+    private readonly uint document;
+    private readonly MaterialChatView chat;
+    private readonly MaterialActionQueue actions;
+    private readonly UITimer poll=new(){Interval=.25};
+    private readonly Label target=new(),status=new(){Text="描述材质，或从材质库中选择。",Wrap=WrapMode.Word},chosen=new(){Text="尚未选择材质",Wrap=WrapMode.Word};
+    private readonly ProgressBar progress=new(){MaxValue=100};
+    private readonly DropDown scope=new();
+    private readonly CheckBox reuse=new(){Text="优先复用相似的已有材质",Checked=true};
+    private readonly NumericStepper width=Ui.Number(.001,1e8,1,95),height=Ui.Number(.001,1e8,1,95);
+    private readonly NumericStepper roughness=Ui.Number(0,1,2,95),metallic=Ui.Number(0,1,2,95);
+    private readonly Panel libraryHost=new(),candidateHost=new();
+    private readonly Splitter split=new(){Orientation=Orientation.Horizontal,Position=360};
+    private readonly MaterialShelf shelf;
+    private readonly Button apply;
+    private Guid? selected,job,lastJob;
+    private bool drawer,closed,arranging;
+    public bool Busy=>actions.Busy||job.HasValue;
+    public uint DocumentSerial=>document;
+    private RhinoDoc Doc=>RhinoDoc.FromRuntimeSerialNumber(document)??throw new InvalidOperationException("文档已关闭。");
+    public MaterialsTool(RhinoDoc doc)
+    {
+        document=doc.RuntimeSerialNumber;actions=new(document,(s,p)=>{status.Text=s;progress.Value=p;});
+        width.Value=height.Value=1000;scope.Items.Add(new ListItem{Key="object",Text="应用到当前物件"});scope.Items.Add(new ListItem{Key="layer",Text="应用到物件所在图层"});scope.SelectedIndex=0;
+        chat=new(document,()=>(width.Value/1000,height.Value/1000),id=>{job=lastJob=id;progress.Indeterminate=true;},()=>reuse.Checked==true);
+        shelf=new(doc,SelectAsset,()=>ShowLibrary(false));libraryHost.Content=shelf;
+        var settings=Ui.Layout();settings.AddRow(new Label{Text="整张贴图代表的实际宽 × 高（mm）",Wrap=WrapMode.Word});settings.AddRow(ToolUi.Row(width,new Label{Text="×"},height,null));
+        settings.AddRow(ToolUi.Row(new Label{Text="粗糙度"},roughness,null));settings.AddRow(ToolUi.Row(new Label{Text="金属度"},metallic,null));
+        settings.AddRow(Ui.Button("保存尺寸与外观参数",()=>Guard(()=>{if(selected==null)throw new ArgumentException("先选择材质。");var a=MaterialService.Library.Get(selected.Value);a.WidthMeters=width.Value/1000;a.HeightMeters=height.Value/1000;a.Roughness=roughness.Value;a.Metallic=metallic.Value;MaterialService.Library.Update(a);shelf.Refresh();status.Text="尺寸与外观参数已保存，下次应用生效。";})));
+        settings.AddRow(Ui.Button("打开 UV 工具",()=>SceneFlowWorkspace.Open("uv")));
+        var advanced=new Expander{Header="尺寸与高级设置",Expanded=false,Content=settings};
+        var l=Ui.Layout();l.AddRow(ToolUi.Row(ToolUi.Heading("材质助手"),null,Ui.Button("材质库 ›",()=>ShowLibrary(!drawer))));l.AddRow(target);l.AddRow(reuse);l.Add(chat,true,true);l.AddRow(candidateHost);l.AddRow(chosen);l.AddRow(advanced);l.AddRow(scope);
+        apply=Ui.Button("应用选中材质",Apply);l.AddRow(apply);l.AddRow(progress);l.AddRow(status);l.AddRow(ToolUi.Row(Ui.Button("取消任务",Cancel),null));
+        split.Panel1=l;split.Panel2=null;Content=split;
+        SizeChanged+=(_,_)=>{if(!arranging&&drawer&&((Width>=680)!=(Content==split)))ShowLibrary(true);};
+        Load+=(_,_)=>Activate();poll.Elapsed+=(_,_)=>Tick();poll.Start();
+    }
+    internal void Activate(){if(!closed)_=chat.StartAsync();}
+    public void ShowLibrary(bool visible)
+    {
+        if(arranging)return;arranging=true;drawer=visible;
+        // Wide floating workspaces show a side drawer. Narrow docked workspaces use
+        // the same content as an in-place library page, with an explicit back button.
+        try
+        {
+            if(visible){shelf.Refresh();if(Width>=680){if(Content==libraryHost)Content=null;split.Panel2=libraryHost;Content=split;}else{split.Panel2=null;Content=libraryHost;}}
+            else{split.Panel2=null;Content=split;}
+        }
+        finally{arranging=false;}
+    }
+    public void SelectAsset(Guid id)
+    {
+        var a=MaterialService.Library.Get(id);selected=id;width.Value=a.WidthMeters*1000;height.Value=a.HeightMeters*1000;roughness.Value=a.Roughness;metallic.Value=a.Metallic;chosen.Text=a.Name+" · "+a.Category;status.Text="材质已选中；点击应用即可。";
+        if(shelf.SelectedAsset!=id)shelf.Select(id,false);
+    }
+    public void Configure(bool? reuseSimilar=null,string? applyScope=null)
+    {
+        if(Busy)throw new InvalidOperationException("当前任务尚未完成。");
+        if(applyScope!=null&&applyScope is not ("object" or "layer"))throw new ArgumentException("scope: object | layer");
+        if(reuseSimilar.HasValue)reuse.Checked=reuseSimilar.Value;if(applyScope!=null)scope.SelectedKey=applyScope;
+    }
+    public void Apply()=>Guard(()=>
+    {
+        if(Busy)throw new ArgumentException("请先完成当前任务。");if(selected==null)throw new ArgumentException("先生成或选择材质。");var t=ToolUi.Targets(Doc,scope.SelectedKey=="layer");
+        actions.Start(t.Objects,t.Layers,new(),selected);status.Text="正在检查并补算真实尺寸 UV…";
+    });
+    public void Cancel(){actions.Cancel();if(job.HasValue)MaterialChat.Cancel(job.Value);}
+    private void Guard(Action a){try{a();}catch(Exception e){status.Text=e.Message;}}
+    private void Tick()
+    {
+        if(closed)return;
+        Guard(()=>
+        {
+            target.Text=$"当前选择 · {ToolUi.Selection(Doc).Length} 个物件";apply.Enabled=!Busy&&selected.HasValue;reuse.Enabled=!job.HasValue;
+            if(!job.HasValue)return;var j=MaterialChat.Get(job.Value);status.Text=j.Stage;
+            if(j.Status=="running")return;job=null;progress.Indeterminate=false;
+            if(j.Material.HasValue){SelectAsset(j.Material.Value);shelf.Refresh();}
+            var list=Ui.Layout();foreach(var match in j.Matches){var a=MaterialService.Library.Get(match.Id);list.AddRow(Ui.Button(a.Name+" · "+match.Reason,()=>Guard(()=>SelectAsset(a.Id))));}candidateHost.Content=j.Matches.Length>0?new Expander{Header=$"找到 {j.Matches.Length} 个相似材质 · 选择后应用",Expanded=true,Content=list}:null;
+        });
+    }
+    public object GetState()=>new{open=!closed,document,selected,job,lastJob,chatKit=chat.State,busy=Busy,scope=scope.SelectedKey,reuseSimilar=reuse.Checked,libraryOpen=drawer,shelf=shelf.GetState(),status=status.Text};
+    protected override void Dispose(bool disposing){if(disposing&&!closed){closed=true;poll.Stop();poll.Dispose();actions.Dispose();chat.Dispose();shelf.Dispose();}base.Dispose(disposing);}
+}
+
+public sealed class MaterialShelf:Panel
+{
+    private readonly uint document;
+    private readonly Action<Guid> select;
+    private readonly TextBox search=new(){PlaceholderText="搜索名称、分类或标签"},name=new(),categoryEdit=new(),tagsEdit=new();
+    private readonly DropDown category=new(),tag=new();
+    private readonly GridView list=new(){ShowHeader=false,AllowMultipleSelection=false,Height=230};
+    private readonly ImageView preview=new(){Size=new(260,180)};
+    private readonly Label details=new(){Wrap=WrapMode.Word},status=new(){Wrap=WrapMode.Word};
+    private readonly Panel inspector=new();
+    private readonly UITimer poll=new(){Interval=.5};
+    private readonly Dictionary<Guid,Bitmap> swatches=[];
+    private Guid? selected,organize;
+    private bool binding,closed;
+    private object[][] rows=[];
+    public Guid? SelectedAsset=>selected;
+    public MaterialShelf(RhinoDoc doc,Action<Guid> select,Action back)
+    {
+        document=doc.RuntimeSerialNumber;this.select=select;Padding=new(8);
+        list.Columns.Add(new GridColumn{DataCell=new ImageViewCell(0),Width=36});list.Columns.Add(new GridColumn{DataCell=new TextBoxCell(1),AutoSize=true});
+        var l=Ui.Layout();l.AddRow(ToolUi.Row(Ui.Button("‹ 返回助手",back),null,Ui.Button("AI 整理",()=>Guard(()=>{organize=CatalogService.Organize().Id;status.Text="正在整体优化分类、标签与名称…";}))));l.AddRow(search);l.AddRow(category);l.AddRow(tag);l.Add(list,true,true);l.AddRow(details);l.AddRow(status);l.AddRow(inspector);
+        BuildInspector();inspector.Visible=false;
+        var advanced=Ui.Layout();advanced.AddRow(Ui.Button("导入图片…",Import));advanced.AddRow(Ui.Button("切换材质库文件夹…",()=>Guard(()=>{using var dialog=new SelectFolderDialog{Directory=MaterialService.Library.Root};if(dialog.ShowDialog(this)==DialogResult.Ok){SceneFlowPlugin.Instance.MaterialDirectory=dialog.Directory;Refresh();}})));advanced.AddRow(new Label{Text="材质尺寸与铺贴参数在助手的高级设置中调整。",Wrap=WrapMode.Word});l.AddRow(new Expander{Header="库管理",Content=advanced});Content=l;
+        search.TextChanged+=(_,_)=>Filter();category.SelectedValueChanged+=(_,_)=>{if(!binding){FillTags();Filter();}};tag.SelectedValueChanged+=(_,_)=>{if(!binding)Filter();};
+        list.SelectionChanged+=(_,_)=>{if(!binding&&list.SelectedRow>=0&&list.SelectedRow<rows.Length)Guard(()=>Select((Guid)rows[list.SelectedRow][2]));};
+        poll.Elapsed+=(_,_)=>{if(closed||organize==null)return;var j=CatalogService.Get(organize.Value);status.Text=j.Stage;if(j.Status!="running"){organize=null;if(j.Status=="completed")Refresh();}};poll.Start();Refresh();
+    }
+    private void Guard(Action a){if(closed)return;try{a();}catch(Exception e){status.Text=e.Message;}}
+    public void Refresh()
+    {
+        if(closed)return;binding=true;try{string old=category.SelectedKey??"";category.Items.Clear();category.Items.Add(new ListItem{Key="",Text="所有分类"});foreach(var c in MaterialService.Library.List().Select(a=>a.Category).Where(c=>c.Length>0).Distinct().Order())category.Items.Add(new ListItem{Key=c,Text=c});category.SelectedKey=old;if(category.SelectedIndex<0)category.SelectedIndex=0;}finally{binding=false;}FillTags();Filter();
+    }
+    private void FillTags()
+    {
+        binding=true;try{string old=tag.SelectedKey??"";tag.Items.Clear();tag.Items.Add(new ListItem{Key="",Text="所有标签"});foreach(var t in MaterialCatalog.Filter(MaterialService.Library.List(),category:category.SelectedKey??"").SelectMany(a=>a.Tags).Distinct().Order())tag.Items.Add(new ListItem{Key=t,Text=t});tag.SelectedKey=old;if(tag.SelectedIndex<0)tag.SelectedIndex=0;}finally{binding=false;}
+    }
+    private void Filter()=>Guard(()=>
+    {
+        binding=true;try{rows=MaterialCatalog.Filter(MaterialService.Library.List(),search.Text,category.SelectedKey??"",tag.SelectedKey??"").Select(a=>new object[]{Swatch(a),a.Name+"\n"+a.Category,a.Id}).ToArray();list.DataStore=rows;list.SelectedRow=selected.HasValue?Array.FindIndex(rows,r=>(Guid)r[2]==selected.Value):-1;details.Text=$"{rows.Length} 个材质";}finally{binding=false;}
+    });
+    private Bitmap Swatch(MaterialAsset asset)
+    {
+        if(swatches.TryGetValue(asset.Id,out var value))return value;
+        using var original=new System.Drawing.Bitmap(MaterialService.Library.MapPath(asset,"baseColor"));using var small=new System.Drawing.Bitmap(original,16,16);long r=0,g=0,b=0;for(int y=0;y<16;y++)for(int x=0;x<16;x++){var c=small.GetPixel(x,y);r+=c.R;g+=c.G;b+=c.B;}
+        using var circle=new System.Drawing.Bitmap(28,28);using(var gfx=System.Drawing.Graphics.FromImage(circle)){gfx.SmoothingMode=System.Drawing.Drawing2D.SmoothingMode.AntiAlias;gfx.Clear(System.Drawing.Color.Transparent);using var brush=new System.Drawing.SolidBrush(System.Drawing.Color.FromArgb((int)(r/256),(int)(g/256),(int)(b/256)));gfx.FillEllipse(brush,2,2,24,24);}value=Ui.Bitmap(circle);swatches.Add(asset.Id,value);return value;
+    }
+    public void Select(Guid id,bool notify=true)
+    {
+        var a=MaterialService.Library.Get(id);selected=id;if(notify)select(id);name.Text=a.Name;categoryEdit.Text=a.Category;tagsEdit.Text=string.Join("，",a.Tags);
+        binding=true;try{list.SelectedRow=Array.FindIndex(rows,r=>(Guid)r[2]==id);}finally{binding=false;}
+        using(var original=new System.Drawing.Bitmap(MaterialService.Library.MapPath(a,"baseColor")))
+        using(var thumb=new System.Drawing.Bitmap(original,260,180)){var old=preview.Image;preview.Image=Ui.Bitmap(thumb);old?.Dispose();}
+        inspector.Visible=true;status.Text=$"{a.WidthMeters:G4} × {a.HeightMeters:G4} m · {string.Join(" · ",a.Tags)}";
+        try{using var sphere=NativeMaterialPreview.Render(a);var old=preview.Image;preview.Image=Ui.Bitmap(sphere);old?.Dispose();}catch(Exception e){status.Text+="\n"+e.Message;}
+    }
+    private void BuildInspector()
+    {
+        var edit=Ui.Layout();edit.AddRow(preview);edit.AddRow(Ui.Button("查看球体上的效果",()=>Guard(()=>{if(selected==null)return;using var b=NativeMaterialPreview.Render(MaterialService.Library.Get(selected.Value));var old=preview.Image;preview.Image=Ui.Bitmap(b);old?.Dispose();status.Text="Rhino 原生着色球体预览 · 示意铺贴效果。";})));
+        edit.AddRow(Ui.Button("使用这个材质",()=>{if(selected.HasValue)select(selected.Value);}));
+        var fields=Ui.Layout();fields.AddRow(new Label{Text="名称"});fields.AddRow(name);fields.AddRow(new Label{Text="分类"});fields.AddRow(categoryEdit);fields.AddRow(new Label{Text="标签（逗号分隔）"});fields.AddRow(tagsEdit);
+        fields.AddRow(Ui.Button("保存属性",()=>Guard(()=>{if(selected==null)return;MaterialService.Library.UpdateLabels(selected.Value,name.Text,categoryEdit.Text,tagsEdit.Text.Split([',','，',';','；'],StringSplitOptions.RemoveEmptyEntries));Refresh();Select(selected.Value);status.Text="分类、名称与标签已更新。";})));
+        edit.AddRow(new Expander{Header="编辑名称、分类与标签",Content=fields});inspector.Content=edit;
+    }
+    private void Import()=>Guard(()=>
+    {
+        using var dialog=new OpenFileDialog();dialog.Filters.Add(new FileFilter("材质图片",".png",".jpg",".jpeg"));if(dialog.ShowDialog(this)!=DialogResult.Ok)return;
+        var a=MaterialService.Import(new(){Name=Path.GetFileNameWithoutExtension(dialog.FileName),Category="待分类",Tags=["导入"]},new(){{"baseColor",dialog.FileName}});Select(a.Id);Refresh();status.Text="图片已导入；请在高级设置中确认实际尺寸。";
+    });
+    public object GetState()=>new{selected,organize,category=category.SelectedKey,tag=tag.SelectedKey,query=search.Text,count=rows.Length,status=status.Text};
+    protected override void Dispose(bool disposing){if(disposing&&!closed){closed=true;poll.Stop();poll.Dispose();preview.Image?.Dispose();foreach(var b in swatches.Values)b.Dispose();}base.Dispose(disposing);}
+}

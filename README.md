@@ -2,7 +2,9 @@
 
 Rhino 场景表现工作流：**AI 素材 → 真实尺度材质 → 植物布置 → 视图分层导出 → 后期编辑**，由 Codex / Agent 编排。名称中的 Scene 表示材质与植物组成的场景，Flow 表示从 Rhino 到后期编辑的连续流程。
 
-当前为 Rhino 8 / Windows v0.11.0 原型，已实现 **真实尺寸材质库**、ChatKit 连续对话与参考图、本机 Codex 自动图片生成、xatlas C++ 复杂曲面展开、平面 / 箱式 / 圆柱映射、Eto 多视图卡片工作台、真实贴图材质分层、可排序通道 / 显示模式 PSD 图层，以及原厂 Rhino-MCP-Platform 自动化适配。植物布置等模块尚未实现；不依赖 ComfyUI，不启动额外 MCP 服务。
+当前为 Rhino 8 / Windows v0.13.0 原型，已实现 **四工具原生停靠工作区**、可展开材质库、AI 相似材质复用 / 分类标签整理、ChatKit 连续对话与参考图、真实尺寸材质与 UV、沿中心线管体 / xatlas 复杂曲面展开、多视图卡片 PSD 导出，以及原厂 Rhino-MCP-Platform 自动化适配。种植为明确占位；不依赖 ComfyUI，不启动额外 MCP 服务。
+
+输入 `RhinoSceneFlow` 打开工作区。材质、UV、种植、PSD 可停靠或浮动，使用说明见 [Workspace.md](docs/Workspace.md)。
 
 项目位置：`00_DevProjects/C#/RhinoSceneFlow`，独立 Git 仓库；与 `00_DevProjects/C++/RhinoBIM` 在语言目录下层级一致。
 
@@ -125,3 +127,6 @@ v0.4.1 增加原始曲面复核，修正测试双曲面上的断续碎影，保�
 
 
 v0.11 ChatKit 对话、参考图片、xatlas 异步展开和新增 `material_chat_*` / `material_unwrap_*` API：[接入与使用说明](docs/ChatKit-Xatlas.md)。
+
+
+v0.12 修复原生视口跨 UV 岛插值和内向测试模型的渲染朝向，新增 `RhinoSceneFlowTubeUV`：[管体与接缝 UV 使用说明](docs/UV-Continuity.md)。

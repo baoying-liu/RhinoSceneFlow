@@ -20,6 +20,7 @@
   </Target>
   <ItemGroup><None Include="../../artifacts/native-uv-build/$(Configuration)/SceneFlow.UvWorker.exe" Link="SceneFlow.UvWorker.exe" CopyToOutputDirectory="PreserveNewest" /></ItemGroup>
   <ItemGroup><None Update="ChatKit/*.py;ChatKit/*.html;ChatKit/*.txt" CopyToOutputDirectory="PreserveNewest" /></ItemGroup>
+  <ItemGroup><EmbeddedResource Include="Resources/*.ico" /></ItemGroup>
   <Target Name="KeepOnlyX64Loader" AfterTargets="Build">
     <Delete Files="$(TargetDir)runtimes/win-x86/native/WebView2Loader.dll;$(TargetDir)runtimes/win-arm64/native/WebView2Loader.dll" />
   </Target>

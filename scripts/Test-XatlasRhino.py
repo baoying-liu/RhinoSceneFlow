@@ -22,8 +22,11 @@ for i in range(n):
 for i in range(n):
  for j in range(m):
   a0=i*m+j;b0=((i+1)%n)*m+j;c0=((i+1)%n)*m+(j+1)%m;d0=i*m+(j+1)%m
-  mesh.Faces.AddFace(a0,b0,c0);mesh.Faces.AddFace(a0,c0,d0)
+  mesh.Faces.AddFace(a0,c0,b0);mesh.Faces.AddFace(a0,d0,c0)
 mesh.Normals.ComputeNormals();assert mesh.IsValid
+# Closed tube faces must point outward before UV / material validation.
+volume=Rhino.Geometry.VolumeMassProperties.Compute(mesh);assert volume is not None and volume.Volume>0;volume.Dispose()
+assert mesh.SolidOrientation()==1
 knot=add('Trefoil knot 76800 triangles',mesh);mesh.Dispose()
 sphere=Sphere(Point3d(112*scale,100*scale,2*scale),2*scale).ToBrep();add('NURBS Sphere',sphere);sphere.Dispose()
 source=[dict(id=id,crc=int(doc.Objects.FindId(System.Guid(id)).Geometry.DataCRC(0)),type=doc.Objects.FindId(System.Guid(id)).Geometry.GetType().Name) for id in ids]

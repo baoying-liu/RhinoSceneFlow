@@ -16,6 +16,9 @@ public sealed class WorldUvRecord
     public string MappingHash { get; set; } = "";
     public string Mode { get; set; } = "";
     public MappingSettings Settings { get; set; } = new();
+    public int MeshChannel { get; set; }
+    public string MeshHash { get; set; } = "";
+    public bool OrientationCorrected { get; set; }
 }
 
 public static partial class MaterialService
@@ -36,9 +39,15 @@ public static partial class MaterialService
     }
     internal static bool UvValid(RhinoDoc doc,RhinoObject obj)
     {
-        var r=ReadUv(obj);if(r==null||r.Version!=1||r.UnitScale!=UnitScale(doc)||r.GeometryCrc!=obj.Geometry.DataCRC(0))return false;
+        var r=ReadUv(obj);if(r==null||r.Version is not (1 or 2)||r.UnitScale!=UnitScale(doc)||r.GeometryCrc!=obj.Geometry.DataCRC(0))return false;
+        if(r.Version==1&&r.Mode=="xatlas")return false; // Legacy custom projection loses UV islands in native display.
         using var m=obj.GetTextureMapping(1,out var transform);if(m==null)return false;
-        try{return r.MappingHash==MapHash(m,transform);}catch(NotSupportedException){return false;}
+        try
+        {
+            if(r.MappingHash!=MapHash(m,transform))return false;
+            if(r.Version==2){using var stored=obj.GetTextureMapping(r.MeshChannel,out var sx);return stored!=null&&r.MeshHash==MapHash(stored,sx);}
+            return true;
+        }catch(NotSupportedException){return false;}
     }
     private static object UvStatus(RhinoDoc doc,RhinoObject obj)=>new{valid=UvValid(doc,obj),record=ReadUv(obj),metersPerUv=1};
     public static object InspectWorldUv(RhinoDoc doc,Guid[] objects)=>Targets(doc,objects,null).Select(o=>new{id=o.Id,status=UvStatus(doc,o)}).ToArray();
@@ -61,7 +70,7 @@ public static partial class MaterialService
                 if(!force&&UvValid(doc,obj)){plan.Items.Add(new(obj,null,record!,backup));continue;}
                 // A recorded projection survives material changes. Only an explicit UV command changes it.
                 var chosen=force?settings:record?.Settings??settings;
-                if(chosen.Mode=="xatlas")throw new InvalidOperationException("复杂曲面请先启动 xatlas 异步展开，再应用材质。");
+                if(chosen.Mode is "xatlas" or "tube")throw new InvalidOperationException("展开记录已失效，请先重新执行 xatlas 或沿中心线展开，再应用材质。");
                 var (map,mode)=BuildMapping(obj,new MaterialAsset{WidthMeters=1,HeightMeters=1},chosen,scale);
                 plan.Items.Add(new(obj,map,new WorldUvRecord{UnitScale=scale,GeometryCrc=obj.Geometry.DataCRC(0),Mode=mode,Settings=MaterialLibrary.Clone(chosen)},backup));
             }
@@ -76,12 +85,12 @@ public static partial class MaterialService
             var obj=doc.Objects.FindId(item.Object.Id)??throw new InvalidOperationException("物件已删除。");
             if(item.Mapping!=null)
             {
-                obj.SetTextureMapping(1,item.Mapping,Transform.Identity);
+                RemoveUvStorage(obj);obj.SetTextureMapping(1,item.Mapping,Transform.Identity);
                 using var actual=obj.GetTextureMapping(1,out var transform);if(actual==null)throw new InvalidOperationException("无法设置真实世界 UV。");
                 item.Record.MappingHash=MapHash(actual,transform);item.Record.GeometryCrc=obj.Geometry.DataCRC(0);
             }
             var attrs=obj.Attributes.Duplicate();attrs.SetUserString(BackupKey,item.Backup);attrs.SetUserString(WorldUvKey,Serialize(item.Record));
-            if(!doc.Objects.ModifyAttributes(obj.Id,attrs,true))throw new InvalidOperationException("无法保存真实世界 UV。");
+            if(!doc.Objects.ModifyAttributes(obj.Id,attrs,true))throw new InvalidOperationException("无法保存真实世界 UV。");UvRenderProvider.Refresh(doc,doc.Objects.FindId(obj.Id)!);
         }
     }
     public static object PrepareWorldUv(RhinoDoc doc,Guid[]? objects,Guid[]? layers,MappingSettings settings,bool force=false,bool preview=false)

@@ -17,6 +17,7 @@ public sealed class MaterialChatJob
     public string? Reply{get;internal set;}
     public string? Error{get;internal set;}
     public Guid? Material{get;internal set;}
+    public CatalogMatch[] Matches{get;internal set;}=[];
     public string? ImagePath{get;internal set;}
 }
 public static class MaterialChat
@@ -29,9 +30,9 @@ public static class MaterialChat
     public static object Cancel(Guid id){if(workers.TryGetValue(id,out var cancel))cancel.Cancel();return Get(id);}
     internal static void StopAll(){stopping=true;foreach(var worker in workers.Values)worker.Cancel();}
     private static void Ui(Action action){if(!stopping)RhinoApp.InvokeOnUiThread(new Action(()=>{if(!stopping)action();}));}
-    public static MaterialChatJob Start(string conversation,string[] references,double widthMeters=1,double heightMeters=1)
+    public static MaterialChatJob Start(string conversation,string[] references,double widthMeters=1,double heightMeters=1,bool reuseSimilar=true)
     {
-        if(stopping||Busy||MaterialGeneration.HasActiveWorkers)throw new InvalidOperationException("请先完成或取消当前对话 / 生成任务。");
+        if(stopping||Busy||MaterialGeneration.HasActiveWorkers||CatalogService.Busy)throw new InvalidOperationException("请先完成或取消当前对话 / 生成任务。");
         if(string.IsNullOrWhiteSpace(conversation)||conversation.Length>64000)throw new ArgumentException("对话长度需为 1–64000 字符。");
         if(references.Length>8)throw new ArgumentException("最多 8 张参考图。");
         MaterialService.ValidateImages(references.Select((p,i)=>(p,i)).ToDictionary(t=>t.i.ToString(),t=>t.p));
@@ -39,19 +40,39 @@ public static class MaterialChat
         var validation=MaterialLibrary.Clone(asset);validation.Maps=new(){{"baseColor","baseColor.png"}};validation.Validate();
         string directory=Path.Combine(MaterialService.Library.Root,"chat-jobs",Guid.NewGuid().ToString("N"));Directory.CreateDirectory(directory);
         var refs=references.Select((p,i)=>{string target=Path.Combine(directory,"reference-"+i+Path.GetExtension(p));File.Copy(p,target);return target;}).ToArray();
+        var library=MaterialService.Library;var catalog=library.List();
         var job=new MaterialChatJob();jobs.Add(job.Id,job);var cancel=new CancellationTokenSource();workers.Add(job.Id,cancel);
         _=Task.Run(async()=>
         {
             try
             {
+                if(reuseSimilar&&catalog.Length>0)
+                {
+                    Ui(()=>job.Stage="正在查找可复用的已有材质…");
+                    var found=await CodexCatalogRunner.RunAsync(Path.Combine(directory,"search"),"search",conversation,catalog,cancel.Token,refs);
+                    cancel.Token.ThrowIfCancellationRequested();
+                    if(found.MaterialRequest&&found.Matches.Length>0)
+                    {
+                        Ui(()=>{try{cancel.Token.ThrowIfCancellationRequested();job.Matches=found.Matches;job.Reply="找到相近材质，可在下方候选中选择后应用：\n"+string.Join("\n",found.Matches.Select(m=>catalog.First(a=>a.Id==m.Id).Name+" · "+m.Reason))+"\n需要全新方案时，关闭‘优先复用’后再次发送。";job.Status="completed";job.Stage="找到可复用材质，等待选择。";}catch(OperationCanceledException){job.Status="cancelled";job.Stage="已取消";}finally{Release(job.Id);}});return;
+                    }
+                }
                 var result=await CodexMaterialChatRunner.RunAsync(directory,$"Physical tile size: {widthMeters:G8} x {heightMeters:G8} meters.\n"+conversation,refs,stage=>Ui(()=>job.Stage=stage),cancel.Token);
+                CatalogLabel? label=null;
+                string? labelError=null;
+                if(result.ImagePath!=null)
+                {
+                    Ui(()=>job.Stage="正在归入分类并生成标签…");
+                    try{label=await CatalogService.LabelAsync(library,asset,Path.Combine(directory,"label"),cancel.Token);}
+                    catch(Exception e) when(e is not OperationCanceledException){labelError=e.Message;asset.Category="待分类";asset.Tags=["待整理"];}
+                }
                 Ui(()=>
                 {
                     try
                     {
-                        cancel.Token.ThrowIfCancellationRequested();job.Reply=result.Reply;
+                        cancel.Token.ThrowIfCancellationRequested();if(MaterialService.Library.Root!=library.Root)throw new InvalidOperationException("材质库已切换。");if(label!=null)CatalogService.SetLabel(asset,label);job.Reply=result.Reply;
                         if(result.ImagePath!=null){var imported=MaterialService.Import(asset,new(){{"baseColor",result.ImagePath}});job.Material=imported.Id;job.ImagePath=MaterialService.Library.MapPath(imported,"baseColor");}
-                        job.Status="completed";job.Stage=job.Material.HasValue?"新材质已生成并入库":"回复完成";
+                        if(labelError!=null)job.Reply+="\n图片已保存，但自动分类未完成，可用材质库的 AI 整理重试。";
+                        job.Status="completed";job.Stage=job.Material.HasValue?(labelError==null?"新材质已生成并入库":"图片已入库，自动分类失败，可重试整理"):"回复完成";
                     }
                     catch(OperationCanceledException){job.Status="cancelled";job.Stage="已取消";}
                     catch(Exception e){job.Status="failed";job.Error=e.Message;job.Stage=e.Message;}
@@ -71,14 +92,15 @@ internal sealed class MaterialChatHost : IDisposable
     private readonly SemaphoreSlim writer=new(1);
     private readonly Func<(double Width,double Height)> size;
     private readonly Action<Guid> onStarted;
+    private readonly Func<bool> reuse;
     private bool disposed;
     private Guid? active;
     private readonly string data;
     internal string Url{get;private set;}="";
     internal string State{get;private set;}="尚未启动";
-    internal MaterialChatHost(uint doc,Func<(double,double)> size,Action<Guid> onStarted)
+    internal MaterialChatHost(uint doc,Func<(double,double)> size,Action<Guid> onStarted,Func<bool>? reuse=null)
     {
-        this.size=size;this.onStarted=onStarted;
+        this.size=size;this.onStarted=onStarted;this.reuse=reuse??(()=>true);
         data=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"RhinoSceneFlow","chatkit-data","doc-"+doc);Directory.CreateDirectory(data);
     }
     internal async Task StartAsync()
@@ -118,7 +140,7 @@ internal sealed class MaterialChatHost : IDisposable
                             case "turn.start":
                                 var refs=p.GetProperty("references").EnumerateArray().Select(v=>Path.GetFullPath(v.GetString()!)).ToArray();
                                 if(refs.Any(path=>!path.StartsWith(Path.GetFullPath(data)+Path.DirectorySeparatorChar,StringComparison.OrdinalIgnoreCase)))throw new ArgumentException("参考图必须来自本次聊天上传。");
-                                var dimensions=size();var job=MaterialChat.Start(p.GetProperty("conversation").GetString()!,refs,dimensions.Width,dimensions.Height);active=job.Id;onStarted(job.Id);result=job;break;
+                                var dimensions=size();var job=MaterialChat.Start(p.GetProperty("conversation").GetString()!,refs,dimensions.Width,dimensions.Height,reuse());active=job.Id;onStarted(job.Id);result=job;break;
                             case "turn.status":result=MaterialChat.Get(Guid.Parse(p.GetProperty("jobId").GetString()!));break;
                             case "turn.cancel":result=MaterialChat.Cancel(Guid.Parse(p.GetProperty("jobId").GetString()!));break;
                             default:throw new ArgumentException("未知聊天请求。");
@@ -150,9 +172,9 @@ internal sealed class MaterialChatView : Panel,IDisposable
     private readonly Label error=new(){Wrap=WrapMode.Word};
     private bool closed,started;
     internal string State{get;private set;}="尚未启动";
-    internal MaterialChatView(uint doc,Func<(double,double)> size,Action<Guid> startedJob)
+    internal MaterialChatView(uint doc,Func<(double,double)> size,Action<Guid> startedJob,Func<bool>? reuse=null)
     {
-        host=new(doc,size,startedJob);Content=new NativeControlHost(Browser);
+        host=new(doc,size,startedJob,reuse);Content=new NativeControlHost(Browser);
     }
     internal async Task StartAsync()
     {
@@ -168,7 +190,7 @@ internal sealed class MaterialChatView : Panel,IDisposable
             Browser.CoreWebView2.Settings.AreDevToolsEnabled=false;Browser.CoreWebView2.Settings.AreDefaultContextMenusEnabled=false;
             Browser.Source=new Uri(host.Url);State="ready";
         }
-        catch(Exception e){if(!closed){State=e.Message;error.Text="ChatKit 无法启动："+e.Message+"\n可切换到“快捷生成”继续使用。";Content=error;host.Dispose();}}
+        catch(Exception e){if(!closed){State=e.Message;error.Text="ChatKit 无法启动："+e.Message+"\n请检查本机 ChatKit 运行环境与网络连接。";Content=error;host.Dispose();}}
     }
     public new void Dispose(){if(closed)return;closed=true;host.Dispose();Browser.Dispose();base.Dispose();}
 }

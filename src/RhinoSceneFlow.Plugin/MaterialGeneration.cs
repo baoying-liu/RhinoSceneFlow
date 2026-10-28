@@ -28,7 +28,7 @@ public static class MaterialGeneration
     public static MaterialGenerationJob Start(MaterialAsset descriptor,string prompt,string[]? referenceImages=null)
     {
         if(stopping)throw new InvalidOperationException("Rhino 正在关闭。");
-        if(workers.Count>0||MaterialChat.Busy)throw new InvalidOperationException("已有图片正在生成，请先完成或取消。");
+        if(workers.Count>0||MaterialChat.Busy||CatalogService.Busy)throw new InvalidOperationException("已有图片正在生成，请先完成或取消。");
         string executable=CodexImageRunner.FindExecutable()??throw new InvalidOperationException("未找到本机 Codex。请安装 Codex 或 VS Code Codex 扩展并登录；也可用 RHINOSCENEFLOW_CODEX 指定 codex.exe。");
         var job=Request(descriptor,prompt,referenceImages);job.Executor="codex-local";job.Status="running";job.Stage="正在启动本机 Codex";Save(job);
         string root=MaterialService.Library.Root;var cancel=new CancellationTokenSource();workers.Add(job.Id,cancel);
@@ -38,9 +38,14 @@ public static class MaterialGeneration
             {
                 var result=await CodexImageRunner.RunAsync(executable,Path.Combine(root,"requests",job.Id.ToString("N"),"runner"),job.Prompt,job.ReferenceImages,
                     stage=>OnUi(()=>{var current=Get(job.Id);if(current.Status=="running")Progress(job.Id,stage);}),cancel.Token).ConfigureAwait(false);
+                OnUi(()=>Progress(job.Id,"正在归入分类并生成标签…"));
+                var descriptor=MaterialLibrary.Clone(job.Descriptor);descriptor.Prompt=job.Prompt;
+                CatalogLabel? label=null;string? labelError=null;
+                try{label=await CatalogService.LabelAsync(new MaterialLibrary(root),descriptor,Path.Combine(root,"requests",job.Id.ToString("N"),"label"),cancel.Token);}
+                catch(Exception e) when(e is not OperationCanceledException){labelError=e.Message;}
                 OnUi(()=>
                 {
-                    try{if(Get(job.Id).Status=="running")Complete(job.Id,new(){{"baseColor",result.ImagePath}});}
+                    try{if(Get(job.Id).Status=="running"){var current=Get(job.Id);if(label!=null)CatalogService.SetLabel(current.Descriptor,label);else{current.Descriptor.Category="待分类";current.Descriptor.Tags=["待整理"];}Save(current);Complete(job.Id,new(){{"baseColor",result.ImagePath}});if(labelError!=null){current=Get(job.Id);current.Stage="图片已入库，自动分类失败，可重试整理";current.Error=labelError;Save(current);}}}
                     catch(Exception e){Fail(job.Id,e.Message);}
                     finally{Release(job.Id);}
                 });

@@ -23,7 +23,7 @@ public sealed class MaterialQuickCommand : Rhino.Commands.Command
     public override string EnglishName=>"RhinoSceneFlowMaterials";
     protected override Result RunCommand(RhinoDoc doc,RunMode mode)
     {
-        try{var ids=MaterialSelection.Get(doc);if(ids.Length==0)return Result.Cancel;MaterialQuickController.Open(doc,ids);return Result.Success;}
+        try{SceneFlowWorkspace.Open("materials");return Result.Success;}
         catch(Exception e){RhinoApp.WriteLine(e.Message);return Result.Failure;}
     }
 }
@@ -103,8 +103,9 @@ public sealed class MaterialQuickPanel : Form
         var details=Ui.Layout();details.AddRow(new Label{Text="整张贴图代表的物理尺寸（mm）"});details.AddRow(Row(width,new Label{Text="×"},height,null));
         details.AddRow(new Label{Text="尺寸可从描述确定，但必须由你确认。"});details.AddRow(Row(Ui.Button("保存材质尺寸",SaveSize),null));
         details.AddRow(new Label{Text="UV 每 1 单位对应 1 米，换材质时复用。"});details.AddRow(Row(new Label{Text="映射"},mode,null));
-        details.AddRow(Row(new Label{Text="旋转 °"},rotation,null));details.AddRow(Row(new Label{Text="偏移 U / V（mm）"},offsetU,offsetV,null));details.AddRow(prepare);
+        details.AddRow(Row(new Label{Text="旋转 °"},rotation,null));details.AddRow(Row(new Label{Text="偏移 U / V（mm）"},offsetU,offsetV,null));details.AddRow(prepare);details.AddRow(Ui.Button("沿中心线展开管体…",()=>RhinoApp.RunScript("_RhinoSceneFlowTubeUV",false)));
         details.AddRow(Ui.Button("恢复应用前材质与 UV",()=>Guard(()=>{var t=Target();MaterialService.Restore(Doc,t.Objects,t.Layers);SetStatus("已恢复原材质与 UV。");})));
+        details.AddRow(new Label{Text="砖纹 / 木纹等有方向的图案：等径管体优先用“沿中心线展开”，自动分区会留下图案接缝。",Width=510,Wrap=WrapMode.Word});
         details.AddRow(new Label{Text="这里修改的映射参数通过“计算 / 更新”生效。复杂曲面可能有接缝或拉伸。",Width=510,Wrap=WrapMode.Word});
         var library=Ui.Layout();library.AddRow(new Label{Text="导入图片、材质属性、分类和材质包管理"});library.AddRow(new Label{Text="图片生成使用本机 Codex 的 ChatGPT 登录；未安装或未登录时会明确提示。",Width=510,Wrap=WrapMode.Word});library.AddRow(Ui.Button("打开完整材质库",()=>MaterialPanelController.Open(Doc)));
         chat=new(document,()=> (width.Value/1000,height.Value/1000),id=>{chatJob=id;progress.Indeterminate=true;});
@@ -182,7 +183,7 @@ public sealed class MaterialQuickPanel : Form
         queue.Enqueue(()=>{if(!uvOnly){MaterialService.Apply(Doc,asset!.Value,t.Objects,t.Layers,settings);SetStatus($"材质已应用。UV 计算 {computed}，复用 {reused}。");}else SetStatus($"UV 已完成。计算 {computed}，复用 {reused}。");progress.Value=100;});
         steps=queue;progress.Indeterminate=false;apply.Enabled=generate.Enabled=prepare.Enabled=scope.Enabled=tabs.Enabled=false;progress.Value=0;SetStatus("检查真实世界 UV…");
     });
-    private void Cancel()=>Guard(()=>{if(unwrapJob.HasValue)UnwrapService.Cancel(unwrapJob.Value);if(chatJob.HasValue)MaterialChat.Cancel(chatJob.Value);if(steps!=null){steps=null;Unlock();SetStatus("后续步骤已取消，已完成的 UV 可保留或用 Rhino 撤销。");}if(jobId.HasValue){var j=MaterialGeneration.Get(jobId.Value);if(j.Status is "pending" or "running")MaterialGeneration.Cancel(j.Id);jobId=null;progress.Indeterminate=false;progress.Value=0;SetStatus("生成任务已取消。");}Unlock();});
+    private void Cancel()=>Guard(()=>{if(unwrapJob.HasValue){afterUnwrap=null;UnwrapService.Cancel(unwrapJob.Value);}if(chatJob.HasValue)MaterialChat.Cancel(chatJob.Value);if(steps!=null){steps=null;Unlock();SetStatus("后续步骤已取消，已完成的 UV 可保留或用 Rhino 撤销。");}if(jobId.HasValue){var j=MaterialGeneration.Get(jobId.Value);if(j.Status is "pending" or "running")MaterialGeneration.Cancel(j.Id);jobId=null;progress.Indeterminate=false;progress.Value=0;SetStatus("生成任务已取消。");}Unlock();});
     private void Unlock(){apply.Enabled=generate.Enabled=prepare.Enabled=scope.Enabled=tabs.Enabled=true;apply.Enabled=generate.Enabled=jobId==null;}
     private void Tick()
     {

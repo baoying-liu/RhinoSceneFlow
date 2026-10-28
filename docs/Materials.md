@@ -1,4 +1,6 @@
-# v0.9 真实世界 UV 与材质
+# 真实世界 UV 与材质
+
+v0.13 界面已统一为可停靠的四工具工作区。输入 `RhinoSceneFlow` 或 `RhinoSceneFlowMaterials` 打开材质助手；材质库从侧栏展开。AI 默认先检索已有材质，新生成 / 编辑材质自动归类和加标签；整库可一键整理。说明见 [Workspace.md](Workspace.md)。以下 v0.9 章节保留历史实现背景，独立旧浮动窗口已由侧栏入口替代。
 
 选中物件后执行 `RhinoSceneFlowMaterials`，打开简洁材质窗口，目标跟随 Rhino 当前选择；底部选择“应用到该物体 / 应用到该物体所在图层”。生成页包含描述、参考图片文件和结果，尺寸 / 铺贴参数位于另一页；完整管理窗口使用 `RhinoSceneFlowMaterialLibrary`。原有视图导出工作台命令 `RhinoSceneFlowPanel` 保留。
 
@@ -77,3 +79,6 @@ MCP 的 `material_generation_start` 与按钮执行相同自动流程。原 `mat
 
 
 v0.11 ChatKit 对话、参考图片、xatlas 异步展开和新增 `material_chat_*` / `material_unwrap_*` API：[接入与使用说明](ChatKit-Xatlas.md)。
+
+
+v0.12 原生渲染网格、管体展开和 `material_uv_renderer`：[接缝 UV 与连续管体](UV-Continuity.md)。

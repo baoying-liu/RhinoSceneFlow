@@ -11,7 +11,7 @@ public sealed class MaterialLibraryCommand : Rhino.Commands.Command
 {
     public override string EnglishName=>"RhinoSceneFlowMaterialLibrary";
     protected override Result RunCommand(RhinoDoc doc,RunMode mode)
-    {try{MaterialPanelController.Open(doc);return Result.Success;}catch(Exception e){RhinoApp.WriteLine(e.Message);return Result.Failure;}}
+    {try{SceneFlowWorkspace.Open("materials");SceneFlowWorkspace.Materials?.ShowLibrary(true);return Result.Success;}catch(Exception e){RhinoApp.WriteLine(e.Message);return Result.Failure;}}
 }
 public static class MaterialPanelController
 {

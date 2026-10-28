@@ -21,7 +21,7 @@ public sealed class MappingSettings
     public bool Checker { get; set; }
     public void Validate()
     {
-        if(Mode is not ("auto" or "plane" or "box" or "cylinder" or "xatlas")||Alignment is not ("continuous" or "object")||Axis is not ("auto" or "x" or "y" or "z"))throw new ArgumentException("无效的映射方式 / 对齐 / 轴向。");
+        if(Mode is not ("auto" or "plane" or "box" or "cylinder" or "xatlas" or "tube")||Alignment is not ("continuous" or "object")||Axis is not ("auto" or "x" or "y" or "z"))throw new ArgumentException("无效的映射方式 / 对齐 / 轴向。");
         if(OriginMeters is null||OriginMeters.Length!=3||OriginMeters.Any(v=>!double.IsFinite(v))||!double.IsFinite(Rotation)||!double.IsFinite(OffsetUMeters)||!double.IsFinite(OffsetVMeters))throw new ArgumentException("映射参数必须是有限数值。");
     }
 }
@@ -119,6 +119,7 @@ public static partial class MaterialService
             }
         }
         finally{if(undo!=0)doc.EndUndoRecord(undo);}
+        foreach(var item in plan.Items)UvRenderProvider.Refresh(doc,doc.Objects.FindId(item.Object.Id)!);
         doc.Views.Redraw();return report;
     }
     public static object Restore(RhinoDoc doc,Guid[]? objects,Guid[]? layers)
@@ -135,11 +136,12 @@ public static partial class MaterialService
             }
             foreach(var (obj,backup) in records)
             {
+                RemoveUvStorage(obj);
                 using var map=backup.Mapping==null?null:Deserialize<MappingSnapshot>(backup.Mapping).Build();
                 if(backup.RenderMaterial!=Guid.Empty){obj.RenderMaterial=doc.RenderMaterials.Find(backup.RenderMaterial)??throw new InvalidOperationException("原对象材质已删除。");obj.CommitChanges();}
                 var attrs=doc.Objects.FindId(obj.Id)!.Attributes.Duplicate();attrs.MaterialSource=(ObjectMaterialSource)backup.MaterialSource;attrs.MaterialIndex=backup.MaterialIndex;attrs.SetUserString(BindingKey,backup.Binding);attrs.SetUserString(BackupKey,null);attrs.SetUserString(WorldUvKey,backup.WorldUv);
                 if(!doc.Objects.ModifyAttributes(obj.Id,attrs,true))throw new InvalidOperationException("恢复对象属性失败。");
-                doc.Objects.FindId(obj.Id)!.SetTextureMapping(1,map,FromArray(backup.Transform));
+                doc.Objects.FindId(obj.Id)!.SetTextureMapping(1,map,FromArray(backup.Transform));UvRenderProvider.Refresh(doc,doc.Objects.FindId(obj.Id)!);
             }
         }
         finally{if(undo!=0)doc.EndUndoRecord(undo);}

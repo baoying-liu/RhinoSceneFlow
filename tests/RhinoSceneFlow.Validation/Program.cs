@@ -1,5 +1,9 @@
 using RhinoSceneFlow.Core;
 
+if(args.FirstOrDefault()=="--catalog-only"){Directory.CreateDirectory("artifacts/validation");CatalogValidation.Run("artifacts/validation");return;}
+
+if(args.FirstOrDefault()=="--tube-only"){Directory.CreateDirectory("artifacts/validation");TubeValidation.Run("artifacts/validation");return;}
+
 if(args.FirstOrDefault()=="--uv-file")
 {
     using var r=new BinaryReader(File.OpenRead(args[1]));if(r.ReadUInt32()!=0x31565553u)throw new Exception("Invalid mesh input");
@@ -351,3 +355,5 @@ if(args.Contains("--large"))
 }
 TextureValidation.Run(output);
 await UnwrapValidation.Run(output);
+TubeValidation.Run(output);
+CatalogValidation.Run(output);
