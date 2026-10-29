@@ -71,6 +71,7 @@ public sealed class MaterialQuickPanel : Form
     private readonly uint document;
     private Guid[] targets=[];
     private Guid? selected,jobId,unwrapJob,chatJob;
+    private MaterialAsset? selectedVersion;
     private Action? afterUnwrap;
     private readonly MaterialChatView chat;
     private bool closed;
@@ -142,7 +143,7 @@ public sealed class MaterialQuickPanel : Form
     }
     public void SelectAsset(Guid id)
     {
-        var a=MaterialService.Library.Get(id);selected=id;selecting=true;assets.SelectedKey=id.ToString();selecting=false;width.Value=a.WidthMeters*1000;height.Value=a.HeightMeters*1000;
+        var a=MaterialService.Library.Get(id);selected=id;selectedVersion=MaterialLibrary.Clone(a);selecting=true;assets.SelectedKey=id.ToString();selecting=false;width.Value=a.WidthMeters*1000;height.Value=a.HeightMeters*1000;
         using var src=new System.Drawing.Bitmap(MaterialService.Library.MapPath(a,"baseColor"));using var bitmap=new System.Drawing.Bitmap(500,260);using var g=System.Drawing.Graphics.FromImage(bitmap);g.Clear(System.Drawing.Color.WhiteSmoke);
         double ratio=Math.Min(500.0/src.Width,260.0/src.Height);int w=(int)(src.Width*ratio),h=(int)(src.Height*ratio);g.DrawImage(src,(500-w)/2,(260-h)/2,w,h);
         var old=image.Image;image.Image=Ui.Bitmap(bitmap);old?.Dispose();
@@ -154,7 +155,7 @@ public sealed class MaterialQuickPanel : Form
         if(Busy)throw new ArgumentException("请先等待当前操作完成。");if(jobId.HasValue&&MaterialGeneration.Get(jobId.Value).Status is "pending" or "running")throw new ArgumentException("已有生成任务，请先完成或取消。");
         var job=MaterialGeneration.Start(new MaterialAsset{Name="AI 材质 "+DateTime.Now.ToString("HHmmss"),WidthMeters=width.Value/1000,HeightMeters=height.Value/1000},prompt.Text,references.ToArray());jobId=job.Id;started=DateTime.UtcNow;progress.Value=0;progress.Indeterminate=true;apply.Enabled=generate.Enabled=false;SetStatus("正在启动本机 Codex，生成完成后会自动显示新图片。");
     });
-    private void SaveSize()=>Guard(()=>{if(selected==null)throw new ArgumentException("请先选择材质。");var a=MaterialService.Library.Get(selected.Value);a.WidthMeters=width.Value/1000;a.HeightMeters=height.Value/1000;a=MaterialService.Library.Update(a);RefreshAssets();SelectAsset(a.Id);SetStatus("材质尺寸已保存，应用后生效；不需要重新计算 UV。");});
+    private void SaveSize()=>Guard(()=>{if(selectedVersion==null)throw new ArgumentException("请先选择材质。");var a=MaterialLibrary.Clone(selectedVersion);a.WidthMeters=width.Value/1000;a.HeightMeters=height.Value/1000;a=MaterialService.Library.Update(a);RefreshAssets();SelectAsset(a.Id);SetStatus("材质尺寸已保存，应用后生效；不需要重新计算 UV。");});
     private MappingSettings Settings()=>new(){Mode=mode.SelectedKey??"auto",Rotation=rotation.Value,OffsetUMeters=offsetU.Value/1000,OffsetVMeters=offsetV.Value/1000};
     private void Start(bool uvOnly)=>Guard(()=>
     {

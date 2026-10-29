@@ -11,7 +11,7 @@ public sealed class MaterialLibraryCommand : Rhino.Commands.Command
 {
     public override string EnglishName=>"RhinoSceneFlowMaterialLibrary";
     protected override Result RunCommand(RhinoDoc doc,RunMode mode)
-    {try{SceneFlowWorkspace.Open("materials");SceneFlowWorkspace.Materials?.ShowLibrary(true);return Result.Success;}catch(Exception e){RhinoApp.WriteLine(e.Message);return Result.Failure;}}
+    {try{SceneFlowWorkspace.Open("library");return Result.Success;}catch(Exception e){RhinoApp.WriteLine(e.Message);return Result.Failure;}}
 }
 public static class MaterialPanelController
 {
@@ -42,6 +42,7 @@ public sealed class MaterialPanel : Form
     private readonly UITimer poll=new(){Interval=2};
     private MaterialAsset[] assets=[];
     private Guid? selected,lastJob;
+    private MaterialAsset? selectedVersion;
     private bool binding;
     private RhinoDoc Doc=>RhinoDoc.FromRuntimeSerialNumber(document)??throw new InvalidOperationException("文档已关闭。");
     public MaterialPanel(RhinoDoc doc)
@@ -94,13 +95,13 @@ public sealed class MaterialPanel : Form
     private void RefreshLayers(){string? key=layer.SelectedKey;layer.Items.Clear();foreach(var l in Doc.Layers.Where(l=>!l.IsDeleted&&!l.IsReference))layer.Items.Add(new ListItem{Key=l.Id.ToString(),Text=l.FullPath});if(key!=null)layer.SelectedKey=key;if(layer.SelectedIndex<0&&layer.Items.Count>0)layer.SelectedIndex=0;}
     public void Select(Guid id)
     {
-        var a=MaterialService.Library.Get(id);selected=id;binding=true;
+        var a=MaterialService.Library.Get(id);selected=id;selectedVersion=MaterialLibrary.Clone(a);binding=true;
         try{name.Text=a.Name;category.Text=a.Category;tags.Text=string.Join(", ",a.Tags);width.Value=a.WidthMeters*1000;height.Value=a.HeightMeters*1000;roughness.Value=a.Roughness;metallic.Value=a.Metallic;mode.SelectedKey=a.RecommendedMapping;
             foreach(var slot in MaterialLibrary.Slots)maps[slot].Text=a.Maps.ContainsKey(slot)?MaterialService.Library.MapPath(a,slot):"";list.SelectedKey=id.ToString();}
         finally{binding=false;}RefreshImage();
     }
-    private MaterialAsset Descriptor()=>new(){Id=selected??Guid.NewGuid(),Name=name.Text,Category=category.Text,Tags=tags.Text.Split([',','，'],StringSplitOptions.RemoveEmptyEntries|StringSplitOptions.TrimEntries),WidthMeters=width.Value/1000,HeightMeters=height.Value/1000,Roughness=roughness.Value,Metallic=metallic.Value,RecommendedMapping=mode.SelectedKey??"auto"};
-    private void New(){selected=null;list.SelectedIndex=-1;name.Text="新材质";category.Text=tags.Text="";foreach(var box in maps.Values)box.Text="";RefreshImage();}
+    private MaterialAsset Descriptor()=>new(){Id=selected??Guid.NewGuid(),Revision=selectedVersion?.Revision??1,CatalogRevision=selectedVersion?.CatalogRevision??1,Name=name.Text,Category=category.Text,Tags=tags.Text.Split([',','，'],StringSplitOptions.RemoveEmptyEntries|StringSplitOptions.TrimEntries),WidthMeters=width.Value/1000,HeightMeters=height.Value/1000,Roughness=roughness.Value,Metallic=metallic.Value,RecommendedMapping=mode.SelectedKey??"auto"};
+    private void New(){selected=null;selectedVersion=null;list.SelectedIndex=-1;name.Text="新材质";category.Text=tags.Text="";foreach(var box in maps.Values)box.Text="";RefreshImage();}
     private void ChooseImage(string slot)=>Guard(()=>{using var d=new OpenFileDialog();d.Filters.Add(new FileFilter("贴图",".png",".jpg",".jpeg"));if(d.ShowDialog(this)==DialogResult.Ok){maps[slot].Text=d.FileName;if(slot=="baseColor")RefreshImage();}});
     private void ImportCurrent()=>Guard(()=>{var files=maps.Where(p=>!string.IsNullOrWhiteSpace(p.Value.Text)).ToDictionary(p=>p.Key,p=>p.Value.Text);var a=MaterialService.Import(Descriptor(),files);RefreshLibrary();Select(a.Id);status.Text="已入库；图像已复制到材质库，使用相对路径。";});
     private void SaveCurrent()=>Guard(()=>{if(selected==null)throw new ArgumentException("请先导入材质。");var a=MaterialService.Library.Update(Descriptor());RefreshLibrary();Select(a.Id);status.Text="参数已保存；已有物件请重新映射 / 应用以同步。";});

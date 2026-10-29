@@ -10,19 +10,23 @@ namespace RhinoSceneFlow.Plugin;
 
 public static class SceneFlowWorkspace
 {
-    private static readonly Type[] pages=[typeof(MaterialToolPanel),typeof(UvToolPanel),typeof(PlantToolPanel),typeof(ExportToolPanel)];
+    private static readonly Type[] pages=[typeof(MaterialToolPanel),typeof(MaterialLibraryToolPanel),typeof(UvToolPanel),typeof(PlantToolPanel),typeof(ExportToolPanel)];
+    private static readonly Dictionary<uint,Guid> selectedAssets=[];
+    private static readonly Dictionary<uint,string> materialScopes=[];
     internal static readonly Dictionary<string,WorkspaceHost> Hosts=[];
     internal static readonly HashSet<WorkspaceHost> AllHosts=[];
     private static bool opening;
     internal static void Register(SceneFlowPlugin plugin)
     {
-        string[] titles=["SceneFlow · 材质","SceneFlow · UV","SceneFlow · 种植","SceneFlow · PSD"];
-        string[] icons=["Materials","Uv","Planting","Export"];
+        string[] titles=["SceneFlow · AI 素材","SceneFlow · 材质库","SceneFlow · UV","SceneFlow · 种植","SceneFlow · PSD"];
+        string[] icons=["Materials","Library","Uv","Planting","Export"];
         for(int i=0;i<pages.Length;i++)Panels.RegisterPanel(plugin,pages[i],titles[i],typeof(SceneFlowPlugin).Assembly,"RhinoSceneFlow.Plugin.Resources."+icons[i]+".ico",PanelType.System);
+        RhinoDoc.CloseDocument+=OnDocumentClosed;
     }
+    private static void OnDocumentClosed(object? sender,DocumentEventArgs e){uint serial=e.Document.RuntimeSerialNumber;selectedAssets.Remove(serial);materialScopes.Remove(serial);UnwrapService.CancelDocument(serial);RandomTextureService.CancelDocument(serial);}
     public static object Open(string page="materials")
     {
-        var type=page switch{"materials"=>pages[0],"uv"=>pages[1],"planting"=>pages[2],"export"=>pages[3],_=>throw new ArgumentException("page: materials | uv | planting | export")};
+        var type=page switch{"materials"=>pages[0],"library"=>pages[1],"uv"=>pages[2],"planting"=>pages[3],"export"=>pages[4],_=>throw new ArgumentException("page: materials | library | uv | planting | export")};
         if(opening)return State();opening=true;
         try
         {
@@ -60,12 +64,22 @@ public static class SceneFlowWorkspace
     }
     public static object State()=>new{pages=pages.Select(t=>new{panelId=t.GUID,open=Panels.IsPanelVisible(t,false),selected=Panels.IsPanelVisible(t,true),dockBars=Panels.PanelDockBars(t.GUID)}).ToArray(),tools=Hosts.ToDictionary(p=>p.Key,p=>p.Value.State())};
     internal static MaterialsTool? Materials=>Hosts.GetValueOrDefault("materials")?.Tool as MaterialsTool;
+    internal static MaterialsTool? Library=>Hosts.GetValueOrDefault("library")?.Tool as MaterialsTool;
+    internal static IEnumerable<MaterialsTool> MaterialTools(uint document)=>AllHosts.Select(h=>h.Tool).OfType<MaterialsTool>().Where(t=>t.DocumentSerial==document);
+    internal static Guid? SelectedAsset(uint document)=>selectedAssets.TryGetValue(document,out var id)?id:null;
+    internal static string MaterialScope(uint document)=>materialScopes.GetValueOrDefault(document,"object");
+    internal static void SelectAsset(uint document,Guid id){MaterialService.Library.Get(id);selectedAssets[document]=id;foreach(var tool in MaterialTools(document).ToArray())tool.ReceiveAsset(id);}
+    internal static void SetMaterialScope(uint document,string scope){materialScopes[document]=scope;foreach(var tool in MaterialTools(document).ToArray())tool.ReceiveScope(scope);}
+    internal static bool OtherMaterialBusy(uint document,MaterialsTool current)=>MaterialTools(document).Any(t=>t!=current&&t.LocalBusy);
+    internal static void MaterialProgress(uint document,string message,int percent){foreach(var tool in MaterialTools(document).ToArray())tool.ReceiveProgress(message,percent);}
     internal static ExportPanel? Export=>Hosts.GetValueOrDefault("export")?.Tool as ExportPanel;
+    internal static PlantTool? Planting=>Hosts.GetValueOrDefault("planting")?.Tool as PlantTool;
     internal static void Stop()
     {
+        RhinoDoc.CloseDocument-=OnDocumentClosed;
         // Registered panel controls belong to Rhino. Disposing them here leaves a
         // disposed descendant in Rhino's later UnLoad/DataContext traversal.
-        foreach(var host in AllHosts.ToArray())host.Shutdown();Hosts.Clear();AllHosts.Clear();
+        foreach(var host in AllHosts.ToArray())host.Shutdown();Hosts.Clear();AllHosts.Clear();selectedAssets.Clear();materialScopes.Clear();
     }
 }
 
@@ -75,28 +89,36 @@ public abstract class WorkspaceHost:Panel,IPanel
     private readonly Panel body=new();
     private readonly UITimer documents=new(){Interval=.6};
     private uint serial;
-    private bool stopped;
+    private bool stopped,rebinding;
+    private string? error;
     internal Control? Tool{get;private set;}
     protected WorkspaceHost(string page)
     {
         this.page=page;SceneFlowWorkspace.Hosts[page]=this;SceneFlowWorkspace.AllHosts.Add(this);Padding=new(8);MinimumSize=new(320,300);
-        var nav=new DropDown();foreach(var p in new[]{("materials","材质 · AI 与材质库"),("uv","UV · 真实尺寸展开"),("planting","种植 · 即将提供"),("export","PSD · 视图导出")})nav.Items.Add(new ListItem{Key=p.Item1,Text=p.Item2});nav.SelectedKey=page;
+        var nav=new DropDown();foreach(var p in new[]{("materials","AI · 素材对话"),("library","材质库 · 浏览与应用"),("uv","UV · 真实尺寸展开"),("planting","植物库 · 种植"),("export","PSD · 视图导出")})nav.Items.Add(new ListItem{Key=p.Item1,Text=p.Item2});nav.SelectedKey=page;
         nav.SelectedValueChanged+=(_,_)=>{if(nav.SelectedKey!=page){SceneFlowWorkspace.Open(nav.SelectedKey!);nav.SelectedKey=page;}};
-        var menu=new Button{Text="⋯",Width=28,ToolTip="工作区布局"};var context=new ContextMenu();var group=new ButtonMenuItem{Text="将四个工具放入同一容器"};group.Click+=(_,_)=>{try{SceneFlowWorkspace.Group();}catch(Exception e){RhinoApp.WriteLine(e.Message);}};context.Items.Add(group);menu.Click+=(_,_)=>context.Show(menu);
+        var menu=new Button{Text="⋯",Width=28,ToolTip="工作区布局"};var context=new ContextMenu();var group=new ButtonMenuItem{Text="将所有工具放入同一容器"};group.Click+=(_,_)=>{try{SceneFlowWorkspace.Group();}catch(Exception e){RhinoApp.WriteLine(e.Message);}};context.Items.Add(group);menu.Click+=(_,_)=>context.Show(menu);
         var navigation=new TableLayout{Spacing=new(6,0),Rows={new TableRow(new TableCell(nav,true),menu)}};
         var root=Ui.Layout();root.AddRow(navigation);root.Add(body,true,true);Content=root;
         Load+=(_,_)=>RefreshDocument();documents.Elapsed+=(_,_)=>RefreshDocument();documents.Start();
     }
     internal void RefreshDocument()
     {
-        if(IsDisposed||stopped)return;var doc=RhinoDoc.ActiveDoc;uint next=doc?.RuntimeSerialNumber??0;if(next==serial&&Tool!=null)return;
+        if(IsDisposed||stopped||rebinding)return;var doc=RhinoDoc.ActiveDoc;
+        if(doc!=null&&(!doc.IsAvailable||doc.IsClosing||doc.IsOpening||doc.IsCreating||doc.IsInitializing))return;
+        uint next=doc?.RuntimeSerialNumber??0;if(next==serial&&Tool!=null)return;
         if(Tool is ExportPanel {IsExporting:true}||Tool is MaterialsTool {Busy:true}||Tool is UvTool {Busy:true})return;
-        body.Content=null;Tool?.Dispose();Tool=null;serial=next;
-        if(doc==null){body.Content=new Label{Text="打开 Rhino 模型后开始。"};return;}
-        Tool=page switch{"materials"=>new MaterialsTool(doc),"uv"=>new UvTool(doc),"export"=>new ExportPanel(doc),_=>new Label{Text="种植工具\n\n植物素材、面向相机与批量种植将在这里提供。",Wrap=WrapMode.Word}};
-        body.Content=Tool;
+        rebinding=true;
+        try
+        {
+            body.Content=null;var old=Tool;Tool=null;old?.Dispose();serial=next;error=null;
+            Tool=doc==null?new Label{Text="打开 Rhino 模型后开始。"}:page switch{"materials"=>new MaterialsTool(doc),"library"=>new MaterialsTool(doc,true),"uv"=>new UvTool(doc),"export"=>new ExportPanel(doc),"planting"=>new PlantTool(doc),_=>new Label{Text="打开工具"}};
+            body.Content=Tool;
+        }
+        catch(Exception e){serial=next;error=e.ToString();Tool=new Label{Text="工具切换文档失败："+e.Message,Wrap=WrapMode.Word};body.Content=Tool;RhinoApp.WriteLine(error);}
+        finally{rebinding=false;}
     }
-    public object State()=>new{page,document=serial,details=Tool switch{MaterialsTool m=>m.GetState(),UvTool u=>u.GetState(),ExportPanel e=>e.GetState(),_=>new{placeholder=true}}};
+    public object State()=>new{page,document=serial,error,details=Tool switch{MaterialsTool m=>m.GetState(),UvTool u=>u.GetState(),ExportPanel e=>e.GetState(),PlantTool p=>p.State(),_=>new{placeholder=true}}};
     public void PanelShown(uint documentSerialNumber,ShowPanelReason reason){SceneFlowWorkspace.Hosts[page]=this;RefreshDocument();if(Tool is MaterialsTool m)m.Activate();}
     public void PanelHidden(uint documentSerialNumber,ShowPanelReason reason){}
     public void PanelClosing(uint documentSerialNumber,bool onCloseDocument){}
@@ -109,6 +131,7 @@ public abstract class WorkspaceHost:Panel,IPanel
     protected override void Dispose(bool disposing){if(disposing){Shutdown();if(SceneFlowWorkspace.Hosts.GetValueOrDefault(page)==this)SceneFlowWorkspace.Hosts.Remove(page);SceneFlowWorkspace.AllHosts.Remove(this);}base.Dispose(disposing);}
 }
 [Guid("81CB328E-2733-4BBA-B326-1DE03D983E8A")]public sealed class MaterialToolPanel:WorkspaceHost{public MaterialToolPanel():base("materials") {}}
+[Guid("83CE46CF-C14E-41EA-9860-AEB927AB7EB3")]public sealed class MaterialLibraryToolPanel:WorkspaceHost{public MaterialLibraryToolPanel():base("library") {}}
 [Guid("7AF3B3D7-3243-4D82-A249-85FC9D0244B5")]public sealed class UvToolPanel:WorkspaceHost{public UvToolPanel():base("uv") {}}
 [Guid("1912E513-436A-4104-9E1E-A1C7C2D8B006")]public sealed class PlantToolPanel:WorkspaceHost{public PlantToolPanel():base("planting") {}}
 [Guid("D49742BA-B6FA-4321-8458-0C6D09F1DB18")]public sealed class ExportToolPanel:WorkspaceHost{public ExportToolPanel():base("export") {}}
@@ -139,14 +162,21 @@ internal sealed class MaterialActionQueue:IDisposable
     private readonly UITimer timer=new(){Interval=.08};
     private Queue<Action>? steps;
     private Guid? unwrap;
+    private Guid? random;
+    private Action? afterRandom;
     private Action? after;
     private bool disposed;
-    internal bool Busy=>steps!=null||unwrap!=null;
+    internal bool Busy=>steps!=null||unwrap!=null||random!=null;
     internal MaterialActionQueue(uint document,Action<string,int> progress){this.document=document;this.progress=progress;timer.Elapsed+=(_,_)=>Tick();}
     internal void Start(Guid[]? objects,Guid[]? layers,MappingSettings settings,Guid? asset=null,bool force=false)
     {
         if(Busy)throw new InvalidOperationException("正在处理，请等待或取消。");var doc=RhinoDoc.FromRuntimeSerialNumber(document)??throw new InvalidOperationException("文档已关闭。");
         settings.Validate();var ids=MaterialService.ResolveTargets(doc,objects,layers);if(asset.HasValue)MaterialService.Library.Verify(MaterialService.Library.Get(asset.Value));
+        if(asset.HasValue&&!settings.Checker&&!RandomTextureService.Ready(MaterialService.Library.Get(asset.Value),ids,layers))
+        {
+            random=RandomTextureService.Start(doc,asset.Value,objects,layers).Id;
+            afterRandom=()=>Start(objects,layers,settings,asset,force);progress("正在准备随机贴图，完成后自动检查真实尺寸 UV…",0);timer.Start();return;
+        }
         bool needsAtlas=settings.Mode=="xatlas"||ids.Any(id=>MaterialService.ReadUv(doc.Objects.FindId(id)!)?.Mode=="xatlas"&&!MaterialService.UvValid(doc,doc.Objects.FindId(id)!));
         if(needsAtlas){unwrap=UnwrapService.Start(doc,objects,layers).Id;after=asset.HasValue?()=>MaterialService.Apply(doc,asset.Value,objects,layers,new()):null;progress("正在展开复杂曲面…",0);timer.Start();return;}
         if(asset.HasValue)MaterialService.Apply(doc,asset.Value,objects,layers,settings,true);
@@ -159,14 +189,19 @@ internal sealed class MaterialActionQueue:IDisposable
         if(disposed)return;
         try
         {
+            if(random.HasValue)
+            {
+                var job=RandomTextureService.Get(random.Value);progress(job.Stage,job.Percent);if(job.Status=="running")return;
+                random=null;var continuation=afterRandom;afterRandom=null;if(job.Status=="completed")continuation?.Invoke();
+            }
             if(unwrap.HasValue){var job=UnwrapService.Get(unwrap.Value);progress(job.Stage,job.Percent);if(job.Status=="running")return;unwrap=null;var action=after;after=null;if(job.Status=="completed"){action?.Invoke();progress("展开完成"+(action==null?"。":"，材质已应用。"),100);}}
             if(steps!=null){if(steps.Count>0)steps.Dequeue()();if(steps.Count==0)steps=null;}
             if(!Busy)timer.Stop();
         }
         catch(Exception e){steps=null;unwrap=null;after=null;timer.Stop();progress(e.Message,0);}
     }
-    internal void Cancel(){steps=null;after=null;if(unwrap.HasValue)UnwrapService.Cancel(unwrap.Value);progress("正在停止后续步骤；已完成的修改可用 Rhino 撤销。",0);}
-    public void Dispose(){if(disposed)return;disposed=true;steps=null;after=null;if(unwrap.HasValue)UnwrapService.Cancel(unwrap.Value);unwrap=null;timer.Stop();timer.Dispose();}
+    internal void Cancel(){steps=null;after=null;afterRandom=null;if(random.HasValue)RandomTextureService.Cancel(random.Value);if(unwrap.HasValue)UnwrapService.Cancel(unwrap.Value);progress("正在停止后续步骤；已完成的修改可用 Rhino 撤销。",0);}
+    public void Dispose(){if(disposed)return;disposed=true;steps=null;after=null;afterRandom=null;if(random.HasValue)RandomTextureService.Cancel(random.Value);random=null;if(unwrap.HasValue)UnwrapService.Cancel(unwrap.Value);unwrap=null;timer.Stop();timer.Dispose();}
 }
 
 public sealed class UvTool:Panel
@@ -176,7 +211,7 @@ public sealed class UvTool:Panel
     private readonly Label selection=new(),status=new(){Wrap=WrapMode.Word};
     private readonly DropDown mapping=new();
     private readonly UITimer timer=new(){Interval=.5};
-    private bool disposed;
+    private bool disposed,documentClosed;
     public bool Busy=>actions.Busy;
     public UvTool(RhinoDoc doc)
     {
@@ -185,10 +220,11 @@ public sealed class UvTool:Panel
         var l=Ui.Layout();l.AddRow(ToolUi.Heading("真实尺寸 UV"));l.AddRow(new Label{Text="准备一次，换材质时复用。1 UV 单位 = 1 米。",Wrap=WrapMode.Word});l.AddRow(selection);l.AddRow(mapping);
         l.AddRow(Ui.Button("准备 / 更新选中物件的 UV",()=>Guard(()=>{var t=ToolUi.Targets(Doc,false);actions.Start(t.Objects,t.Layers,new(){Mode=mapping.SelectedKey!},force:true);})));l.AddRow(Ui.Button("等径管体 · 沿中心线展开…",()=>Guard(()=>RhinoApp.RunScript("_RhinoSceneFlowTubeUV",false))));
         l.AddRow(new Label{Text="复杂曲面需要接缝；砖纹等方向图案的管体优先选中心线展开。材质工具会自动补算缺失的真实尺寸 UV。",Wrap=WrapMode.Word,Width=280});l.AddRow(Ui.Button("取消后续步骤",actions.Cancel));l.AddRow(status);l.AddRow(null);Content=l;
-        timer.Elapsed+=(_,_)=>{if(!IsDisposed)selection.Text=$"当前选择 · {ToolUi.Selection(Doc).Length} 个物件";};timer.Start();
+        timer.Elapsed+=(_,_)=>{if(!IsDisposed&&!documentClosed)Guard(()=>selection.Text=$"当前选择 · {ToolUi.Selection(Doc).Length} 个物件");};timer.Start();RhinoDoc.CloseDocument+=OnDocumentClosed;
     }
+    private void OnDocumentClosed(object? sender,DocumentEventArgs e){if(e.Document.RuntimeSerialNumber!=document)return;documentClosed=true;timer.Stop();actions.Dispose();}
     private RhinoDoc Doc=>RhinoDoc.FromRuntimeSerialNumber(document)??throw new InvalidOperationException("文档已关闭。");
-    private void Guard(Action a){try{a();}catch(Exception e){status.Text=e.Message;}}
+    private void Guard(Action a){if(disposed||documentClosed)return;try{a();}catch(Exception e){status.Text=e.Message;}}
     public object GetState()=>new{document,busy=Busy,mode=mapping.SelectedKey,status=status.Text};
-    protected override void Dispose(bool disposing){if(disposing&&!disposed){disposed=true;timer.Stop();timer.Dispose();actions.Dispose();}base.Dispose(disposing);}
+    protected override void Dispose(bool disposing){if(disposing&&!disposed){disposed=true;RhinoDoc.CloseDocument-=OnDocumentClosed;timer.Stop();timer.Dispose();actions.Dispose();}base.Dispose(disposing);}
 }

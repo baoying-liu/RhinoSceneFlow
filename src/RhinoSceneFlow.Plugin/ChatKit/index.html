@@ -11,9 +11,9 @@ customElements.whenDefined('openai-chatkit').then(()=>{
  chat.addEventListener('chatkit.ready',()=>window.chatkitState.ready=true);
  chat.addEventListener('chatkit.thread.change',e=>window.chatkitState.thread=e.detail.threadId);
  chat.setOptions({api:{url:base+'/chatkit',domainKey:'domain_pk_localhost_dev',fetch:(url,init={})=>{const headers=new Headers(init.headers);headers.set('Authorization','Bearer '+token);return fetch(url,{...init,headers});},uploadStrategy:{type:'direct',uploadUrl:base+'/upload?token='+token}},
-  locale:'zh-CN',theme:{colorScheme:'light',radius:'round'},header:{title:{text:'SceneFlow 材质助手'}},
-  startScreen:{greeting:'描述材质，或添加参考图片。可以连续修改同一方案；确认后用下方按钮应用到当前物件或图层。',prompts:[{label:'生成清水混凝土',prompt:'生成浅灰清水混凝土，无接缝，纹理均匀',icon:'sparkle'},{label:'先讨论材质方案',prompt:'复杂双曲面适合什么材质和展开方式？请先讨论，不要生成图片。',icon:'lightbulb'}]},
-  composer:{placeholder:'描述材质或继续修改，支持图片参考…',attachments:{enabled:true,maxCount:8,maxSize:33554432,accept:{'image/png':['.png'],'image/jpeg':['.jpg','.jpeg']}}},
+  locale:'zh-CN',theme:{colorScheme:'light',radius:'round'},header:{title:{text:'SceneFlow 素材助手'}},
+  startScreen:{greeting:'描述材质或植物，也可添加参考图片。植物会先核实真实物种、查找已有素材，再生成透明图片；材质仍可应用到物件或图层。',prompts:[{label:'生成清水混凝土',prompt:'生成浅灰清水混凝土，无接缝，纹理均匀',icon:'sparkle'},{label:'生成透明植物',prompt:'生成一株 Acer rubrum 美国红枫的夏季绿叶透明 PNG 素材，先核实物种，优先复用植物库。',icon:'sparkle'}]},
+  composer:{placeholder:'描述材质、植物或继续修改，支持图片参考…',attachments:{enabled:true,maxCount:8,maxSize:33554432,accept:{'image/png':['.png'],'image/jpeg':['.jpg','.jpeg']}}},
   threadItemActions:{feedback:false,retry:true}});
 }).catch(fail);
 setTimeout(()=>{if(!window.customElements.get('openai-chatkit'))fail('无法访问 OpenAI ChatKit 组件，请检查网络。');},20000);

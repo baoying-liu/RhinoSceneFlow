@@ -49,6 +49,7 @@ internal sealed class SceneReader(RhinoDoc doc, RhinoViewport viewport, Cancella
     private IEnumerable<Triangle> Visit(RhinoObject obj, Transform transform, CameraProjection camera, int nesting)
     {
         cancellation.ThrowIfCancellationRequested();
+        if(PlantService.IsPlant(obj))yield break;
         if (nesting > 32) throw new InvalidOperationException("块嵌套超过 32 层。");
         if (obj.IsHidden || !obj.Attributes.Visible || !LayerVisible(obj.Attributes.LayerIndex)) yield break;
         if (obj is InstanceObject instance)

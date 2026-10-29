@@ -20,7 +20,8 @@ public sealed class UnwrapJob
 public static class UnwrapService
 {
     private sealed record Input(Guid Id,uint Crc,string MappingState,string Backup,Point3d Origin,double Scale,Vec3[] Points,Vec3[] Normals,int[] Indices,bool OrientationCorrected);
-    private static readonly Dictionary<Guid,(UnwrapJob Job,CancellationTokenSource Cancel)> jobs=[];
+    private static readonly Dictionary<Guid,(UnwrapJob Job,CancellationTokenSource Cancel,uint Document)> jobs=[];
+    internal static void CancelDocument(uint document){foreach(var value in jobs.Values.Where(v=>v.Document==document&&v.Job.Status=="running"))value.Cancel.Cancel();}
     private static bool stopping;
     public static UnwrapJob Get(Guid id)=>jobs.TryGetValue(id,out var value)?value.Job:throw new ArgumentException("展开任务不存在。");
     public static object Cancel(Guid id){if(jobs.TryGetValue(id,out var value)&&value.Job.Status=="running"){value.Cancel.Cancel();value.Job.Stage="正在取消 xatlas";}return Get(id);}
@@ -44,7 +45,7 @@ public static class UnwrapService
         string executable=Path.Combine(Path.GetDirectoryName(typeof(UnwrapService).Assembly.Location)!,"SceneFlow.UvWorker.exe");
         if(!File.Exists(executable))throw new FileNotFoundException("请安装包含 C++ xatlas worker 的完整插件包。",executable);
         double scale=MaterialService.UnitScale(doc);var ids=MaterialService.ResolveTargets(doc,objects,layers);uint serial=doc.RuntimeSerialNumber;
-        var clock=System.Diagnostics.Stopwatch.StartNew();var inputs=ids.Select(id=>Capture(doc.Objects.FindId(id)!,scale)).ToArray();var job=new UnwrapJob();var cancel=new CancellationTokenSource();jobs.Add(job.Id,(job,cancel));
+        var clock=System.Diagnostics.Stopwatch.StartNew();var inputs=ids.Select(id=>Capture(doc.Objects.FindId(id)!,scale)).ToArray();var job=new UnwrapJob();var cancel=new CancellationTokenSource();jobs.Add(job.Id,(job,cancel,serial));
         _=Task.Run(async()=>
         {
             try

@@ -70,7 +70,10 @@ public sealed class ExportPanel : Panel
             if(!documentClosed)try{WorkbenchStore.Save(Document,rows);}catch(Exception ex){RhinoApp.WriteLine(ex.Message);}
             RhinoDoc.CloseDocument-=OnDocumentClosed;
             foreach(var t in new[]{previews,save,detailTimer}){t.Stop();t.Dispose();}
+            // Clear logical rows and detach card/detail roots while parents live.
+            var root=Content;Content=null;if(root is DynamicLayout layout)layout.Clear();cardHost.Content=null;body.Content=null;
             foreach(var c in cards.Values)c.Dispose();detail?.Dispose();cancellation?.Dispose();
+            root?.Dispose();
         }
         base.Dispose(disposing);
     }
@@ -81,7 +84,7 @@ public sealed class ExportPanel : Panel
     {
         if(busy)return;CloseDetails();
         var old=rows.Count>0?rows.ToDictionary(r=>r.Id):WorkbenchStore.Load(Document).GroupBy(r=>r.Id).ToDictionary(g=>g.Key,g=>g.First());rows.Clear();
-        foreach(var v in NamedViewExportService.List(Document)){var r=old.GetValueOrDefault(v.Id)??new(){Id=v.Id,Width=v.Width,Height=v.Height};r.Name=v.Name;rows.Add(r);}
+        foreach(var v in NamedViewExportService.List(Document)){var r=old.GetValueOrDefault(v.Id)??new(){Id=v.Id,Width=v.Width,Height=v.Height};r.Name=v.Name;r.InitializePlants();rows.Add(r);}
         BuildCards();status.Text=rows.Count==0?"请先在 Rhino 中保存 Named Views。":$"{rows.Count} 个视图 · 双击预览进入细节调整";
     }
     private void BuildCards()
@@ -216,6 +219,7 @@ internal sealed class ViewCard : IDisposable
         {
             int i=index;var l=Row.Layers[i];var enabled=new CheckBox{Checked=l.Enabled};var type=new DropDown{Width=170};
             type.Items.Add(new ListItem{Key="",Text="请选择通道 / 显示模式…"});type.Items.Add(new ListItem{Key="shadow",Text="通道 · 阴影"});type.Items.Add(new ListItem{Key="texture",Text="通道 · 材质贴图"});type.Items.Add(new ListItem{Key="material",Text="通道 · 图层颜色"});
+            type.Items.Add(new ListItem{Key="plants",Text="通道 · 植物"});
             foreach(var m in WorkbenchService.Modes())type.Items.Add(new ListItem{Key="display:"+m.Id,Text="模式 · "+m.LocalName});type.SelectedKey=l.Kind=="display"?"display:"+l.Mode:l.Kind;
             var blend=new DropDown{Width=96};foreach(var b in Ui.Blends)blend.Items.Add(new ListItem{Key=b.Key,Text=b.Name});blend.SelectedKey=l.Blend;
             var opacity=Ui.Number(0,100,0,55);opacity.Value=l.Opacity;
@@ -229,6 +233,15 @@ internal sealed class ViewCard : IDisposable
                 var grouping=new DropDown{Width=230};grouping.Items.Add(new ListItem{Key="material",Text="相同材质合并（默认）"});grouping.Items.Add(new ListItem{Key="object",Text="按物件分开 · 同一 Group"});grouping.SelectedKey=l.TextureGrouping;
                 grouping.SelectedValueChanged+=(_,_)=>{l.TextureGrouping=grouping.SelectedKey??"material";owner.Changed(Row,false);};
                 var sub=Ui.Layout();sub.AddRow(new Label{Text="材质分层"},grouping,null);layout.AddRow(sub);
+            }
+            if(l.Kind=="plants")
+            {
+                var grouping=new DropDown{Width=230};foreach(var (key,text) in new[]{("individual","单株 · 学名子文件夹"),("species","按学名合并（默认）"),("all","全部植物合并为一层")})grouping.Items.Add(new ListItem{Key=key,Text=text});grouping.SelectedKey=l.PlantGrouping;
+                grouping.SelectedValueChanged+=(_,_)=>{l.PlantGrouping=grouping.SelectedKey??"species";owner.Changed(Row,false);};layout.AddRow(grouping);
+            }
+            if(l.Kind=="shadow")
+            {
+                var plantShadows=new CheckBox{Text="包含植物透空投影",Checked=Row.PlantShadows};plantShadows.CheckedChanged+=(_,_)=>{Row.PlantShadows=plantShadows.Checked==true;owner.Changed(Row,false);};layout.AddRow(plantShadows);
             }
         }
         layerHost.Content=layout;

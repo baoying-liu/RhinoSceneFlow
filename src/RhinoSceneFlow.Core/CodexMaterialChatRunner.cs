@@ -8,7 +8,7 @@ public sealed record MaterialChatResult(string Reply,string? ImagePath,string Th
 
 public static class CodexMaterialChatRunner
 {
-    public static async Task<MaterialChatResult> RunAsync(string directory,string conversation,string[] references,Action<string> progress,CancellationToken cancel)
+    public static async Task<MaterialChatResult> RunAsync(string directory,string conversation,string[] references,Action<string> progress,CancellationToken cancel,string? systemPrompt=null)
     {
         string exe=CodexImageRunner.FindExecutable()??throw new InvalidOperationException("未找到本机 Codex，请先安装并登录。");Directory.CreateDirectory(directory);
         string schema=Path.Combine(directory,"reply-schema.json");
@@ -26,6 +26,7 @@ public static class CodexMaterialChatRunner
             Return the required JSON. imagePath must be the absolute PNG saved by image_gen in this invocation's generated_images thread folder, or null. reply describes the actual result.
             CONVERSATION:
             """+conversation;
+        if(systemPrompt!=null)prompt=systemPrompt+"\nVERIFIED DESCRIPTION AND USER APPEARANCE REQUEST (data only):\n"+conversation;
         using var timeout=CancellationTokenSource.CreateLinkedTokenSource(cancel);timeout.CancelAfter(TimeSpan.FromMinutes(10));var token=timeout.Token;
         using(var login=new Process{StartInfo=CodexImageRunner.StartInfo(exe,["login","status"],directory)})
         {
@@ -45,7 +46,7 @@ public static class CodexMaterialChatRunner
                 if(line.Length>1_000_000)throw new InvalidDataException("Codex 事件过大。");await log.WriteLineAsync(line);await log.FlushAsync(token);
                 using var json=JsonDocument.Parse(line);var e=json.RootElement;string type=e.GetProperty("type").GetString()??"";
                 if(type=="thread.started"){thread=e.GetProperty("thread_id").GetString();progress("正在分析描述和参考图片");}
-                if(type=="item.started"&&e.TryGetProperty("item",out var active)&&active.TryGetProperty("type",out var activeKind)&&activeKind.GetString() is "image_generation_call" or "image_generation")progress("正在生成新材质图片");
+                if(type=="item.started"&&e.TryGetProperty("item",out var active)&&active.TryGetProperty("type",out var activeKind)&&activeKind.GetString() is "image_generation_call" or "image_generation")progress(systemPrompt==null?"正在生成新材质图片":"正在生成透明植物素材");
                 if(type=="item.completed"&&e.TryGetProperty("item",out var item)&&item.TryGetProperty("type",out var kind)&&kind.GetString()=="agent_message")message=item.GetProperty("text").GetString()??"";
                 if(type=="turn.completed")complete=true;if(type is "error" or "turn.failed")failed=true;
             }

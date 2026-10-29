@@ -6,15 +6,15 @@
 
 | operation | 参数与返回 |
 | --- | --- |
-| `material_workspace_open` | `page:materials\|uv\|planting\|export`，默认 materials；返回四个原生 panelId、dockBars、工具状态 |
+| `material_workspace_open` | `page:materials\|library\|uv\|planting\|export`，默认 materials；返回五个原生 panelId、dockBars、工具状态；v0.13.2 工具的 `error` 字段记录文档重建错误，正常为 null |
 | `material_workspace_status` | 只读；材质状态包含 selected、job、lastJob、scope、reuseSimilar、shelf |
 | `material_workspace_group` | 显式将四个工具组合进材质面板所在原生容器 |
-| `material_shelf_open` | `visible?:bool`，默认 true；宽屏侧边展开，窄栏进入材质库页 |
-| `material_tool_select` | `assetId`，设置待应用材质 |
-| `material_tool_settings` | `scope?:object\|layer`、`reuseSimilar?:bool` |
-| `material_tool_apply` | 从本次实时 Rhino 选择启动 UV / 应用队列；状态中 busy 与 status 跟踪 |
+| `material_shelf_open` | `visible?:bool`，默认 true 打开独立材质库工具；false 切换 AI 工具 |
+| `material_tool_select` | `assetId`，`page?:materials\|library`，默认 materials；同步两个工具的待应用材质 |
+| `material_tool_settings` | `page?:materials\|library`、`scope?:object\|layer`、`reuseSimilar?:bool`；应用范围在两个工具间同步 |
+| `material_tool_apply` | `page?:materials\|library`，默认 materials；从本次实时 Rhino 选择启动 UV / 应用队列；状态中 busy 与 status 跟踪 |
 | `material_library` | `query?`、`category?`、`tag?`，三个条件取交集 |
-| `material_update_labels` | `assetId,name,category,tags:[string]`；仅增加 catalogRevision，不改变外观 revision |
+| `material_update_labels` | `assetId,name,category,tags:[string],expectedCatalogRevision?:int`；仅增加 catalogRevision，不改变外观 revision；预期版本不符时拒绝过期编辑 |
 | `material_catalog_organize` | 启动实际本机 Codex 整库整理，返回 id / running |
 | `material_catalog_status` | `jobId`；running / completed / failed / cancelled |
 | `material_catalog_cancel` | `jobId`，取消本任务，提交前不修改分类 |
@@ -49,7 +49,7 @@ v0.8 新增：`material_prepare_uv`（document、objects 或 layers、可选 map
 | `material_library` | 可选 `query`；返回 directory、assets 和 contract |
 | `material_configure` | `directory`：库的绝对路径，保存偏好 |
 | `material_import` | `asset` 元数据、`files` 图片路径字典；返回新资产 |
-| `material_update` | `asset`：从库读取的完整资产，修改名称 / 尺寸 / 参数后提交；图片不替换 |
+| `material_update` | `asset`：从库读取的完整资产，保留其 revision / catalogRevision，修改名称 / 尺寸 / 参数后提交；版本不符拒绝覆盖，图片不替换 |
 | `material_preview` / `material_apply` | `document`, `assetId`, `objects:[GUID]` 或 `layers:[GUID]`，可选 `mapping`；preview 只预检，不渲染也不修改文档 |
 | `material_inspect` | `document`, `objects:[GUID]`；返回绑定、可恢复状态及尺寸过期提示 |
 | `material_remap` / `material_restore` | `document`, `objects:[GUID]` 或 `layers:[GUID]`；图层 remap 同步新增对象 |
@@ -242,3 +242,27 @@ v0.11 ChatKit 对话、参考图片、xatlas 异步展开和新增 `material_cha
 
 
 v0.12 原生渲染网格、管体展开和 `material_uv_renderer`：[接缝 UV 与连续管体](UV-Continuity.md)。
+
+## v0.14 随机去重复
+
+- `material_random_settings`：`assetId`、`settings`；建议带读取时的 `expectedRevision`、`expectedCatalogRevision`。保存外观版本，不修改文档。`settings.mode` 为 `auto/off/object/stochastic/macro/structured`，另有 `seed`、`strength`（0..0.5）、`tiles`（2/4/8）、`rotate`、`columns`、`rows`、`rowOffset`（0..1）。`auto` 解析为保存的 `recommendedMode`。
+- `material_random_prepare`：`document`、`assetId`，可选 `objects` 或 `layers`、`preview`。异步返回 `id/status/stage/percent/error`，只准备缓存，不应用材质；无目标默认准备预览。按物件模式按稳定目标 ID 分别生成，预览使用公共变体。
+- `material_random_status` / `material_random_cancel`：`jobId`，返回上述任务状态。终态 `completed/failed/cancelled`；取消不应用。
+- 已开启随机的 `material_apply` 需先 prepare 完成；交互工具的应用按钮自动执行准备 → 必要 UV → 应用。`material_library` 返回每个材质的随机配置与 AI 建议理由。
+- `material_native_preview` 使用已准备的缓存，没有缓存时返回原图球体；UI 明确标注。材质变体的 PSD 合并与有限周期限制见 [Randomization.md](Randomization.md)。
+
+## v0.15 植物
+
+仍通过原厂 Platform `run_python` 调用 `McpApi.Execute`，apiVersion=1。植物生成继续使用 `material_chat_start`：自动判断任务；支持原有 `referenceImages`、`reuseSimilar`。状态新增 `kind:plant`、`plant`（生成入库 ID）、`plantMatches`；`imagePath` 为真实新 PNG，找到已有候选时为空。查询/取消仍是 `material_chat_status/cancel`，不增加第二个聊天执行器。
+
+- `plant_library`：可选 query；返回 directory、assets。资产复用 MaterialAsset 的版本、相对 PNG 与 SHA 元数据，增加 `plant:{scientificName,family,genus,cultivar,sources,evidence,verifiedUtc,estimatedSize,anchorU,anchorV}`。PNG 存 baseColor 槽，植物库与材料库分离。
+- `plant_import`：asset、path（绝对透明 PNG）；需要真实科学身份与来源，验证透明度并裁透明边距；高度以米计，宽度按裁切图片比例设置。新 ID，不覆盖。
+- `plant_update`：完整 asset 快照，使用既有 revision/catalogRevision 乐观并发规则。放置记录保留当时图片和尺寸，不后台修改已有株。
+- `plant_select`：document、assetId；打开原生种植工具并选择植物。
+- `plant_place`：document、assetId、points:[[x,y,z]]（文档单位），可选 seed（42）、minScale/maxScale（1）、mirror（true）；返回 objects。原生一次撤销。
+- `plant_scatter`：document、assetId、surfaceId，count（20）、spacingMeters（1）、seed（42）、minScale（.85）、maxScale（1.15）、mirror（true）；返回 objects/requested/placed/limited。
+- `plant_settings`：无参数读取全局朝向；settings:{mode:auto|z|free,angle:60,transition:5} 保存并重绘。
+- `plant_instances`：document；读取可见独立植物锚点的 ID、位置和放置设置，不修改文档。
+- `plant_organize`：异步整库 AI 整理，返回 CatalogJob；查询/取消使用既有 `material_catalog_status/cancel`，jobId。科学身份、来源、图片和尺寸不变。
+
+Workbench 图层新增 `{kind:"plants",plantGrouping:"individual"|"species"|"all"}`，默认 species 并置顶；blend/opacity/enabled、配置复制仍支持。视图配置 `plantShadows:true` 控制独立阴影中是否包含植物透空投影。`kind:display/texture/material` 不烘焙植物。规则及限制见 [Planting.md](Planting.md)。

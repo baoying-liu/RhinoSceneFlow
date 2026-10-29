@@ -27,6 +27,7 @@ public sealed class MappingSettings
 }
 public sealed class MaterialBinding
 {
+    public bool Randomized { get; set; }
     public Guid Asset { get; set; }
     public int Revision { get; set; }
     public MappingSettings Settings { get; set; } = new();
@@ -86,7 +87,8 @@ public static partial class MaterialService
             if(selected.Any(l=>l.IsDeleted||l.IsReference))throw new ArgumentException("不能修改参考或已删除图层。");
             var indices=selected.Select(l=>l.Index).ToHashSet();found=doc.Objects.Where(o=>indices.Contains(o.Attributes.LayerIndex)).ToArray();
         }
-        if(found.Length==0)throw new ArgumentException("目标中没有面对象。");
+        found=found.Where(o=>!PlantService.IsPlant(o)).ToArray();
+        if(found.Length==0)throw new ArgumentException("目标中没有可处理的非植物面对象；植物不需要材质 UV。");
         if(found.Any(o=>o.IsLocked||o.IsReference||o.IsDeleted||o.Geometry is not (Brep or Surface or Mesh or Extrusion or SubD)))throw new NotSupportedException("请只选择可编辑的面 / 网格 / SubD；块、曲线、参考或锁定对象暂不支持。");
         return found;
     }
@@ -98,6 +100,8 @@ public static partial class MaterialService
             uvComputed=plan.Items.Count(t=>t.Mapping!=null),uvReused=plan.Items.Count(t=>t.Mapping==null),
             objects=plan.Items.Select(t=>new{id=t.Object.Id,mode=t.Record.Mode,willReplaceMapping=t.Mapping!=null,canRestore=t.Object.Attributes.GetUserString(BackupKey)!=null}).ToArray()};
         if(preview)return report;
+        bool objectRandom=!settings.Checker&&asset.Randomization.ResolvedMode=="object";
+        if(!settings.Checker)foreach(var instance in RandomTextureService.Instances(asset,targets.Select(o=>o.Id).ToArray(),layers))RandomTextureService.Resolve(asset,instance);
         uint undo=doc.BeginUndoRecord("SceneFlow 应用材质 / 补算真实世界 UV");
         try
         {
@@ -107,15 +111,15 @@ public static partial class MaterialService
             {
                 var layer=doc.Layers.FindId(id)!;
                 if(layer.GetUserString(LayerBackupKey)==null)layer.SetUserString(LayerBackupKey,Serialize(new LayerMaterialBackup{RenderMaterial=layer.RenderMaterial?.Id??Guid.Empty,MaterialIndex=layer.RenderMaterialIndex,Binding=layer.GetUserString(BindingKey)}));
-                layer.RenderMaterial=material;layer.SetUserString(BindingKey,Serialize(new MaterialBinding{Asset=asset.Id,Revision=asset.Revision,Settings=MaterialLibrary.Clone(settings),UnitScale=scale}));
+                layer.RenderMaterial=objectRandom?DocumentMaterial(doc,asset,false,layer.Id):material;layer.SetUserString(BindingKey,Serialize(new MaterialBinding{Asset=asset.Id,Revision=asset.Revision,Randomized=!settings.Checker&&asset.Randomization.ResolvedMode!="off",Settings=MaterialLibrary.Clone(settings),UnitScale=scale}));
             }
             foreach(var item in plan.Items)
             {
                 var obj=doc.Objects.FindId(item.Object.Id)!;var attrs=obj.Attributes.Duplicate();
-                attrs.SetUserString(BindingKey,Serialize(new MaterialBinding{Asset=asset.Id,Revision=asset.Revision,Settings=item.Record.Settings,UnitScale=scale,Bounds=Bounds(obj)}));
-                attrs.MaterialSource=layers is {Length:>0}?ObjectMaterialSource.MaterialFromLayer:ObjectMaterialSource.MaterialFromObject;
+                attrs.SetUserString(BindingKey,Serialize(new MaterialBinding{Asset=asset.Id,Revision=asset.Revision,Randomized=!settings.Checker&&asset.Randomization.ResolvedMode!="off",Settings=item.Record.Settings,UnitScale=scale,Bounds=Bounds(obj)}));
+                attrs.MaterialSource=layers is {Length:>0}&&!objectRandom?ObjectMaterialSource.MaterialFromLayer:ObjectMaterialSource.MaterialFromObject;
                 if(!doc.Objects.ModifyAttributes(obj,attrs,true))throw new InvalidOperationException("无法修改对象属性。");
-                if(layers is not {Length:>0}){var current=doc.Objects.FindId(obj.Id)!;current.RenderMaterial=material;current.CommitChanges();}
+                if(layers is not {Length:>0}||objectRandom){var current=doc.Objects.FindId(obj.Id)!;current.RenderMaterial=objectRandom?DocumentMaterial(doc,asset,false,obj.Id):material;current.CommitChanges();}
             }
         }
         finally{if(undo!=0)doc.EndUndoRecord(undo);}
@@ -244,15 +248,16 @@ public static partial class MaterialService
         catch{output.Dispose();throw;}
         finally{foreach(var mesh in meshes)mesh.Dispose();}
     }
-    private static RenderMaterial DocumentMaterial(RhinoDoc doc,MaterialAsset asset,bool checker)
+    private static RenderMaterial DocumentMaterial(RhinoDoc doc,MaterialAsset asset,bool checker,Guid instance=default)
     {
-        string name=$"SceneFlow_{asset.Id:N}_r{asset.Revision}_meter2"+(checker?"_checker":"");
+        var view=checker?null:RandomTextureService.Resolve(asset,instance);
+        string name=$"SceneFlow_{asset.Id:N}_r{asset.Revision}_meter2"+(checker?"_checker":view!.Key.Length>0?"_random_"+view.Key:"");
         var existing=doc.RenderMaterials.FirstOrDefault(m=>m.Name==name);if(existing!=null)return existing;
         using var native=new Material{Name=name};native.ToPhysicallyBased();native.PhysicallyBased.Roughness=asset.Roughness;native.PhysicallyBased.Metallic=asset.Metallic;
         foreach(var (slot,_) in checker?new Dictionary<string,string>{{"baseColor",""}}:asset.Maps)
         {
-            string path=checker?CheckerPath():Library.MapPath(asset,slot);
-            using var texture=new Texture{FileName=path,Enabled=true,WrapU=TextureUvwWrapping.Repeat,WrapV=TextureUvwWrapping.Repeat,UvwTransform=Transform.Scale(Plane.WorldXY,1/asset.WidthMeters,1/asset.HeightMeters,1)};
+            string path=checker?CheckerPath():view!.Maps[slot];double width=view?.WidthMeters??asset.WidthMeters,height=view?.HeightMeters??asset.HeightMeters;
+            using var texture=new Texture{FileName=path,Enabled=true,TreatAsLinear=slot!="baseColor",WrapU=TextureUvwWrapping.Repeat,WrapV=TextureUvwWrapping.Repeat,UvwTransform=Transform.Scale(Plane.WorldXY,1/width,1/height,1)};
             var type=slot switch{"roughness"=>TextureType.PBR_Roughness,"metallic"=>TextureType.PBR_Metallic,"normal"=>TextureType.Bump,_=>TextureType.PBR_BaseColor};
             native.PhysicallyBased.SetTexture(texture,type);
         }
@@ -264,7 +269,7 @@ public static partial class MaterialService
             {
                 texture.SetMappingChannel(1,RenderContent.ChangeContexts.Program);
                 texture.SetRepeatLocked(false,RenderContent.ChangeContexts.Program);
-                texture.SetRepeat(new Vector3d(1/asset.WidthMeters,1/asset.HeightMeters,1),RenderContent.ChangeContexts.Program);
+                texture.SetRepeat(new Vector3d(1/(view?.WidthMeters??asset.WidthMeters),1/(view?.HeightMeters??asset.HeightMeters),1),RenderContent.ChangeContexts.Program);
             }
         }
         if(!doc.RenderMaterials.Add(render)){render.Dispose();throw new InvalidOperationException("无法创建 Rhino 材质。");}return render;

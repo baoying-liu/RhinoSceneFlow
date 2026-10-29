@@ -32,11 +32,13 @@ internal sealed class TextureSceneBuilder(RhinoDoc doc)
         int classicIndex=obj.Attributes.MaterialSource==ObjectMaterialSource.MaterialFromObject
             ?obj.Attributes.MaterialIndex:doc.Layers[obj.Attributes.LayerIndex].RenderMaterialIndex;
         string key=render!=null?"rdk:"+render.Id:"legacy-index:"+classicIndex;
+        string groupKey=key;
         string name=render?.Name??legacy?.Name??"未指定材质";
         if(string.IsNullOrWhiteSpace(name))name="材质 "+key;
         if(binding!=null)
         {
             var value=MaterialService.Deserialize<MaterialBinding>(binding);
+            if(value.Randomized&&name.StartsWith($"SceneFlow_{value.Asset:N}_r{value.Revision}_meter2_random_",StringComparison.Ordinal))groupKey=$"sceneflow-random:{value.Asset:N}:r{value.Revision}";
             if(name.StartsWith("SceneFlow_"+value.Asset.ToString("N")+"_r"+value.Revision+"_",StringComparison.Ordinal))
                 try{name=MaterialService.Library.Get(value.Asset).Name;}catch(FileNotFoundException){}
         }
@@ -63,7 +65,7 @@ internal sealed class TextureSceneBuilder(RhinoDoc doc)
             bool modulate=!native.IsPhysicallyBased&&texture?.TextureCombineMode==TextureCombineMode.Modulate;
             double amount=native.IsPhysicallyBased&&render!=null?render.GetTextureAmountFromUsage(RenderMaterial.StandardChildSlots.PbrBaseColor)/100:1;
             if(!double.IsFinite(amount)||amount<0||amount>1)throw new NotSupportedException("颜色贴图混合量需为 0–100%。");
-            material=Surfaces.Count;materials.Add(key,material);Surfaces.Add(new(key,name,new(color.R,color.G,color.B),bitmap,modulate,amount));
+            material=Surfaces.Count;materials.Add(key,material);Surfaces.Add(new(groupKey,name,new(color.R,color.G,color.B),bitmap,modulate,amount));
         }
         int owner=Objects.Count;string objectName=string.IsNullOrWhiteSpace(obj.Attributes.Name)?"物件 "+obj.Id.ToString()[..8]:obj.Attributes.Name+" ["+obj.Id.ToString()[..8]+"]";
         Objects.Add(new(obj.Id.ToString(),objectName,material));

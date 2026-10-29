@@ -41,7 +41,7 @@ public static class MaterialGeneration
                 OnUi(()=>Progress(job.Id,"正在归入分类并生成标签…"));
                 var descriptor=MaterialLibrary.Clone(job.Descriptor);descriptor.Prompt=job.Prompt;
                 CatalogLabel? label=null;string? labelError=null;
-                try{label=await CatalogService.LabelAsync(new MaterialLibrary(root),descriptor,Path.Combine(root,"requests",job.Id.ToString("N"),"label"),cancel.Token);}
+                try{label=await CatalogService.LabelAsync(new MaterialLibrary(root),descriptor,Path.Combine(root,"requests",job.Id.ToString("N"),"label"),cancel.Token,result.ImagePath);}
                 catch(Exception e) when(e is not OperationCanceledException){labelError=e.Message;}
                 OnUi(()=>
                 {

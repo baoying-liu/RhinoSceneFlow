@@ -11,11 +11,12 @@ public sealed class ExportLayerSetting
 {
     public string Kind{get;set;}=""; // empty placeholder, shadow, material (legacy color), texture, display
     public string TextureGrouping{get;set;}="material";
+    public string PlantGrouping{get;set;}="species";
     public Guid Mode{get;set;}
     public string Blend{get;set;}="norm";
     public int Opacity{get;set;}=100;
     public bool Enabled{get;set;}=true;
-    public ExportLayerSetting Copy()=>new(){Kind=Kind,TextureGrouping=TextureGrouping,Mode=Mode,Blend=Blend,Opacity=Opacity,Enabled=Enabled};
+    public ExportLayerSetting Copy()=>new(){Kind=Kind,TextureGrouping=TextureGrouping,PlantGrouping=PlantGrouping,Mode=Mode,Blend=Blend,Opacity=Opacity,Enabled=Enabled};
 }
 public sealed class CameraAdjustment
 {
@@ -41,10 +42,13 @@ public sealed class ViewExportRow
     public int Height{get;set;}=1280;
     public Guid Mode{get;set;}=DisplayModeDescription.ShadedId;
     public string Status{get;set;}="待导出";
-    public List<ExportLayerSetting> Layers{get;set;}=[new(){Kind="shadow",Blend="mul "},new(){Kind="texture"}];
+    public List<ExportLayerSetting> Layers{get;set;}=[new(){Kind="plants"},new(){Kind="shadow",Blend="mul "},new(){Kind="texture"}];
+    public bool PlantsInitialized{get;set;}
+    public bool PlantShadows{get;set;}=true;
     public CameraAdjustment Camera{get;set;}=new();
     public SunAdjustment Sun{get;set;}=new();
     public ViewExportRow Copy()=>WorkbenchStore.Clone(this);
+    internal void InitializePlants(){if(PlantsInitialized)return;if(!Layers.Any(l=>l.Kind=="plants"))Layers.Insert(0,new(){Kind="plants"});PlantsInitialized=true;}
     public void SetPreset(int longest)
     {
         if(longest is not (1024 or 2048 or 4096 or 8192))throw new ArgumentException("请选择 1K / 2K / 4K / 8K。");
@@ -59,8 +63,10 @@ public sealed class ViewExportRow
         if(!WorkbenchService.Modes().Any(m=>m.Id==Mode))throw new ArgumentException($"{Name} 的预览显示模式不存在。");
         if(Layers.Count>32)throw new ArgumentException("每个视图最多设置 32 个通道/显示模式。");
         var active=Layers.Where(l=>l.Enabled).ToArray();
-        if(active.Length==0||active.Any(l=>l.Kind is not ("shadow" or "material" or "texture" or "display")))throw new ArgumentException($"{Name}：请选择每个启用图层的内容，或关闭空条目。");
+        if(active.Length==0||active.Any(l=>l.Kind is not ("shadow" or "material" or "texture" or "display" or "plants")))throw new ArgumentException($"{Name}：请选择每个启用图层的内容，或关闭空条目。");
         foreach(var l in active)
+            if(l.Kind=="plants"&&l.PlantGrouping is not ("individual" or "species" or "all"))throw new ArgumentException("植物分层：单株、按学名或合并全部。");
+            else
             if(l.Kind=="texture"&&l.TextureGrouping is not ("material" or "object"))throw new ArgumentException("材质贴图请选择按材质或按物件分层。");
             else if(!ConfiguredStack.BlendKeys.Contains(l.Blend)||l.Opacity<0||l.Opacity>100||l.Kind=="display"&&!WorkbenchService.Modes().Any(m=>m.Id==l.Mode))throw new ArgumentException($"{Name}：图层模式或透明度无效。");
         double[] numbers=[Camera.Yaw,Camera.Pitch,Camera.Zoom,Camera.PanX,Camera.PanY,Camera.PanZ,Sun.Azimuth,Sun.Altitude];

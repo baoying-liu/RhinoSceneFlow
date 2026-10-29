@@ -11,6 +11,7 @@
     <FrameworkReference Include="Microsoft.WindowsDesktop.App.WPF" />
     <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.4314.35" ExcludeAssets="runtime" />
     <ProjectReference Include="../RhinoSceneFlow.Core/RhinoSceneFlow.Core.csproj" />
+    <ProjectReference Include="../RhinoSceneFlow.TextureWorker/RhinoSceneFlow.TextureWorker.csproj" ReferenceOutputAssembly="false" />
     <Reference Include="RhinoCommon"><HintPath>$(RhinoSystem)\RhinoCommon.dll</HintPath><Private>false</Private></Reference>
     <Reference Include="Eto"><HintPath>$(RhinoSystem)\Eto.dll</HintPath><Private>false</Private></Reference>
     <Reference Include="Rhino.UI"><HintPath>$(RhinoSystem)\Rhino.UI.dll</HintPath><Private>false</Private></Reference>
@@ -21,7 +22,16 @@
   <ItemGroup><None Include="../../artifacts/native-uv-build/$(Configuration)/SceneFlow.UvWorker.exe" Link="SceneFlow.UvWorker.exe" CopyToOutputDirectory="PreserveNewest" /></ItemGroup>
   <ItemGroup><None Update="ChatKit/*.py;ChatKit/*.html;ChatKit/*.txt" CopyToOutputDirectory="PreserveNewest" /></ItemGroup>
   <ItemGroup><EmbeddedResource Include="Resources/*.ico" /></ItemGroup>
+  <ItemGroup><None Include="../../third-party/FastNoiseLite/LICENSE" Link="FastNoiseLite-LICENSE.txt" CopyToOutputDirectory="PreserveNewest" /></ItemGroup>
   <Target Name="KeepOnlyX64Loader" AfterTargets="Build">
     <Delete Files="$(TargetDir)runtimes/win-x86/native/WebView2Loader.dll;$(TargetDir)runtimes/win-arm64/native/WebView2Loader.dll" />
+  </Target>
+  <Target Name="CopyTextureWorker" AfterTargets="Build">
+    <MSBuild Projects="../RhinoSceneFlow.TextureWorker/RhinoSceneFlow.TextureWorker.csproj" Targets="GetTargetPath" Properties="Configuration=$(Configuration)">
+      <Output TaskParameter="TargetOutputs" ItemName="TextureWorkerTarget" />
+    </MSBuild>
+    <PropertyGroup><TextureWorkerDirectory>@(TextureWorkerTarget->'%(RootDir)%(Directory)')</TextureWorkerDirectory></PropertyGroup>
+    <ItemGroup><TextureWorkerFiles Include="$(TextureWorkerDirectory)/SceneFlow.TextureWorker.*;$(TextureWorkerDirectory)/RhinoSceneFlow.Core.dll;$(TextureWorkerDirectory)/geometry3Sharp.dll" /></ItemGroup>
+    <Copy SourceFiles="@(TextureWorkerFiles)" DestinationFolder="$(TargetDir)TextureWorker" />
   </Target>
 </Project>

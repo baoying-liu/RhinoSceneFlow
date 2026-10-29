@@ -18,9 +18,10 @@ try {
     foreach ($name in @('Microsoft.Web.WebView2.Core.dll','Microsoft.Web.WebView2.Wpf.dll')) {
         Copy-Item -LiteralPath (Join-Path $outputPath $name) -Destination $packagePath -Force
     }
-    foreach ($name in @('runtimes','ChatKit')) {
+    foreach ($name in @('runtimes','ChatKit','TextureWorker')) {
         Copy-Item -LiteralPath (Join-Path $outputPath $name) -Destination $packagePath -Recurse -Force
     }
+    Copy-Item -LiteralPath (Join-Path $projectRoot 'third-party/FastNoiseLite/LICENSE') -Destination (Join-Path $packagePath 'FastNoiseLite-LICENSE.txt') -Force
     foreach ($arch in @('win-x86','win-arm64')) {
         $staleLoader = Join-Path $packagePath "runtimes/$arch/native/WebView2Loader.dll"
         if (Test-Path -LiteralPath $staleLoader) { Remove-Item -LiteralPath $staleLoader -Force }

@@ -20,12 +20,16 @@ public sealed class MaterialAsset
     public string RecommendedMapping { get; set; } = "auto";
     public string Source { get; set; } = "import";
     public string Prompt { get; set; } = "";
+    public TextureRandomization Randomization { get; set; } = new();
+    public PlantIdentity? Plant { get; set; }
     public DateTime CreatedUtc { get; set; } = DateTime.UtcNow;
     public Dictionary<string,string> Maps { get; set; } = [];
     public Dictionary<string,string> Sha256 { get; set; } = [];
     public void Validate()
     {
         Category??="";Tags??=[];
+        Randomization??=new();Randomization.Validate();
+        Plant?.Validate();
         if(SchemaVersion!=1||Id==Guid.Empty||Revision<1||string.IsNullOrWhiteSpace(Name)||Name.Length>200)throw new ArgumentException("Invalid material identity/name.");
         if(!double.IsFinite(WidthMeters)||!double.IsFinite(HeightMeters)||WidthMeters<=0||HeightMeters<=0||WidthMeters>1e5||HeightMeters>1e5)throw new ArgumentException("Texture physical size must be finite and positive (meters).");
         if(!double.IsFinite(Roughness)||!double.IsFinite(Metallic)||Roughness<0||Roughness>1||Metallic<0||Metallic>1)throw new ArgumentException("Roughness/metallic must be in 0..1.");
@@ -41,18 +45,51 @@ public sealed class MaterialLibrary
     public static readonly string[] Slots=["baseColor","roughness","normal","metallic"];
     public static readonly JsonSerializerOptions Json=new(){PropertyNamingPolicy=JsonNamingPolicy.CamelCase,PropertyNameCaseInsensitive=true,WriteIndented=true};
     public string Root { get; }
-    public MaterialLibrary(string root){if(!Path.IsPathFullyQualified(root))throw new ArgumentException("Library path must be absolute.");Root=Path.GetFullPath(root);}
+    public MaterialLibrary(string root){if(!Path.IsPathFullyQualified(root))throw new ArgumentException("Library path must be absolute.");Root=Path.TrimEndingDirectorySeparator(Path.GetFullPath(root));}
+    internal T Locked<T>(Func<T> action){using var lease=LibraryFileLock.Enter(Root);Recover();return action();}
+    private string Journal=>Path.Combine(Root,".sceneflow-catalog-rollback.json");
+    private static void RetryCommit(Action commit)
+    {
+        var clock=System.Diagnostics.Stopwatch.StartNew();
+        while(true){try{commit();return;}catch(Exception e) when((e is IOException or UnauthorizedAccessException)&&clock.Elapsed<TimeSpan.FromSeconds(1)){Thread.Sleep(20);}}
+    }
+    internal static void AtomicWrite(string path,string text)
+    {
+        string temp=path+"."+Guid.NewGuid().ToString("N")+".tmp";
+        try
+        {
+            using(var file=new FileStream(temp,FileMode.CreateNew,FileAccess.Write,FileShare.None)){byte[] data=System.Text.Encoding.UTF8.GetBytes(text);file.Write(data);file.Flush(true);}
+            RetryCommit(()=>File.Move(temp,path,true));
+        }
+        finally{if(File.Exists(temp))File.Delete(temp);}
+    }
+    private void Recover()
+    {
+        if(!File.Exists(Journal))return;
+        var backups=JsonSerializer.Deserialize<Dictionary<Guid,string>>(File.ReadAllText(Journal),Json)??throw new InvalidDataException("Invalid catalog recovery journal.");
+        foreach(var (id,text) in backups){var asset=JsonSerializer.Deserialize<MaterialAsset>(text,Json)??throw new InvalidDataException("Invalid recovery asset.");asset.Validate();if(asset.Id!=id)throw new InvalidDataException("Recovery identity mismatch.");}
+        foreach(var (id,text) in backups)AtomicWrite(Path.Combine(AssetDirectory(id),"asset.json"),text);
+        File.Delete(Journal);
+    }
+    // Caller holds the library lease through validation, journal, commit or rollback.
+    internal void CommitCatalog(MaterialAsset[] assets)
+    {
+        var backups=assets.ToDictionary(a=>a.Id,a=>File.ReadAllText(Path.Combine(AssetDirectory(a.Id),"asset.json")));
+        AtomicWrite(Journal,JsonSerializer.Serialize(backups,Json));
+        try{foreach(var a in assets)AtomicWrite(Path.Combine(AssetDirectory(a.Id),"asset.json"),JsonSerializer.Serialize(a,Json));File.Delete(Journal);}
+        catch{Recover();throw;}
+    }
     public static T Clone<T>(T value)=>JsonSerializer.Deserialize<T>(JsonSerializer.Serialize(value,Json),Json)!;
     public string AssetDirectory(Guid id)=>Path.Combine(Root,"assets",id.ToString("N"));
-    public MaterialAsset[] List(string query="")
+    public MaterialAsset[] List(string query="")=>Locked(()=>
     {
         string directory=Path.Combine(Root,"assets");if(!Directory.Exists(directory))return [];
         return Directory.EnumerateDirectories(directory).Where(d=>Guid.TryParseExact(Path.GetFileName(d),"N",out _)&&File.Exists(Path.Combine(d,"asset.json")))
             .Select(d=>Read(Path.Combine(d,"asset.json"))).Where(a=>string.IsNullOrWhiteSpace(query)||
                 (a.Name+" "+a.Category+" "+string.Join(" ",a.Tags)).Contains(query,StringComparison.OrdinalIgnoreCase)).OrderBy(a=>a.Name).ToArray();
-    }
+    });
     private static MaterialAsset Read(string path){var a=JsonSerializer.Deserialize<MaterialAsset>(File.ReadAllText(path),Json)??throw new InvalidDataException("Empty asset metadata.");a.Validate();return a;}
-    public MaterialAsset Get(Guid id){var a=Read(Path.Combine(AssetDirectory(id),"asset.json"));if(a.Id!=id)throw new InvalidDataException("Material identity mismatch.");return a;}
+    public MaterialAsset Get(Guid id)=>Locked(()=>{var a=Read(Path.Combine(AssetDirectory(id),"asset.json"));if(a.Id!=id)throw new InvalidDataException("Material identity mismatch.");return a;});
     public string MapPath(MaterialAsset asset,string slot)
     {
         asset.Validate();string directory=Path.GetFullPath(AssetDirectory(asset.Id))+Path.DirectorySeparatorChar;
@@ -75,26 +112,27 @@ public sealed class MaterialLibrary
         try
         {
             foreach(var (slot,path) in files){string dest=Path.Combine(staging,a.Maps[slot]);File.Copy(path,dest);a.Sha256[slot]=Hash(dest);}
-            File.WriteAllText(Path.Combine(staging,"asset.json"),JsonSerializer.Serialize(a,Json));Directory.Move(staging,target);return a;
+            AtomicWrite(Path.Combine(staging,"asset.json"),JsonSerializer.Serialize(a,Json));return Locked(()=>{RetryCommit(()=>Directory.Move(staging,target));return a;});
         }
         finally{if(Directory.Exists(staging))Directory.Delete(staging,true);}
     }
-    public MaterialAsset Update(MaterialAsset descriptor)
+    public MaterialAsset Update(MaterialAsset descriptor)=>Locked(()=>
     {
-        var old=Get(descriptor.Id);var a=Clone(descriptor);a.Maps=old.Maps;a.Sha256=old.Sha256;a.Source=old.Source;a.Prompt=old.Prompt;a.CreatedUtc=old.CreatedUtc;a.Revision=old.Revision+1;a.CatalogRevision=old.CatalogRevision+1;a.Validate();Verify(a);
-        string path=Path.Combine(AssetDirectory(a.Id),"asset.json"),temp=path+".tmp";File.WriteAllText(temp,JsonSerializer.Serialize(a,Json));File.Move(temp,path,true);return a;
-    }
-    public MaterialAsset UpdateLabels(Guid id,string name,string category,string[] tags)
+        var old=Get(descriptor.Id);if(descriptor.Revision!=old.Revision||descriptor.CatalogRevision!=old.CatalogRevision)throw new InvalidOperationException("材质已被其他操作更新，请刷新并重新选择后再保存。");
+        var a=Clone(descriptor);a.Maps=old.Maps;a.Sha256=old.Sha256;a.Source=old.Source;a.Prompt=old.Prompt;a.CreatedUtc=old.CreatedUtc;a.Revision=old.Revision+1;a.CatalogRevision=old.CatalogRevision+1;a.Validate();Verify(a);
+        AtomicWrite(Path.Combine(AssetDirectory(a.Id),"asset.json"),JsonSerializer.Serialize(a,Json));return a;
+    });
+    public MaterialAsset UpdateLabels(Guid id,string name,string category,string[] tags,int? expectedCatalogRevision=null)=>Locked(()=>
     {
-        var a=Get(id);var label=MaterialCatalog.ValidatePlan([a],[new(id,name,category,tags)]).Single();
+        var a=Get(id);if(expectedCatalogRevision.HasValue&&a.CatalogRevision!=expectedCatalogRevision)throw new InvalidOperationException("材质属性已更新，请刷新并重新选择后再保存。");var label=MaterialCatalog.ValidatePlan([a],[new(id,name,category,tags)]).Single();
         a.Name=label.Name;a.Category=label.Category;a.Tags=label.Tags;a.CatalogRevision++;a.Validate();
-        string path=Path.Combine(AssetDirectory(id),"asset.json");File.WriteAllText(path+".tmp",JsonSerializer.Serialize(a,Json));File.Move(path+".tmp",path,true);return a;
-    }
+        AtomicWrite(Path.Combine(AssetDirectory(id),"asset.json"),JsonSerializer.Serialize(a,Json));return a;
+    });
     public void ExportPackage(Guid id,string path)
     {
         var a=Get(id);Verify(a);if(!Path.IsPathFullyQualified(path)||!path.EndsWith(".zip",StringComparison.OrdinalIgnoreCase)||File.Exists(path))throw new ArgumentException("Choose a new absolute ZIP path.");
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);string temp=path+"."+Guid.NewGuid().ToString("N")+".tmp";
-        try{using(var zip=ZipFile.Open(temp,ZipArchiveMode.Create)){zip.CreateEntryFromFile(Path.Combine(AssetDirectory(id),"asset.json"),"asset.json");foreach(var map in a.Maps.Values)zip.CreateEntryFromFile(Path.Combine(AssetDirectory(id),map),map);}File.Move(temp,path);}
+        try{using(var zip=ZipFile.Open(temp,ZipArchiveMode.Create)){using(var writer=new StreamWriter(zip.CreateEntry("asset.json").Open()))writer.Write(JsonSerializer.Serialize(a,Json));foreach(var map in a.Maps.Values)zip.CreateEntryFromFile(Path.Combine(AssetDirectory(id),map),map);}File.Move(temp,path);}
         finally{if(File.Exists(temp))File.Delete(temp);}
     }
     public MaterialAsset ImportPackage(string path,Action<IReadOnlyDictionary<string,string>>? validate=null)

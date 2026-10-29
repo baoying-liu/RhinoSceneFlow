@@ -43,6 +43,9 @@ public sealed class ConfiguredStack : IPsdImage,IPsdHierarchy
             var visible=pass.Image.GetVisibleLayers(cancellation);
             if(visible.Count==0)visible=[new(0,0,0,1,1)];
             if(pass.Folder)result.Add(new(new(-1,0,0,0,0),pass.Name,pass.Blend,pass.Opacity,1));
+            if(pass.Image is IPsdHierarchy hierarchy)
+                result.AddRange(hierarchy.Records(cancellation).Select(r=>r with{Bounds=r.Bounds.Group<0?r.Bounds:r.Bounds with{Group=r.Bounds.Group+offset}}));
+            else
             foreach(var b in visible)
                 result.Add(new(b with{Group=b.Group+offset},pass.Folder?pass.Image.Groups[b.Group].Name:pass.Name,
                     pass.Folder?"norm":pass.Blend,pass.Folder?(byte)255:pass.Opacity));

@@ -1,5 +1,17 @@
 using RhinoSceneFlow.Core;
 
+if(args.FirstOrDefault()=="--plant-only"){PlantValidation.Run("artifacts/validation");return;}
+if(args.FirstOrDefault()=="--plant-ai")
+{
+    var dir=Path.GetFullPath("artifacts/plant-ai");var result=await CodexPlantAgent.RunAsync(dir,"resolve","生成一株 Acer rubrum 红枫，夏季绿色叶片，完整单株树木透明 PNG。",[],[],CancellationToken.None,Console.WriteLine);
+    File.WriteAllText(Path.Combine(dir,"resolved.json"),System.Text.Json.JsonSerializer.Serialize(result,MaterialLibrary.Json));Console.WriteLine(result.ScientificName);return;
+}
+
+if(args.FirstOrDefault()=="--random-only"){RandomTextureValidation.Run("artifacts/validation");return;}
+
+if(args.FirstOrDefault()=="--library-worker"){LibraryConcurrencyValidation.Worker(args);return;}
+if(args.FirstOrDefault()=="--library-only"){LibraryConcurrencyValidation.Run("artifacts/validation");return;}
+
 if(args.FirstOrDefault()=="--catalog-only"){Directory.CreateDirectory("artifacts/validation");CatalogValidation.Run("artifacts/validation");return;}
 
 if(args.FirstOrDefault()=="--tube-only"){Directory.CreateDirectory("artifacts/validation");TubeValidation.Run("artifacts/validation");return;}
@@ -357,3 +369,6 @@ TextureValidation.Run(output);
 await UnwrapValidation.Run(output);
 TubeValidation.Run(output);
 CatalogValidation.Run(output);
+RandomTextureValidation.Run(output);
+PlantValidation.Run(output);
+LibraryConcurrencyValidation.Run(output);

@@ -1,0 +1,4 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><TargetFramework>net8.0-windows</TargetFramework><OutputType>Exe</OutputType><UseWindowsForms>true</UseWindowsForms><AssemblyName>SceneFlow.TextureWorker</AssemblyName></PropertyGroup>
+  <ItemGroup><ProjectReference Include="../RhinoSceneFlow.Core/RhinoSceneFlow.Core.csproj" /></ItemGroup>
+</Project>

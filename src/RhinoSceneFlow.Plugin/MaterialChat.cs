@@ -12,11 +12,14 @@ namespace RhinoSceneFlow.Plugin;
 public sealed class MaterialChatJob
 {
     public Guid Id{get;}=Guid.NewGuid();
+    public string Kind{get;internal set;}="material";
     public string Status{get;internal set;}="running";
     public string Stage{get;internal set;}="正在连接本机 Codex";
     public string? Reply{get;internal set;}
     public string? Error{get;internal set;}
     public Guid? Material{get;internal set;}
+    public Guid? Plant{get;internal set;}
+    public CatalogMatch[] PlantMatches{get;internal set;}=[];
     public CatalogMatch[] Matches{get;internal set;}=[];
     public string? ImagePath{get;internal set;}
 }
@@ -40,12 +43,20 @@ public static class MaterialChat
         var validation=MaterialLibrary.Clone(asset);validation.Maps=new(){{"baseColor","baseColor.png"}};validation.Validate();
         string directory=Path.Combine(MaterialService.Library.Root,"chat-jobs",Guid.NewGuid().ToString("N"));Directory.CreateDirectory(directory);
         var refs=references.Select((p,i)=>{string target=Path.Combine(directory,"reference-"+i+Path.GetExtension(p));File.Copy(p,target);return target;}).ToArray();
-        var library=MaterialService.Library;var catalog=library.List();
+        var library=MaterialService.Library;var catalog=library.List();var plantLibrary=PlantService.Library;var plantCatalog=plantLibrary.List();
         var job=new MaterialChatJob();jobs.Add(job.Id,job);var cancel=new CancellationTokenSource();workers.Add(job.Id,cancel);
         _=Task.Run(async()=>
         {
             try
             {
+                Ui(()=>job.Stage="正在判断素材任务…");
+                var intent=await CodexPlantAgent.RunAsync(Path.Combine(directory,"intent"),"route",conversation,[],refs,cancel.Token);
+                if(intent.Plant)
+                {
+                    Ui(()=>job.Kind="plant");
+                    await PlantChat.Process(job,plantLibrary,plantCatalog,directory,conversation,refs,reuseSimilar,intent.Generate,cancel.Token,action=>Ui(()=>{try{action();}catch(Exception e){job.Status=e is OperationCanceledException?"cancelled":"failed";job.Error=e.Message;job.Stage=e.Message;Release(job.Id);}}));
+                    Ui(()=>Release(job.Id));return;
+                }
                 if(reuseSimilar&&catalog.Length>0)
                 {
                     Ui(()=>job.Stage="正在查找可复用的已有材质…");
@@ -62,7 +73,7 @@ public static class MaterialChat
                 if(result.ImagePath!=null)
                 {
                     Ui(()=>job.Stage="正在归入分类并生成标签…");
-                    try{label=await CatalogService.LabelAsync(library,asset,Path.Combine(directory,"label"),cancel.Token);}
+                    try{label=await CatalogService.LabelAsync(library,asset,Path.Combine(directory,"label"),cancel.Token,result.ImagePath);}
                     catch(Exception e) when(e is not OperationCanceledException){labelError=e.Message;asset.Category="待分类";asset.Tags=["待整理"];}
                 }
                 Ui(()=>
@@ -88,6 +99,8 @@ public static class MaterialChat
 /// <summary>Authenticated loopback UI transport for the official ChatKit SDK, not an MCP server.</summary>
 internal sealed class MaterialChatHost : IDisposable
 {
+    private static readonly string session=Environment.ProcessId+"-"+Guid.NewGuid().ToString("N");
+    private readonly uint document;
     private Process? process;
     private readonly SemaphoreSlim writer=new(1);
     private readonly Func<(double Width,double Height)> size;
@@ -100,11 +113,12 @@ internal sealed class MaterialChatHost : IDisposable
     internal string State{get;private set;}="尚未启动";
     internal MaterialChatHost(uint doc,Func<(double,double)> size,Action<Guid> onStarted,Func<bool>? reuse=null)
     {
-        this.size=size;this.onStarted=onStarted;this.reuse=reuse??(()=>true);
-        data=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"RhinoSceneFlow","chatkit-data","doc-"+doc);Directory.CreateDirectory(data);
+        document=doc;this.size=size;this.onStarted=onStarted;this.reuse=reuse??(()=>true);
+        data=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"RhinoSceneFlow","chatkit-data","sessions",session,"doc-"+doc,Guid.NewGuid().ToString("N"));Directory.CreateDirectory(data);
     }
     internal async Task StartAsync()
     {
+        if(disposed)throw new OperationCanceledException();
         string python=Environment.GetEnvironmentVariable("RHINOSCENEFLOW_CHATKIT_PYTHON")??Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"RhinoSceneFlow","chatkit-runtime","Scripts","python.exe");
         if(!File.Exists(python))throw new InvalidOperationException("请先运行 scripts/Setup-ChatKit.ps1 安装本机 ChatKit 运行环境。");
         var listener=new TcpListener(IPAddress.Loopback,0);listener.Start();int port=((IPEndPoint)listener.LocalEndpoint).Port;listener.Stop();
@@ -138,6 +152,7 @@ internal sealed class MaterialChatHost : IDisposable
                         switch(request.GetProperty("method").GetString())
                         {
                             case "turn.start":
+                                var doc=RhinoDoc.FromRuntimeSerialNumber(document);if(doc==null||!doc.IsAvailable||doc.IsClosing||RhinoDoc.ActiveDoc?.RuntimeSerialNumber!=document)throw new InvalidOperationException("请切换到此对话对应的文档后再发送。");
                                 var refs=p.GetProperty("references").EnumerateArray().Select(v=>Path.GetFullPath(v.GetString()!)).ToArray();
                                 if(refs.Any(path=>!path.StartsWith(Path.GetFullPath(data)+Path.DirectorySeparatorChar,StringComparison.OrdinalIgnoreCase)))throw new ArgumentException("参考图必须来自本次聊天上传。");
                                 var dimensions=size();var job=MaterialChat.Start(p.GetProperty("conversation").GetString()!,refs,dimensions.Width,dimensions.Height,reuse());active=job.Id;onStarted(job.Id);result=job;break;
@@ -170,7 +185,7 @@ internal sealed class MaterialChatView : Panel,IDisposable
     internal readonly Microsoft.Web.WebView2.Wpf.WebView2 Browser=new();
     private readonly MaterialChatHost host;
     private readonly Label error=new(){Wrap=WrapMode.Word};
-    private bool closed,started;
+    private bool closed,started,stopped;
     internal string State{get;private set;}="尚未启动";
     internal MaterialChatView(uint doc,Func<(double,double)> size,Action<Guid> startedJob,Func<bool>? reuse=null)
     {
@@ -178,19 +193,28 @@ internal sealed class MaterialChatView : Panel,IDisposable
     }
     internal async Task StartAsync()
     {
-        if(started||closed)return;started=true;
+        if(started||closed||stopped)return;started=true;
         try
         {
-            await host.StartAsync();if(closed)return;
+            await host.StartAsync();if(closed||stopped)return;
             string userData=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"RhinoSceneFlow","webview");
-            var env=await CoreWebView2Environment.CreateAsync(null,userData);if(closed)return;
-            await Browser.EnsureCoreWebView2Async(env);if(closed)return;
+            var env=await CoreWebView2Environment.CreateAsync(null,userData);if(closed||stopped)return;
+            await Browser.EnsureCoreWebView2Async(env);if(closed||stopped)return;
             Browser.CoreWebView2.NewWindowRequested+=(_,e)=>e.Handled=true;
             Browser.CoreWebView2.NavigationStarting+=(_,e)=>{if(!e.Uri.StartsWith(host.Url.Split('?')[0],StringComparison.Ordinal)&&e.Uri!="about:blank")e.Cancel=true;};
             Browser.CoreWebView2.Settings.AreDevToolsEnabled=false;Browser.CoreWebView2.Settings.AreDefaultContextMenusEnabled=false;
             Browser.Source=new Uri(host.Url);State="ready";
         }
-        catch(Exception e){if(!closed){State=e.Message;error.Text="ChatKit 无法启动："+e.Message+"\n请检查本机 ChatKit 运行环境与网络连接。";Content=error;host.Dispose();}}
+        catch(Exception e){if(!closed&&!stopped){State=e.Message;error.Text="ChatKit 无法启动："+e.Message+"\n请检查本机 ChatKit 运行环境与网络连接。";Content=error;host.Dispose();}}
     }
-    public new void Dispose(){if(closed)return;closed=true;host.Dispose();Browser.Dispose();base.Dispose();}
+    internal void Stop(){stopped=true;host.Dispose();}
+    protected override void Dispose(bool disposing)
+    {
+        if(disposing)
+        {
+            if(closed)return;closed=true;host.Dispose();var content=Content;Content=null;
+            content?.Dispose();Browser.Dispose();
+        }
+        base.Dispose(disposing);
+    }
 }

@@ -1,5 +1,45 @@
 # 沙盒 B：v0.2 自动化验收
 
+## 2026-10-29 v0.15 植物
+
+仅 B，管理 19540 / Platform 22801。实际生成、复用、整库整理、散布、三种 PSD、独立像素 oracle、ChatKit 消息和原生 New 取消通过，见 Validation.md / Planting.md。已测试最近部署 `20261029-211213-3e93d98de4c84dd19f3b9d457b7366ec`，任务 `78cccbbf376b48388d9a4a8881c256dc`，PID 13876 / 实例 `1faece50a7d94f0fb079c64d5b78c0dd`。此部署的 PBR 透明在重叠俯视中仍有矩形缺口，已改写源码，不能将它当作最终显示完成版。
+
+最终 Alpha 轮廓几何版已打包，`artifacts/plant-start-cutgeometry.json` 的 requestId `sceneflow-0150-native-cutout-preview-20261029` 尚未准入成功：系统提交内存约 97.5% 超过 94% 上限。B 已保存并 NormalExit（任务 `71dec6c74e194ec4beb921effef215fe`）；没有更改资源策略，没有操作正式 Rhino。释放内存后重试同一请求，查询 list_jobs 防止重复提交；加载后打开 `delivery.json` 模型，运行 Finish-PlantDelivery.py 并检查重叠原生预览，再执行真实 NormalExit / 重启，更新本段为实际结果。
+
+示例 `artifacts/examples/Planting-v015/Planting-Demo-57912.3dm`、植物 PNG 及透视／俯视 PSD；唯一真实 Acer rubrum 已加入原库，合成夹具仍在独立测试库。最终 source/docs 和发布包完整，但 Native 轮廓预览还欠实机验证。
+
+## 2026-10-29 v0.14 随机去重复
+
+正常关闭后的最终重启任务 `74a3fca819e64d9ba7bd62361345ed63` 成功，当前测试实例 PID 31064，实例 `aa72097684e84150989c9ee1405421ce`，同一最终部署；五页健康与原库路径检查见 `restart-ready.json`。
+
+最终 PID 68604 / Platform 22801，实例 `ca232f525f9146e39f399a9e97000edf`；420×950 侧栏与原生缓存球体通过。准备任务中原生 New 自动取消，重连后五页均健康；见 `new-verified.json`。关闭证据 `artifacts/random-final-close.json`。
+
+仅 B。集成测试部署 `20261029-161926-8dc3f8f4288f4a30bab847a4fd71f5ea`，PID 62356 / Platform 22801，实例 `80137943bbbe40a491b5f1d15335fea7`：真实 AI 生成与默认建议、按物件变体、米制 UV、随机平铺、PSD 合并/分物件独立解码、取消和真实 Eto 草稿应用通过；原库已恢复。关闭 NormalExit/code0，无 crash events/new dumps。
+
+最终 UI 换行与原生球体密度修订部署任务 `90110b98e9554367b42df4287f2d89a0`，部署 `20261029-162917-12b92e563e3d4015ab953a10bcf18ba8`。结果与最终 PID 见 `artifacts/rhino-B/random014/ready.json`。所有产物、原生截图、AI 状态及 PSD 解码在该目录；测试模型 `Random014-Demo-62356.3dm`。没有使用用户鼠标，没有更新正式 Rhino 注册。
+
+## 最新 v0.13.3 共享本地材质库（2026-10-29）
+
+部署 `20261029-144514-21ef13a3d30d44fba018469418b49c8e`，任务 `acc2d2c4abae47f5a6079b9be30f7669` 成功。B PID 58892 与两个外部进程共同写入私有库：自动刷新、草稿保留、过期属性 / 尺寸保存保护、跨文档共享与会话隔离通过。原库路径 `artifacts/rhino-B/workspace013/library` 已恢复，保留 4 个原材质。
+
+PID 58892 **NormalExit**；重启任务 `8e1a75d35ecc4334b230319160cac24d` 成功。当前实例 `6641ca74df6f4ab0a79e3529bea523df`，PID **16780** / Platform **22801**，重开与原库恢复检查通过。证据 `artifacts/rhino-B/shared-library0133`，Core 多进程验证在标准 Build 中运行。没有操作正式 Rhino、其他通道或鼠标。
+
+## 最新 v0.13.2 文档切换修复（2026-10-29）
+
+当前部署 `20261029-141022-f253a7a8fd254d919d1cc07807628878`，安装任务 `0b206d577fdb487aaaeffccaa741cdbe` 成功。PID 63680 完成 10 次文档替换：AI 对话保持打开的 3 次 New / 3 次 Open、xatlas 计算中 New、ChatKit 未就绪时两次快速 New、PSD 卡片 / 细节页存在时 New。工具重建错误字段全部为空；Worker 取消且未跨文档回写；材质库应用与 UV 回归通过。
+
+最终重启任务 `0f3605b61e6042c7aeec924e26abcd10` 成功，PID 63680 **NormalExit**。当前实例 `71f73e9881d14981b8f9ec22a7879e77`，PID **56356** / Platform **22801**，v0.13.2 重开检查通过。证据 `artifacts/rhino-B/document-switch`。未操作鼠标、未正式部署或操作其他通道。
+
+原版 B PID 40352 的同路径异常 ExitCode 3、第一次修复未完成逻辑布局释放的失败证据仍保留；不把早期失败标为通过。根因与 Worker 范围见 [Document-Lifecycle.md](Document-Lifecycle.md)。
+
+## 最新 v0.13.1 独立材质库（2026-10-29）
+
+B 初次部署 `20261029-133625-c163b452062f46b398af3a574ca62956`，任务 `572c9b6f51a8454db5442efbaac32c11` 成功，实例 `ea9a95795db740fbb8c8f6f5d467e276`，PID 51908 / Platform 22801。独立库 / AI 页、同步选中材质和范围、从库按最新选择应用与自动 UV 已实测通过。命令 `RhinoSceneFlowMaterialLibrary`，MCP `material_workspace_open(page:library)`；五工具可独立停靠。
+
+最终列表滚动修正版 `20261029-133829-e5608356616644c5b78c06fcbe99c25f` 已安装。任务 `ae2bce4dd4d94e068b188bc62192be63` 成功，PID 25448 的双向同步、A→B 实时应用、自动 UV 与列表布局复测通过，列表实测 230 DIP。重启任务 `5c913ff66244402e845cc03cf67d8c1f` 成功，PID 25448 NormalExit；当前实例 `2c979c77f0a44ba7b84952d664c1a1a7`，PID **25552** / Platform **22801**，重开后独立库及版本检查通过。证据 `artifacts/rhino-B/library0131/verified.json`、`library.png`、`ready.json`。
+
+此前更新任务 `f0e6297285a3492ba7f8aae07be022ca` 的 CloseTimedOut 保留。用户取消 Rhino 自带更新提示后，旧 PID 51908 被管理器确认为 NormalExit；dump 证据见 Validation.md。未操作其他通道、未正式部署、未强制结束进程、未操作用户鼠标。
+
 ## 最新 v0.13 工作区（2026-10-28）
 
 公司 B `1cee488700ad42f59492743cc4a2a3fe`，管理 MCP 19540；最终任务 `c75f0220677448cd9f8f9df98badbc96` Succeeded，部署 `20261028-213610-15e5ab02ec0e4bdc908e1bffc9ac57ba`，实例 `8378141635a1464eb07802da92e2f479`，PID **44696**，原厂 Platform **22801**。没有正式部署或改动其他通道。

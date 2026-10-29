@@ -110,7 +110,7 @@ class MaterialServer(ChatKitServer[dict]):
             yield ThreadItemAddedEvent(item=item)
             yield ThreadItemDoneEvent(item=item)
             path=result.get('imagePath')
-            if result.get('material') and path and Path(path).is_file():
+            if (result.get('material') or result.get('plant')) and path and Path(path).is_file():
                 id='generated_'+uuid.uuid4().hex;target=root/(id+'.png');target.write_bytes(Path(path).read_bytes())
                 db.execute('INSERT INTO attachments VALUES(?,?,?)',(id,'{}',str(target)));db.commit()
                 thread.metadata['last_image']=str(target);thread.metadata['material']=result['material'];await self.store.save_thread(thread,context)

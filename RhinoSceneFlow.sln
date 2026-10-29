@@ -1,4 +1,4 @@
-
+﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.0.31903.59
@@ -10,6 +10,8 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RhinoSceneFlow.Plugin", "src\RhinoSceneFlow.Plugin\RhinoSceneFlow.Plugin.csproj", "{5F52A14C-9C66-4F11-8982-F5B993C40992}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RhinoSceneFlow.Validation", "tests\RhinoSceneFlow.Validation\RhinoSceneFlow.Validation.csproj", "{BB38DD15-2EB8-4644-A6BF-F7BDFA0D0FCB}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RhinoSceneFlow.TextureWorker", "src\RhinoSceneFlow.TextureWorker\RhinoSceneFlow.TextureWorker.csproj", "{F34744A4-B78F-4757-AAD0-8864B29DD608}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -57,6 +59,18 @@ Global
 		{BB38DD15-2EB8-4644-A6BF-F7BDFA0D0FCB}.Release|x64.Build.0 = Release|Any CPU
 		{BB38DD15-2EB8-4644-A6BF-F7BDFA0D0FCB}.Release|x86.ActiveCfg = Release|Any CPU
 		{BB38DD15-2EB8-4644-A6BF-F7BDFA0D0FCB}.Release|x86.Build.0 = Release|Any CPU
+		{F34744A4-B78F-4757-AAD0-8864B29DD608}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F34744A4-B78F-4757-AAD0-8864B29DD608}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F34744A4-B78F-4757-AAD0-8864B29DD608}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{F34744A4-B78F-4757-AAD0-8864B29DD608}.Debug|x64.Build.0 = Debug|Any CPU
+		{F34744A4-B78F-4757-AAD0-8864B29DD608}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{F34744A4-B78F-4757-AAD0-8864B29DD608}.Debug|x86.Build.0 = Debug|Any CPU
+		{F34744A4-B78F-4757-AAD0-8864B29DD608}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F34744A4-B78F-4757-AAD0-8864B29DD608}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F34744A4-B78F-4757-AAD0-8864B29DD608}.Release|x64.ActiveCfg = Release|Any CPU
+		{F34744A4-B78F-4757-AAD0-8864B29DD608}.Release|x64.Build.0 = Release|Any CPU
+		{F34744A4-B78F-4757-AAD0-8864B29DD608}.Release|x86.ActiveCfg = Release|Any CPU
+		{F34744A4-B78F-4757-AAD0-8864B29DD608}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -65,5 +79,6 @@ Global
 		{6BA86AEE-B173-47AA-A4B3-2137A08F16D5} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
 		{5F52A14C-9C66-4F11-8982-F5B993C40992} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
 		{BB38DD15-2EB8-4644-A6BF-F7BDFA0D0FCB} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
+		{F34744A4-B78F-4757-AAD0-8864B29DD608} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
 	EndGlobalSection
 EndGlobal

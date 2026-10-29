@@ -3,4 +3,5 @@
   <ItemGroup>
     <PackageReference Include="geometry3Sharp" Version="1.0.324" />
   </ItemGroup>
+  <ItemGroup><Compile Include="../../third-party/FastNoiseLite/FastNoiseLite.cs" Link="ThirdParty/FastNoiseLite.cs" /></ItemGroup>
 </Project>

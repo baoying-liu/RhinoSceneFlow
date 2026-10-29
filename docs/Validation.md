@@ -1,5 +1,65 @@
 # v0.2.1 验收清单
 
+## 2026-10-29 v0.15 植物（最终原生预览待实机）
+
+`Build.ps1` 全部通过：`artifacts/plant-release-final.log`。标准验证新增植物科名／学名来源边界、Z/free/auto 朝向、预乘 Alpha 边缘、非植物裁切、单株保留、交错种类／全部合并一致、嵌套科学名称 PSD、Alpha 透空投影、128 MiB 分块拒绝、非居中镜像锚点和共面俯视地面。后两项先出现可复现失败，再修复通过。
+
+真实 B 通过原 `material_chat_start` 实际搜索植物资料并生成新 PNG：Acer rubrum，Sapindaceae / Acer，裁切后 1109×1363；`ai-verified.json`。进一步实际 HTTP 页面核实学名与科名、参考图片输入和库内真实候选缩略图复用通过，不产生第二张图片；`visual-reuse-verified.json`。AI 整理三项库后验证图片、尺寸、科学身份、来源、外观版本不变；`jobs-status.json`。
+
+B 的 13 株合成 Alpha 夹具、8 株带最小间距散布和真实植物混合场景，三种输出独立 psd-tools 解码：单株 14 层 / 学名 2 层 / 全部 1 层，植物组置顶；species 与 all 最大误差 2。独立 Python 相机射线／原 PNG oracle 500 点最大误差 2，增加植物投影 742 像素、最大 Alpha 增量 255；`final-psd-verified.json`、`oracle-verified.json`。不是 Photoshop UI 验证。
+
+同一官方 ChatKit 元素通过 `sendUserMessage` 实际提交植物对话，原 UI 切换植物按钮并隐藏材质范围；`chat-ui-verified.json`。实际 ChatKit 启动生成后原生 New，任务 cancelled、未导入新素材、工具切到新文档且 error=null；`document-verified.json`。New/Open 的一次 HTTP 10054 是端点重置，重连 PID/文档检查通过。仅 Rhino 打开的工具页会实例化；最终健康检查逐页激活后要求全部五页，修正了测试脚本把未实例化页误判为失败的断言。
+
+原生透明曾经过经典材质、PBR Alpha、透明图、深度写入和显式 Blend 原型，PBR 单株改善但俯视重叠仍出现矩形缺口；这些原型图片保留为失败证据。最终实现改为缓存 Alpha 轮廓网格、8 档透明度、延伸 RGB，源码 `PlantPreviewGeometry.cs`；**该最终 native 路径尚未在 B 验证，不能视为完成的显示验证**。系统资源准入阻止安装，详见下段。CPU PSD 独立于该显示路径，已验证地面共面修正：`known-top-before.psd` 对照 `delivery-psd-verified.json`。
+
+多个已测试进程真实 NormalExit/code0：46884、15648、61948、57912、13876。管理 MCP 的一次 close 返回泛化错误，但持久任务与 `plant-close-status.json` 证明 NormalExit，不把传输错误当崩溃。最后关闭任务 `71dec6c74e194ec4beb921effef215fe` 成功。未杀 Rhino、未修改其他通道、未使用鼠标。系统提交内存先 94.3% 后约 97.5%，高于管理器 94% 准入，`start_job` 未提交；`plant-native-memory-block.json`。只关闭自己的 B 和编译服务器，没有调宽策略或关闭用户应用。
+
+唯一真实样例已加入原本地植物库（不加入合成夹具），资产 `e55d4f7b-0f15-49e9-bddf-dd999c2d79b7`；原材质库根路径恢复。示例 PNG、四株树／墙／地面 3dm、1000×700 透视／俯视 PSD 在 `artifacts/examples/Planting-v015`；`published-asset.json`、`delivery.json`。所有证据在 `artifacts/rhino-B/plants015`。最后原生显示验证与最终 B 部署仍待内存释放，不能宣布最新包已全部跑通。
+
+## 2026-10-29 v0.14 随机材质
+
+最终部署 PID 68604：原生缓存球体渲染、420×950 侧栏展开区换行和所有五页健康检查通过；`ready.json`、`native-sphere-final.png`、`random-ui-final.png`。准备随机贴图期间执行原生 New：HTTP 一次 10054 重置，重连确认同一 PID、新文档、任务 cancelled、五页绑定新文档且 error=null；`new-verified.json`。无需操作鼠标或终止 Rhino。
+
+PID 68604 随后真实关闭为 NormalExit / code0，crashEvents 与 newDumps 均为空：`artifacts/random-final-close.json`。测试后的重启使用同一已构建部署，不额外生成 AI 图片。
+
+四种随机方式的确定性、正负 UV 周期、原图像素密度、结构边界、线性颜色、法线单位长度及高度有限差分方向 oracle 已加入标准验证。`Build.ps1` 全部通过，日志 `artifacts/random-release-final.log`。真实外部 TextureWorker 由 Pillow/Numpy 独立解码，四种方式、不同分辨率 PBR、SHA、缓存复用与重复相关性通过，证据 `artifacts/random-worker/verified.json`。
+
+B PID 62356 实际 Eto 应用两个物件：独立随机变体、自动准备 UV、随机平铺 4 倍覆盖并保留密度、原生材质 UVW 及缓存尺寸通过。独立 PSD 解码验证默认材质合并 1 层与按物件 2 层合成相同；两个场景各 3042 个内部像素与实际原生贴图采样 oracle 最大误差 0。见 `artifacts/rhino-B/random014/{object-export,stochastic-export,psd-verified}.json`；不是 Photoshop UI 验证。
+
+实际生产对话生成新混凝土 PNG 后，AI 自动建议 stochastic；独立实际砖墙图片识别建议 structured、禁止旋转并返回网格。取消准备未改变物件，通过真实 Eto Apply 自动保存 macro/2/seed88 草稿，两个物件实际使用 256×256 缓存。证据 `ai-status.json`、`ui-verified.json`。曾因测试脚本用 materials 页 MCP 按钮去触发 library 页未保存草稿而断言失败；改用实际 library 页按钮后通过，不将错误测试视为产品故障。测试结束恢复原材质库，保存唯一测试模型。
+
+早期 GDI 长路径写入、OneDrive 临时目录发布争用与沙盒全局 OutputPath 的 worker 拷贝问题均已复现并修复。保留 `random-job*.json` 和相关日志。开始时旧 PID 16780 已消失，manager 判为 UnknownExit / code0，没有 crash event 或新 dump；不能称为正常退出或确定崩溃。此次 PID 62356 的真实关闭为 NormalExit / code0、无 dump，保存在 `artifacts/random-before-final.json`。方法与限制见 [Randomization.md](Randomization.md)。
+
+## v0.13.3 本地共享库并发（2026-10-29）
+
+Release 零警告 / 错误，完整 Core 验证通过，包含新增真实多进程并发验证，日志 `artifacts/shared-library-release.log`。4 个写入进程并发导入 32 个资产、80 次外观和 80 次标签修改，精确核对 revision=81 / catalogRevision=161 / 宽度累加；两个读者和整库整理并发，无部分分类快照；旧版本保存拒绝；实际终止自有持锁 / 部分写入测试进程后自动恢复。最新回执 `artifacts/validation/library-concurrency-617e5783519d47808c6dc63d46751d1d/verified.json`。初始压力运行发现同步目录短暂 rename access-denied，加入有界重试后完整验证通过，未退化成原地覆盖。
+
+B 部署 `20261029-144514-21ef13a3d30d44fba018469418b49c8e`，任务 `acc2d2c4abae47f5a6079b9be30f7669` Succeeded，PID 58892 / Platform 22801。真实 PNG 私有测试库与两个外部写入进程 PID 18476 / 59996 共同运行：17 个资产自动进入列表，草稿保留，旧标签 UI / 旧资产 API / 旧尺寸 UI 保存拒绝，重新选择可保存，外部整库整理后分类不被旧尺寸界面覆盖。新建文档仍访问相同 17 个资产；恢复原 B 库，4 个原资产保留。ChatKit 文件按进程会话 / 文档 / 面板隔离。
+
+证据 `artifacts/rhino-B/shared-library0133/verified.json`、`external-writers.json`、`cross-document.json`、`ready.json`。PID 58892 最终 NormalExit；重启任务 `8e1a75d35ecc4334b230319160cac24d` Succeeded，当前 PID 16780 / Platform 22801，实例 `6641ca74df6f4ab0a79e3529bea523df`，重开后原库路径、4 个资产、工具健康状态和新会话路径通过。没有启动第二个 Rhino 实例；没有正式部署或操作鼠标。保护范围见 [Shared-Library.md](Shared-Library.md)。
+
+## v0.13.2 AI 工具文档切换（2026-10-29）
+
+在 B PID 40352 实际复现 AI 对话打开后新建的未处理 `ObjectDisposedException: MaterialChatView`，栈指向父布局 Unbind 访问已 Dispose 子面板。管理器记录 ExitCode 3 / AbnormalExit。此前 PID 25552 同样 ExitCode 3，但没有其调用栈，不推定两者必然同根因。失败记录 / 退出确认保留；`events-40352.log` 为直接复现证据。第一次修复未闪退但暴露已释放 DynamicLayout 父节点错误，因 `tools[materials].error` 非空判定失败并修正，证据 `first-fix-failed`。
+
+最终构建日志 `artifacts/doc-switch-build.log` 零警告 / 错误、完整 Core 验证通过。B 部署 `20261029-141022-f253a7a8fd254d919d1cc07807628878`，任务 `0b206d577fdb487aaaeffccaa741cdbe` Succeeded，PID 63680 / Platform 22801：
+
+- `Test-DocumentLifecycle.py`：全部工具打开，AI 页保持可见，3 次原生 New 与 3 次原生 Open 交替，PID 一致、文档序号变化、全部工具绑定新文档且 error 为 null。证据 `document-switch/verified.json` 与 after-*.json。
+- `Start-/Check-DocumentWorkCancel.py`：实际 xatlas Worker 启动后立即 New，任务 cancelled，新文档为空，旧结果没有回写，所有工具正确重新绑定。证据 `cancel-verified.json`。
+- `Test-/Check-ChatStartupClose.py`：New 后立即建立 AI 页，在 ChatKit 尚未 ready 时再次 New，两次切换成功，无工具错误。证据 `startup-close-verified.json`。
+- `Test-/Check-ExportDocumentClose.py`：创建真实 Named View 卡片并打开相机 / 太阳细节后 New，全部工具重建成功。证据 `export-close-verified.json`。
+- 独立材质库同步、A→B 实时应用、自动 UV、列表高度复测通过，证据 `library0131/verified.json`（PID 63680）。无鼠标操作、没有请求新 AI 图片。
+
+总计最终进程内 10 次文档替换。之后管理器确认 PID 63680 NormalExit；重启任务 `0f3605b61e6042c7aeec924e26abcd10` Succeeded，当前实例 `71f73e9881d14981b8f9ec22a7879e77`，PID 56356 / Platform 22801。`Ready-DocumentLifecycle.py` 检查重开后的 v0.13.2、五工具与当前文档绑定及空错误字段，证据 `document-switch/ready.json`。进程内后台任务与外部 Worker 的边界及本次范围见 [Document-Lifecycle.md](Document-Lifecycle.md)；未宣称已实现多个 Rhino 实例并发写材质库。
+
+## v0.13.1 独立材质库（2026-10-29）
+
+Release 零警告 / 错误，全套 Core 验证通过（`artifacts/library-split-build.log`）。B 任务 `572c9b6f51a8454db5442efbaac32c11` 成功，PID 51908 / Platform 22801。`Test-/Check-/Finish-LibraryTool.py` 实测五个注册面板、AI 独有 ChatKit / 库独有 MaterialShelf、双向材质和应用范围同步、从独立库对实时选择 A→B 应用、自动米制 UV、第一次目标保持不变。证据 `artifacts/rhino-B/library0131/setup.json`、`first.json`、`verified.json`。
+
+首次布局捕获发现库列表被其他内容挤压为零高度；修正为滚动库内容和固定应用区。最终部署 `20261029-133829-e5608356616644c5b78c06fcbe99c25f` 由任务 `ae2bce4dd4d94e068b188bc62192be63` 成功加载，PID 25448 实测同一套独立库 / 实时选择 / UV 流程通过，列表实际高度 230 DIP，截图确认列表可见且应用按钮固定。证据 `setup.json` / `first.json` / `verified.json` / `library.png` 已更新；初版证据保存在 `before-scroll`。重启任务 `5c913ff66244402e845cc03cf67d8c1f` 成功，PID 25448 被管理器确认为 NormalExit，重开 PID 25552 / Platform 22801，`Ready-LibraryTool.py` 验证版本、五面板和无 ChatKit 的独立库通过（`ready.json`）。
+
+历史更新任务 `f0e6297285a3492ba7f8aae07be022ca` 因旧实例关闭超时失败；保留原进程和备份，未强制结束或补开实例。Mini dump `close-51908.dmp` / `close-stack.txt` 确认主线程阻塞在 `Toolbars.ToolbarsPlugIn.AskAndInstallUpdates → Notification.ShowModal → Dialog.ShowModal`。Computer Use 重试 / 重置后仍无 native pipe，未输入鼠标或键盘。用户手动关闭更新提示后，管理器最终将 PID 51908 记为 NormalExit；原超时证据保留，不将其改写为成功任务。
+
 ## v0.13 工作区验收（2026-10-28）
 
 最终安装 PID 44696 / 22801（任务 `c75f0220677448cd9f8f9df98badbc96`）。实际重开自有模型后验证选择状态与材质库同步、错误文档 ID 拒绝；窄页 / 824 宽并排库自动切换和不相似红铜描述返回零匹配通过。最终两视图工作台实际操作 2K 预设、尺寸复制、图层深复制和细节页返回，两个独立预览均加载；批量生成两份 PSD 并独立解码。证据 ready / layout-verified / batch-ui-verified / export-verified / decoded.json。

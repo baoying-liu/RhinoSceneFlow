@@ -18,7 +18,7 @@ public static class WorkbenchService
         NamedViewExportService.RequireActive(doc);
         var current=ExportPanelController.Find(doc.RuntimeSerialNumber)?.Views.ToArray()??WorkbenchStore.Load(doc);
         var old=current.GroupBy(r=>r.Id).ToDictionary(g=>g.Key,g=>g.First());
-        return NamedViewExportService.List(doc).Select(v=>{var r=old.GetValueOrDefault(v.Id)?.Copy()??new(){Id=v.Id,Width=v.Width,Height=v.Height};r.Name=v.Name;return r;}).ToArray();
+        return NamedViewExportService.List(doc).Select(v=>{var r=old.GetValueOrDefault(v.Id)?.Copy()??new(){Id=v.Id,Width=v.Width,Height=v.Height};r.Name=v.Name;r.InitializePlants();return r;}).ToArray();
     }
     public static void Configure(RhinoDoc doc,ViewExportRow row)
     {
@@ -112,7 +112,7 @@ public static class WorkbenchService
                 foreach(var layer in row.Layers.Where(l=>l.Enabled&&l.Kind=="display").DistinctBy(l=>l.Mode))
                 {
                     token.ThrowIfCancellationRequested();
-                    using var bitmap=scope.Capture(layer.Mode,row.Width,row.Height);
+                    using var bitmap=scope.Capture(layer.Mode,row.Width,row.Height,false);
                     var image=new DiskPassImage(prepared.Staging,row.Width,row.Height,[new("Display",new(0,0,0))],true);
                     prepared.Display.Add(layer.Mode,image);
                     var bits=bitmap.LockBits(new(0,0,bitmap.Width,bitmap.Height),ImageLockMode.ReadOnly,PixelFormat.Format32bppArgb);
@@ -129,12 +129,13 @@ public static class WorkbenchService
                     finally{bitmap.UnlockBits(bits);}
                 }
             }
-            if(row.Layers.Any(l=>l.Enabled&&l.Kind is "material" or "shadow" or "texture"))
+            if(row.Layers.Any(l=>l.Enabled&&l.Kind is "material" or "shadow" or "texture" or "plants"))
             {
                 prepared.Viewport=new RhinoViewport();prepared.Viewport.Size=new(row.Width,row.Height);ApplyCamera(doc,row,prepared.Viewport,row.Width,row.Height);
                 if(row.Layers.Any(l=>l.Enabled&&l.Kind=="texture"))prepared.Textures=new(doc);
                 prepared.Reader=new(doc,prepared.Viewport,token,true,row.Layers.Any(l=>l.Enabled&&l.Kind=="shadow")){VisibilityViewport=doc.Views.ActiveView.ActiveViewport,TextureBuilder=prepared.Textures};
                 prepared.Triangles=prepared.Reader.Read().ToArray();
+                if(row.Layers.Any(l=>l.Enabled&&(l.Kind=="plants"||l.Kind=="shadow"&&row.PlantShadows))){prepared.Plants=PlantService.Snapshot(doc,doc.Views.ActiveView.ActiveViewport);prepared.PlantSettings=PlantService.Settings;}
                 prepared.Shadow=new(prepared.Light,new(90,90,90),true,Math.Max(doc.ModelAbsoluteTolerance*.001,1e-7));
             }
             return prepared;
@@ -185,12 +186,13 @@ internal sealed class CaptureScope : IDisposable
         }
         catch{Dispose();throw;}
     }
-    public System.Drawing.Bitmap Capture(Guid modeId,int width,int height)
+    public System.Drawing.Bitmap Capture(Guid modeId,int width,int height,bool includePlants=true)
     {
         var display=WorkbenchService.Modes().FirstOrDefault(m=>m.Id==modeId)??throw new ArgumentException("显示模式已删除或不支持捕获。");
         var attributes=display.DisplayAttributes;bool highlights=attributes.IgnoreHighlights;
-        try{attributes.IgnoreHighlights=true;return view.CaptureToBitmap(new System.Drawing.Size(width,height),attributes)??throw new InvalidOperationException("Rhino 无法捕获该显示模式。");}
-        finally{attributes.IgnoreHighlights=highlights;}
+        bool suppressed=PlantService.Suppress;
+        try{PlantService.Suppress=!includePlants;attributes.IgnoreHighlights=true;return view.CaptureToBitmap(new System.Drawing.Size(width,height),attributes)??throw new InvalidOperationException("Rhino 无法捕获该显示模式。");}
+        finally{PlantService.Suppress=suppressed;attributes.IgnoreHighlights=highlights;}
     }
     public void Dispose()
     {
@@ -214,6 +216,9 @@ internal sealed class PreparedWorkbench(WorkbenchPlan plan) : IDisposable
     internal Triangle[] Triangles=[];
     internal ShadowSettings? Shadow;
     internal Vec3 Light;
+    internal PlantBillboard[] Plants=[];
+    internal BillboardSettings PlantSettings=new();
+    private readonly Dictionary<string,SparseRgbImage> plantPasses=[];
     private readonly List<DiskPassImage> staged=[];
     public BatchFileResult Write(CancellationToken token)
     {
@@ -226,7 +231,9 @@ internal sealed class PreparedWorkbench(WorkbenchPlan plan) : IDisposable
             var empty=TexturedRasterizer.Render(1,1,Reader!.Camera,Textures.Surfaces,Textures.Objects,Array.Empty<TextureTriangle>());
             texturePasses.Add(grouping,new(Staging,w,h,empty.Grouped(grouping).Groups));
         }
-        if(material is not null||shadow is not null||texturePasses.Count>0)
+        foreach(string grouping in row.Layers.Where(l=>l.Enabled&&l.Kind=="plants").Select(l=>l.PlantGrouping).Distinct())plantPasses.Add(grouping,new(Staging,w,h,PlantRasterizer.Layout(Plants,grouping,Reader!.Camera).Groups));
+        var occluders=plantPasses.Count>0||shadow!=null&&row.PlantShadows&&Plants.Length>0?new PlantOccluders(Reader!.WorldTriangles,Reader.Camera.Origin,token):null;
+        if(material is not null||shadow is not null||texturePasses.Count>0||plantPasses.Count>0)
         {
             var camera=Reader!.Camera;var world=Reader.WorldTriangles;const int tileSize=1024;
             for(int top=0;top<h;top+=tileSize)for(int left=0;left<w;left+=tileSize)
@@ -243,6 +250,11 @@ internal sealed class PreparedWorkbench(WorkbenchPlan plan) : IDisposable
                     var samples=TexturedRasterizer.Render(tw,th,textureCamera,Textures!.Surfaces,Textures.Objects,Textures.Triangles,token);
                     foreach(var (grouping,textureImage) in texturePasses)textureImage.WriteTile(left,top,samples.Grouped(grouping),token);
                 }
+                if(plantPasses.Count>0)
+                {
+                    var plantCamera=camera with{Left=camera.Left+(camera.RightEdge-camera.Left)*left/w,RightEdge=camera.Left+(camera.RightEdge-camera.Left)*(left+tw)/w,Top=camera.Top-(camera.Top-camera.Bottom)*top/h,Bottom=camera.Top-(camera.Top-camera.Bottom)*(top+th)/h};
+                    foreach(var (grouping,pass) in plantPasses)pass.WriteTile(left,top,PlantRasterizer.Render(tw,th,plantCamera,Plants,PlantSettings,occluders!,grouping,token),token);
+                }
                 if(material is not null)
                 {
                     var triangles=world.Select((t,i)=>new Triangle(tile.Project(t.A),tile.Project(t.B),tile.Project(t.C),Triangles[i].Group));
@@ -250,20 +262,22 @@ internal sealed class PreparedWorkbench(WorkbenchPlan plan) : IDisposable
                 }
                 if(shadow is not null)
                 {
-                    shadow.WriteTile(left,top,new ImageWindow(ShadowVolumeRenderer.Render(rw,rh,tile,world,Shadow!,token,Reader.Surfaces!.Evaluator(tile,rw,rh,Shadow!)),left-x0,top-y0,tw,th),token);
+                    var baseMask=ShadowVolumeRenderer.Render(rw,rh,tile,world,Shadow!,token,Reader.Surfaces!.Evaluator(tile,rw,rh,Shadow!));
+                    IPsdImage mask=row.PlantShadows&&Plants.Length>0?PlantShadows.Add(baseMask,tile,occluders!,Plants,PlantSettings,Light,token):baseMask;
+                    shadow.WriteTile(left,top,new ImageWindow(mask,left-x0,top-y0,tw,th),token);
                     Reader.Surfaces!.ReleaseEvaluators();
                 }
             }
         }
-        var passes=row.Layers.Where(l=>l.Enabled).Select(l=>new StyledPass(l.Kind=="texture"?"材质":l.Kind=="material"?"图层颜色":l.Kind=="shadow"?"Shadow":ModeNames[l.Mode],
-            l.Kind=="texture"?(IPsdImage)texturePasses[l.TextureGrouping]:l.Kind=="material"?material!:l.Kind=="shadow"?shadow!:Display[l.Mode],l.Blend,(byte)Math.Round(l.Opacity*255.0/100),l.Kind is "material" or "texture")).ToArray();
+        var passes=row.Layers.Where(l=>l.Enabled).Select(l=>new StyledPass(l.Kind=="plants"?"植物":l.Kind=="texture"?"材质":l.Kind=="material"?"图层颜色":l.Kind=="shadow"?"Shadow":ModeNames[l.Mode],
+            l.Kind=="plants"?new PlantHierarchy(plantPasses[l.PlantGrouping],l.PlantGrouping,PlantRasterizer.Layout(Plants,l.PlantGrouping,Reader!.Camera).Species):l.Kind=="texture"?(IPsdImage)texturePasses[l.TextureGrouping]:l.Kind=="material"?material!:l.Kind=="shadow"?shadow!:Display[l.Mode],l.Blend,(byte)Math.Round(l.Opacity*255.0/100),l.Kind is "material" or "texture" or "plants")).ToArray();
         var image=new ConfiguredStack(passes);Directory.CreateDirectory(Path.GetDirectoryName(plan.Path)!);
         int count=PsdWriter.Save(plan.Path,image,token,plan.Overwrite,true);
         return new(row.Id,row.Name,plan.Path,true,w,h,count,watch.ElapsedMilliseconds,null);
     }
     public void Dispose()
     {
-        foreach(var image in texturePasses.Values)image.Dispose();foreach(var image in staged)image.Dispose();foreach(var image in Display.Values)image.Dispose();
+        foreach(var image in plantPasses.Values)image.Dispose();foreach(var image in texturePasses.Values)image.Dispose();foreach(var image in staged)image.Dispose();foreach(var image in Display.Values)image.Dispose();
         Reader?.Dispose();Viewport?.Dispose();if(Directory.Exists(Staging))Directory.Delete(Staging,true);
     }
 }
