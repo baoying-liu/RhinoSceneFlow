@@ -35,10 +35,10 @@ public static class PlantService
         get=>JsonSerializer.Deserialize<BillboardSettings>(SceneFlowPlugin.Instance.Settings.GetString("PlantBillboards","{}"),MaterialLibrary.Json)!;
         set{value.Validate();SceneFlowPlugin.Instance.Settings.SetString("PlantBillboards",JsonSerializer.Serialize(value,MaterialLibrary.Json));SceneFlowPlugin.Instance.SaveSettings();foreach(var d in RhinoDoc.OpenDocuments())d.Views.Redraw();}
     }
-    internal static void Start(){conduit=new(){Enabled=true};RhinoDoc.CloseDocument+=Closed;}
-    private static void Closed(object? sender,DocumentEventArgs e){Selected.Remove(e.Document.RuntimeSerialNumber);PlantTool.StopDocument(e.Document.RuntimeSerialNumber);}
-    internal static void Stop(){RhinoDoc.CloseDocument-=Closed;if(conduit!=null){conduit.Enabled=false;conduit.Release();conduit=null;}images.Clear();Selected.Clear();}
-    public static bool IsPlant(RhinoObject obj)=>obj.Attributes.GetUserString(Key)!=null;
+    internal static void Start(){conduit=new(){Enabled=true};PlantGroups.Start();RhinoDoc.CloseDocument+=Closed;}
+    private static void Closed(object? sender,DocumentEventArgs e){PlantGroups.Close(e.Document.RuntimeSerialNumber);Selected.Remove(e.Document.RuntimeSerialNumber);PlantTool.StopDocument(e.Document.RuntimeSerialNumber);}
+    internal static void Stop(){PlantGroups.Stop();RhinoDoc.CloseDocument-=Closed;if(conduit!=null){conduit.Enabled=false;conduit.Release();conduit=null;}images.Clear();Selected.Clear();}
+    public static bool IsPlant(RhinoObject obj)=>obj.Attributes.GetUserString(Key)!=null||PlantGroups.IsGroup(obj);
     public static PlantInstance? Read(RhinoObject obj)=>obj.Attributes.GetUserString(Key) is string s?JsonSerializer.Deserialize<PlantInstance>(s,MaterialLibrary.Json):null;
     internal static RgbaTexture Image(string path,string hash="")
     {
@@ -116,12 +116,30 @@ public static class PlantService
         if(!double.IsFinite(scale)||scale<=0||!double.IsFinite(item.WidthMeters)||item.WidthMeters<=0||!double.IsFinite(item.HeightMeters)||item.HeightMeters<=0)throw new InvalidDataException("植物尺寸无效。");
         return new(obj.Id.ToString(),item.ScientificName,obj.Name,new(point.Location.X,point.Location.Y,point.Location.Z),item.WidthMeters*scale,item.HeightMeters*scale,item.AnchorU,item.AnchorV,item.Mirror,Image(item.Image,item.Sha256));
     }
-    internal static PlantBillboard[] Snapshot(RhinoDoc doc,RhinoViewport viewport)
+    internal static IEnumerable<(RhinoObject Object,PlantBillboard Billboard,bool Manual,string Path)> Drawables(RhinoDoc doc,RhinoViewport viewport)
     {
-        var result=new List<PlantBillboard>();var used=new HashSet<string>();long bytes=0;
+        foreach(var obj in Visible(doc,viewport))
+            if(PlantGroups.IsGroup(obj)){foreach(var entry in PlantGroups.Drawables(doc,obj))yield return entry;}
+            else yield return(obj,Billboard(doc,obj),false,Read(obj)!.Image);
+    }
+    internal static IEnumerable<(RhinoObject Object,PlantBillboard Billboard,bool Manual,string Path)> NativeDrawables(RhinoDoc doc,RhinoViewport viewport)
+    {
         foreach(var obj in Visible(doc,viewport))
         {
-            var item=Billboard(doc,obj);if(used.Add(Read(obj)!.Image))bytes+=item.Image.Pixels.LongLength;
+            (RhinoObject Object,PlantBillboard Billboard,bool Manual,string Path)[] entries;
+            try{entries=PlantGroups.IsGroup(obj)?PlantGroups.Drawables(doc,obj).ToArray():[(obj,Billboard(doc,obj),false,Read(obj)!.Image)];}
+            catch(Exception ex){System.Diagnostics.Debug.WriteLine("SceneFlow plant display: "+ex.Message);continue;}
+            foreach(var entry in entries)yield return entry;
+        }
+    }
+    internal static PlantBillboard[] Snapshot(RhinoDoc doc,RhinoViewport viewport)
+    {
+        foreach(var obj in Visible(doc,viewport).Where(PlantGroups.IsGroup))PlantGroups.RequireReady(doc,obj);
+        var result=new List<PlantBillboard>();var used=new HashSet<RgbaTexture>();long bytes=0;
+        foreach(var entry in Drawables(doc,viewport))
+        {
+            if(PlantGroups.IsGroup(entry.Object)&&PlantGroups.IsBusy(doc,entry.Object.Id))throw new InvalidOperationException("种植布局正在更新，请计算完成后再导出。");
+            var item=entry.Billboard;if(used.Add(item.Image))bytes+=item.Image.Pixels.LongLength;
             if(bytes>512L*1024*1024)throw new InvalidOperationException("当前视图的独立植物图片超过 512 MiB，请减少图片分辨率或种类。");result.Add(item);
         }
         return result.ToArray();
@@ -139,25 +157,24 @@ internal sealed class PlantConduit:DisplayConduit
     protected override void CalculateBoundingBox(CalculateBoundingBoxEventArgs e)
     {
         if(PlantService.Suppress)return;
-        foreach(var obj in PlantService.Visible(e.RhinoDoc,e.Viewport))
+        foreach(var entry in PlantService.NativeDrawables(e.RhinoDoc,e.Viewport))
         {
-            if(obj.Geometry is not Rhino.Geometry.Point point)continue;var item=PlantService.Read(obj)!;double r=Math.Max(item.WidthMeters,item.HeightMeters)*item.Scale*RhinoMath.UnitScale(UnitSystem.Meters,e.RhinoDoc.ModelUnitSystem);var d=new Vector3d(r,r,r);e.IncludeBoundingBox(new(point.Location-d,point.Location+d));
+            var p=entry.Billboard;double r=Math.Max(p.Width,p.Height);var a=new Point3d(p.Anchor.X,p.Anchor.Y,p.Anchor.Z);var d=new Vector3d(r,r,r);e.IncludeBoundingBox(new(a-d,a+d));
         }
     }
     protected override void CalculateBoundingBoxZoomExtents(CalculateBoundingBoxEventArgs e)=>CalculateBoundingBox(e);
     protected override void PostDrawObjects(DrawEventArgs e)
     {
         if(PlantService.Suppress)return;var camera=PlantService.Camera(e.Viewport);var settings=PlantService.Settings;
-        foreach(var obj in PlantService.Visible(e.RhinoDoc,e.Viewport).OrderBy(o=>((Rhino.Geometry.Point)o.Geometry).Location.DistanceToSquared(e.Viewport.CameraLocation)).Reverse())
+        foreach(var entry in PlantService.NativeDrawables(e.RhinoDoc,e.Viewport).OrderByDescending(o=>(o.Billboard.Anchor-camera.Origin).Length))
         {
             try
             {
-                var p=PlantService.Billboard(e.RhinoDoc,obj);var axes=p.Axes(camera,settings);
+                var obj=entry.Object;var p=entry.Billboard;var axes=p.Axes(camera,settings);
                 // Display-only depth separation prevents top-facing cards fighting the ground. The stored anchor stays fixed.
                 var depthOffset=camera.Back*(Math.Max(p.Width,p.Height)*1e-5);
-                Point3d P(double u,double v){var q=p.Anchor+axes.Right*((u-p.PivotU)*p.Width)+axes.Up*((v-p.AnchorV)*p.Height)+depthOffset;return new(q.X,q.Y,q.Z);}
                 var pa=camera.Project(p.Anchor);var pb=camera.Project(p.Anchor+axes.Up*p.Height);double screen=pa.W>0&&pb.W>0?Math.Abs(pa.Y/pa.W-pb.Y/pb.W)*e.Viewport.Size.Height/2:512;
-                int resolution=screen>384?512:256;string path=PlantService.Read(obj)!.Image;var key=(path,resolution);
+                int resolution=screen>384?512:256;string path=entry.Path;var key=(path,resolution);
                 if(!previews.TryGetValue(key,out var preview))
                 {
                     preview=new(path,p.Image,resolution);
@@ -167,9 +184,8 @@ internal sealed class PlantConduit:DisplayConduit
                 var x=axes.Right*(p.Width*(p.Mirror?-1:1));var y=axes.Up*p.Height;var origin=p.Anchor-x*p.AnchorU-y*p.AnchorV+depthOffset;
                 var normal=axes.Right.Cross(axes.Up);var transform=Transform.Identity;transform.M00=x.X;transform.M10=x.Y;transform.M20=x.Z;transform.M01=y.X;transform.M11=y.Y;transform.M21=y.Z;transform.M02=normal.X;transform.M12=normal.Y;transform.M22=normal.Z;transform.M03=origin.X;transform.M13=origin.Y;transform.M23=origin.Z;
                 e.Display.PushModelTransform(transform);
-                try{for(int i=7;i>=0;i--)if(preview.Meshes[i].Faces.Count>0)e.Display.DrawMeshShaded(preview.Meshes[i],preview.Materials[i]);}
+                try{for(int i=7;i>=0;i--)if(preview.Meshes[i].Faces.Count>0)e.Display.DrawMeshShaded(preview.Meshes[i],preview.Materials[i]);if(obj.IsSelected(false)>0)e.Display.DrawLines(preview.Outline,entry.Manual?System.Drawing.Color.Cyan:System.Drawing.Color.Orange,1);}
                 finally{e.Display.PopModelTransform();}
-                if(obj.IsSelected(false)>0)e.Display.DrawPolyline(new[]{P(0,0),P(1,0),P(1,1),P(0,1),P(0,0)},System.Drawing.Color.Yellow,1);
             }
             catch(Exception ex){System.Diagnostics.Debug.WriteLine("SceneFlow plant: "+ex.Message);}
         }

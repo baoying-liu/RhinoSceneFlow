@@ -1,12 +1,14 @@
 # RhinoSceneFlow
 
-v0.15.0 新增[植物生成、植物库与种植](docs/Planting.md)：沿用 AI 聊天框，先核实真实物种、优先查库，再生成透明 PNG；随机缩放／镜像散布、三种相机朝向，以及独立植物 PSD 通道与透空投影。
+v0.16.1：植物库和计算列表支持小图卡片／列表切换，中英文植物名称跟随设置，拉丁学名固定；AI 建议直接填入首次加入的默认参数。见 [种植界面](docs/PlantGroups.md)。
+
+v0.16.0 新增[参数化种植对象](docs/PlantGroups.md)：多植物组合、独立布局／大小／镜像 Seed、连续点种、边缘衰减及承载面变化重算。v0.15 的[植物生成、植物库与种植](docs/Planting.md)和独立植物 PSD 通道继续保留。
 
 v0.14.0 新增[材质随机去重复](docs/Randomization.md)：AI 自动建议、四种可调整方式、独立烘焙 Worker，以及真实尺寸和 PSD 材质变体合并。
 
 Rhino 场景表现工作流：**AI 素材 → 真实尺度材质 → 植物布置 → 视图分层导出 → 后期编辑**，由 Codex / Agent 编排。名称中的 Scene 表示材质与植物组成的场景，Flow 表示从 Rhino 到后期编辑的连续流程。
 
-当前为 Rhino 8 / Windows v0.15.0 原型，已实现 **五工具原生停靠工作区**（AI 素材、独立材质库、UV、植物库与种植、PSD）、AI 相似素材复用 / 分类标签整理、ChatKit 连续对话与参考图、真实尺寸材质与 UV、沿中心线管体 / xatlas 复杂曲面展开、多视图卡片 PSD 导出，以及原厂 Rhino-MCP-Platform 自动化适配。v0.13.3 增加[本地共享库并发保护与会话隔离](docs/Shared-Library.md)，文档切换修复见[生命周期说明](docs/Document-Lifecycle.md)。不依赖 ComfyUI，不启动额外 MCP 服务。
+当前为 Rhino 8 / Windows v0.16.1 原型，已实现 **五工具原生停靠工作区**（AI 素材、独立材质库、UV、植物库与种植、PSD）、AI 相似素材复用 / 分类标签整理、ChatKit 连续对话与参考图、真实尺寸材质与 UV、沿中心线管体 / xatlas 复杂曲面展开、多视图卡片 PSD 导出，以及原厂 Rhino-MCP-Platform 自动化适配。v0.13.3 增加[本地共享库并发保护与会话隔离](docs/Shared-Library.md)，文档切换修复见[生命周期说明](docs/Document-Lifecycle.md)。不依赖 ComfyUI，不启动额外 MCP 服务。
 
 输入 `RhinoSceneFlow` 打开工作区。材质、UV、种植、PSD 可停靠或浮动，使用说明见 [Workspace.md](docs/Workspace.md)。
 

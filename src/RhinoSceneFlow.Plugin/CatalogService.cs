@@ -19,6 +19,25 @@ public static class CatalogService
     public static CatalogJob Get(Guid id)=>jobs[id].Job;
     public static CatalogJob Cancel(Guid id){var j=jobs[id];j.Cancel.Cancel();return j.Job;}
     internal static void Stop(){stopping=true;foreach(var j in jobs.Values)j.Cancel.Cancel();}
+    public static CatalogJob? LocalizePlants()
+    {
+        if(stopping||Busy||MaterialChat.Busy||MaterialGeneration.HasActiveWorkers)return null;
+        var library=PlantService.Library;var snapshot=library.List().Where(a=>a.Plant!=null&&new[]{"zh","en"}.Any(k=>!a.Plant.Names.TryGetValue(k,out var name)||string.IsNullOrWhiteSpace(name))).Take(50).ToArray();if(snapshot.Length==0)return null;
+        var job=new CatalogJob{Count=snapshot.Length,Stage="正在补全植物中英文名称…"};var cancel=new CancellationTokenSource();jobs.Add(job.Id,(job,cancel));
+        _=Task.Run(async()=>
+        {
+            try
+            {
+                var answer=await CodexPlantAgent.RunAsync(Path.Combine(library.Root,"catalog-jobs",job.Id.ToString("N")),"localize","为已有素材补全中英文展示名称；只翻译名称，拉丁学名保持不变。",snapshot,[],cancel.Token);
+                if(stopping)return;RhinoApp.InvokeOnUiThread(new Action(()=>
+                {
+                    try{cancel.Token.ThrowIfCancellationRequested();if(PlantService.Library.Root!=library.Root)throw new OperationCanceledException("植物库已切换。");PlantNames.Apply(library,snapshot,answer.Names);job.Status="completed";job.Stage="植物名称已更新。";}
+                    catch(Exception ex){job.Status=ex is OperationCanceledException?"cancelled":"failed";job.Error=ex.Message;job.Stage=ex.Message;}
+                }));
+            }
+            catch(Exception ex){if(!stopping)RhinoApp.InvokeOnUiThread(new Action(()=>{job.Status=ex is OperationCanceledException?"cancelled":"failed";job.Error=ex.Message;job.Stage=ex.Message;}));}
+        });return job;
+    }
     public static CatalogJob Organize(bool plants=false)
     {
         if(stopping||Busy||MaterialChat.Busy||MaterialGeneration.HasActiveWorkers)throw new InvalidOperationException("请先完成当前材质任务。");

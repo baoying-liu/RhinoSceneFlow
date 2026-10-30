@@ -1,6 +1,32 @@
 # v0.2.1 验收清单
 
-## 2026-10-29 v0.15 植物（最终原生预览待实机）
+## 2026-10-30 v0.16.1 植物卡片／双语名称
+
+`plant0161-release.log` 完整构建、原有检查及打包通过。新增 `PlantNamesValidation` 验证中文／英文显示、缺名时科学名回退、外观 revision／图片 SHA／科学身份／默认株距不变、catalog revision 增长、旧快照拒绝及已有名称保护。新生成的植物带中英文显示名；旧库实际通过同一本地 Codex 元数据任务完成名称补全，不生成图片。发布仍使用既有共享库锁与事务恢复。
+
+真实 B：三个测试植物经 Eto DragDrop 事件加入计算列表，首次间距来自对应资产。手动改为 6 m 后切换中文卡片、英文列表、英文卡片，三项保留且手调值不被默认值覆盖，学名逐 ID 完全一致。`Test-PlantShelfUi.py` / `Check-PlantShelfUi.py`、`plants0161/ui-verified.json`；这是原生控件事件测试，没有模拟鼠标拖动。实际 WPF 420 DIP 截图检查了缩略图、两行名称、三列紧凑布局、独立模式选择及固定底栏。图片缓存有 64 张／160 px 上限，此次没有将小样例检查描述为千素材压力测试。
+
+新建文件时发生原厂 MCP 端点重置，重连 PID 不变；五页 error=null，语言与图标偏好保留，原库恢复，`new-verified.json`。NormalExit／重启后重新打开原种植示例，12 株／2 手工及 4 m 组合参数保留，文档 Modified=false；`ready.json`，截图 `ready.png`。PID 61576、13784 均实际 NormalExit/code0／空 CrashEvents 和 Dumps，最终 PID 12568，部署与实例见 Sandbox-B.md。既有 PID 65412 退出证据不足继续保留为 UnknownExit。
+
+## 2026-10-30 v0.16 参数化种植
+
+最终部署 `20261030-180754-24f790b068db4aefbc229f6e77680cb8`，任务 `474db12c65c34839b0082156abfb8f4a` 成功，B PID 65412 / Platform 22801。最终完整检查及包日志 `plant016-release-final.log`。重开示例恢复 12 株／2 手工、五页健康、只读 PSD；`ready.json`。四组同时提交后均完成，平移和两倍缩放数值正确，临时组清理；`bounded-verified.json`。实际 SDK 闭合盒体在显式焊接前后裸边均为 0；`closed-boundary-sdk.json`，不把它记作已复现的旧接缝缺陷。最终选中截图确认青／橙两种真实轮廓；`selection-colors.json`。
+
+最终 SDK 同路径 WriteFile 曾报“file could not be opened”，没有删除锁文件或强行覆盖；改另存唯一示例名成功，当前 `SceneFlow-Planting-Composition-65412.3dm`。没有足够证据将该失败归因于插件或确定为文件锁。后续对当前示例实际修改对象属性并执行原生 `_Save`，同路径覆盖成功且 Modified=false，`native-save-verified.json`；这是另一次真实标准保存测试，不改写此前 SDK 失败。独立解码最终三份 PSD 仍通过（12 / 1 / 1 层，species/all 差 0）。
+
+标准验证／打包 `artifacts/plant016-release.log` 全通过。新增 `PlantLayoutValidation`：面积密度（含坡面）、手工总数、混合半和间距、权重、三个独立随机流、零密度保留手工、边缘大小、突破间距、JSON 值快照和取消。边界距离采用裸边包围树，避免候选逐条扫描；布局 Worker 最多两个。真实 AI 仅重新核实物种／间距，没有生成第二张图片：Acer rubrum 成熟自然冠幅用途建议 15 m，实际页面学名／科名验证成功；`plants016/spacing-ai.json`。原真实资产的建议间距／依据更新，PNG 未改；示例组合显式按 4 m 选择用于演示，不冒充成熟株距。
+
+B 原生第一轮 PID 15628：单个网格根保存 60 株、其中手工 2 株。size/mirror 参数改变不动布局；网格改为坡面后所有基部及重心附着跟随，面积目标变 61，撤销恢复 60。原生命令一次提交两点，手工变 4，重算总数仍 60。删除面保留 60 株并提示重新关联，撤销恢复；`plants016/phases.json`。Brep 手工 UV 附着在承载面平移 3 m 后跟随；`surface-tests.json`。
+
+第一轮复制回位失败被保留；局部 SDK 实验证明 UserData 在 Add 之前赋 Transform 会重置为单位变换，修正为先 Add 再 Set。第二轮 PID 17672 原生复制平移 25 m 后稳定，实际保存／New／Open 后非单位变换仍在，五页 error=null、Modified=false；`final-verified.json`、`reopen-verified.json`。Eto 原生 DragDrop 事件及两个 Slider ValueChanged 无鼠标提交，组合第三项和 .8 / 1.6 参数落盘；`ui-input-verified.json`，没有把事件测试描述为实际鼠标拖动测试。选中组时库折叠，420 DIP 布局与固定操作底栏检查见最终 `Planting-v016/panel.png`。
+
+最终示例（PID 45320 创建）：地形与一个种植根，共 12 株、手工 2 株。改变为远处不同拓扑后保留两株手工且 detached=2，撤销恢复；`topology-detached.json`。1000×700 PSD 独立 psd-tools 解码：单株 12 个像素层、按种 1 层、全部 1 层，植物组置顶，species/all 最大预乘 RGBA 差 0；`psd-verified.json`，不是 Photoshop UI 验证。导出耗时约 1668 / 1029 / 621 ms。示例与 PNG 预览位于 `artifacts/examples/Planting-v016`，3dm 仍引用本地库图片。
+
+测试中保留脚本断言纠正：ObjectTable.Count 包含已删除记录，删除检查改为 FindId==null；新 Named View 加入后显式刷新已打开的 PSD 面板再配置；PIL 只读数组改为副本。均未作为插件崩溃。之前 PID 16092 的旧实例有 rhino-closing 标记但缺退出码，按 UnknownExit 留档并确认，未认定 NormalExit；`previous-exit-review.json`。本轮 PID 15628、17672 均通过管理器真实 NormalExit；任务 `19a05f95f1bb4a04a0cf630bc74fb9dd`、`23524e8b9b684541bf4260b3c112190b`。最终部署／重开见 Sandbox-B.md。
+
+## 2026-10-30 v0.15 植物（补齐最终原生预览）
+
+最终重开 B：PID 16092，任务 `4a1b8686c8874390bd547699de774eae`，部署 `20261030-134551-01c7fbe15e5945e3917176be47cda4a9`。同一代码重新准备组合后成功加载；原模型四株植物、库路径与五工具页恢复且 Modified=false，`native-cutout-restart-ready.json`。原生覆盖启发式首次约 97.02%，重启约 96.99%（不是逐像素渲染契约）；原定恰好 97% 的临时阈值过于贴近此 LOD 边界，改为允许 5% 的预览差异，PSD 完整 Alpha 与独立源图 oracle 不放宽。启动器初始化耗时另留 `launcher-restart-stack.txt`，采样为 UI 定时器枚举历史任务／路径检查；没有修改启动器。
 
 `Build.ps1` 全部通过：`artifacts/plant-release-final.log`。标准验证新增植物科名／学名来源边界、Z/free/auto 朝向、预乘 Alpha 边缘、非植物裁切、单株保留、交错种类／全部合并一致、嵌套科学名称 PSD、Alpha 透空投影、128 MiB 分块拒绝、非居中镜像锚点和共面俯视地面。后两项先出现可复现失败，再修复通过。
 
@@ -10,11 +36,11 @@ B 的 13 株合成 Alpha 夹具、8 株带最小间距散布和真实植物混�
 
 同一官方 ChatKit 元素通过 `sendUserMessage` 实际提交植物对话，原 UI 切换植物按钮并隐藏材质范围；`chat-ui-verified.json`。实际 ChatKit 启动生成后原生 New，任务 cancelled、未导入新素材、工具切到新文档且 error=null；`document-verified.json`。New/Open 的一次 HTTP 10054 是端点重置，重连 PID/文档检查通过。仅 Rhino 打开的工具页会实例化；最终健康检查逐页激活后要求全部五页，修正了测试脚本把未实例化页误判为失败的断言。
 
-原生透明曾经过经典材质、PBR Alpha、透明图、深度写入和显式 Blend 原型，PBR 单株改善但俯视重叠仍出现矩形缺口；这些原型图片保留为失败证据。最终实现改为缓存 Alpha 轮廓网格、8 档透明度、延伸 RGB，源码 `PlantPreviewGeometry.cs`；**该最终 native 路径尚未在 B 验证，不能视为完成的显示验证**。系统资源准入阻止安装，详见下段。CPU PSD 独立于该显示路径，已验证地面共面修正：`known-top-before.psd` 对照 `delivery-psd-verified.json`。
+原生透明曾经过经典材质、PBR Alpha、透明图、深度写入和显式 Blend 原型，PBR 单株改善但俯视重叠仍出现矩形缺口；这些原型图片保留为失败证据。最终实现改为缓存 Alpha 轮廓网格、8 档透明度、延伸 RGB，源码 `PlantPreviewGeometry.cs`。10 月 30 日资源恢复后，同一请求成功安装；实际透视与俯视重叠预览检查通过，未再出现矩形缺口，墙体遮挡正常。原生着色像素覆盖 PSD 不透明植物内部约 97.02% / 99.02%，保留轮廓 LOD、光照和透明度分档差异，不将此统计称为逐像素相等。独立 psd-tools 解码确认植物组置顶、透视 53873 / 俯视 90699 非零植物像素；`native-cutout-verified.json`。两张 1000×700 PSD 导出约 1966 / 721 ms，文档 Modified 保持，五工具页全部 error=null。CPU PSD 独立于原生显示路径，地面共面修正证据仍为 `known-top-before.psd` 对照 `delivery-psd-verified.json`。
 
 多个已测试进程真实 NormalExit/code0：46884、15648、61948、57912、13876。管理 MCP 的一次 close 返回泛化错误，但持久任务与 `plant-close-status.json` 证明 NormalExit，不把传输错误当崩溃。最后关闭任务 `71dec6c74e194ec4beb921effef215fe` 成功。未杀 Rhino、未修改其他通道、未使用鼠标。系统提交内存先 94.3% 后约 97.5%，高于管理器 94% 准入，`start_job` 未提交；`plant-native-memory-block.json`。只关闭自己的 B 和编译服务器，没有调宽策略或关闭用户应用。
 
-唯一真实样例已加入原本地植物库（不加入合成夹具），资产 `e55d4f7b-0f15-49e9-bddf-dd999c2d79b7`；原材质库根路径恢复。示例 PNG、四株树／墙／地面 3dm、1000×700 透视／俯视 PSD 在 `artifacts/examples/Planting-v015`；`published-asset.json`、`delivery.json`。所有证据在 `artifacts/rhino-B/plants015`。最后原生显示验证与最终 B 部署仍待内存释放，不能宣布最新包已全部跑通。
+唯一真实样例已加入原本地植物库（不加入合成夹具），资产 `e55d4f7b-0f15-49e9-bddf-dd999c2d79b7`；原材质库根路径恢复。示例 PNG、四株树／墙／地面 3dm、1000×700 透视／俯视 PSD 在 `artifacts/examples/Planting-v015`；`published-asset.json`、`delivery.json`。所有证据在 `artifacts/rhino-B/plants015`。最终部署 `20261030-133859-afa56b19dafb49cd8fea7666a3bd0730`，任务 `14e2f38546a74e949a544b8d5fbef98e`，PID 51448。关闭初次 CloseTimedOut 被实际可访问窗口确认为 Rhino Update Available 提示；其后真实退出记录为 NormalExit/code0、CrashEvents/NewDumps 均为空，见 `native-cutout-exit.json`。保留超时任务，不把进程消失等同正常退出；没有强制结束进程或安装 Rhino 更新。
 
 ## 2026-10-29 v0.14 随机材质
 

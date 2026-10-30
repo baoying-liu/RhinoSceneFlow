@@ -6,15 +6,19 @@ public sealed class PlantIdentity
     public string Family {get;set;}="";
     public string Genus {get;set;}="";
     public string Cultivar {get;set;}="";
+    public Dictionary<string,string> Names {get;set;}=[];
     public string[] Sources {get;set;}=[];
     public string Evidence {get;set;}="";
     public DateTime VerifiedUtc {get;set;}
     public bool EstimatedSize {get;set;}=true;
+    public double SpacingMeters {get;set;}=1;
+    public string SpacingEvidence {get;set;}="旧素材默认 1 m，请按种植需求调整。";
     public double AnchorU {get;set;}=.5;
     public double AnchorV {get;set;}=0;
     public void Validate()
     {
-        if(string.IsNullOrWhiteSpace(ScientificName)||ScientificName.Length>200||string.IsNullOrWhiteSpace(Family)||string.IsNullOrWhiteSpace(Genus)||Sources.Length==0||Sources.Any(s=>!Uri.TryCreate(s,UriKind.Absolute,out var u)||u.Scheme!="https")||!double.IsFinite(AnchorU)||!double.IsFinite(AnchorV)||AnchorU<0||AnchorU>1||AnchorV<0||AnchorV>1)throw new ArgumentException("植物需要学名、科属、来源和有效基部锚点。");
+        if(Names.Count>8||Names.Any(p=>p.Key.Length>16||p.Value==null||p.Value.Length>100))throw new ArgumentException("植物本地化名称无效。");
+        if(!double.IsFinite(SpacingMeters)||SpacingMeters<=0||SpacingMeters>1000||string.IsNullOrWhiteSpace(ScientificName)||ScientificName.Length>200||string.IsNullOrWhiteSpace(Family)||string.IsNullOrWhiteSpace(Genus)||Sources.Length==0||Sources.Any(s=>!Uri.TryCreate(s,UriKind.Absolute,out var u)||u.Scheme!="https")||!double.IsFinite(AnchorU)||!double.IsFinite(AnchorV)||AnchorU<0||AnchorU>1||AnchorV<0||AnchorV>1)throw new ArgumentException("植物需要学名、科属、来源和有效基部锚点。");
     }
 }
 public sealed class BillboardSettings

@@ -1,6 +1,6 @@
 using RhinoSceneFlow.Core;
 
-if(args.FirstOrDefault()=="--plant-only"){PlantValidation.Run("artifacts/validation");return;}
+if(args.FirstOrDefault()=="--plant-only"){PlantLayoutValidation.Run();PlantValidation.Run("artifacts/validation");return;}
 if(args.FirstOrDefault()=="--plant-ai")
 {
     var dir=Path.GetFullPath("artifacts/plant-ai");var result=await CodexPlantAgent.RunAsync(dir,"resolve","生成一株 Acer rubrum 红枫，夏季绿色叶片，完整单株树木透明 PNG。",[],[],CancellationToken.None,Console.WriteLine);
@@ -370,5 +370,5 @@ await UnwrapValidation.Run(output);
 TubeValidation.Run(output);
 CatalogValidation.Run(output);
 RandomTextureValidation.Run(output);
-PlantValidation.Run(output);
+PlantLayoutValidation.Run();PlantValidation.Run(output);
 LibraryConcurrencyValidation.Run(output);

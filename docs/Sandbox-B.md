@@ -1,12 +1,34 @@
 # 沙盒 B：v0.2 自动化验收
 
-## 2026-10-29 v0.15 植物
+## 2026-10-30 v0.16.1 植物缩略图界面
 
-仅 B，管理 19540 / Platform 22801。实际生成、复用、整库整理、散布、三种 PSD、独立像素 oracle、ChatKit 消息和原生 New 取消通过，见 Validation.md / Planting.md。已测试最近部署 `20261029-211213-3e93d98de4c84dd19f3b9d457b7366ec`，任务 `78cccbbf376b48388d9a4a8881c256dc`，PID 13876 / 实例 `1faece50a7d94f0fb079c64d5b78c0dd`。此部署的 PBR 透明在重叠俯视中仍有矩形缺口，已改写源码，不能将它当作最终显示完成版。
+仅办公室 B，19540 管理 MCP / 22801 原厂 Platform。最终部署 `20261030-192503-3be88f99e1ad42eea68ece644f4094ca`，构建任务 `8a6b06af41b14dc1b3da5c1bcef5fe23`，真实正常关闭后重启任务 `d22c7b6e006042129499d36714619972` 成功。当前 PID **12568**，实例 `e5531381193148bd9a0ea659873c95e7`，B 窗口已显示。
 
-最终 Alpha 轮廓几何版已打包，`artifacts/plant-start-cutgeometry.json` 的 requestId `sceneflow-0150-native-cutout-preview-20261029` 尚未准入成功：系统提交内存约 97.5% 超过 94% 上限。B 已保存并 NormalExit（任务 `71dec6c74e194ec4beb921effef215fe`）；没有更改资源策略，没有操作正式 Rhino。释放内存后重试同一请求，查询 list_jobs 防止重复提交；加载后打开 `delivery.json` 模型，运行 Finish-PlantDelivery.py 并检查重叠原生预览，再执行真实 NormalExit / 重启，更新本段为实际结果。
+原种植示例已重开，12 株／2 手工及 4 m 组合间距保留；植物库路径恢复到原库，当前为中文名称／两个区域的小方块模式。新增名称、布局切换与拖入测试见 Validation.md；最终实机图 `artifacts/rhino-B/plants0161/ready.png`，三素材图标／英文列表截图 `tiles-zh.png` / `list-en.png`。没有将合成测试素材加入原库。
 
-示例 `artifacts/examples/Planting-v015/Planting-Demo-57912.3dm`、植物 PNG 及透视／俯视 PSD；唯一真实 Acer rubrum 已加入原库，合成夹具仍在独立测试库。最终 source/docs 和发布包完整，但 Native 轮廓预览还欠实机验证。
+标准检查与包 `artifacts/plant0161-release.log` 完成。PID 61576、13784 均 NormalExit/code0，无新 CrashEvents/Dumps；`exits.json`。旧 PID 65412 在管理器已关闭后只留下 closing 标记，缺退出码，按 UnknownExit 留档审阅，未改写为成功退出。未操作鼠标或正式 Rhino。
+
+## 2026-10-30 v0.16 参数化种植对象
+
+仅办公室 B `1cee488700ad42f59492743cc4a2a3fe`，管理 MCP 19540，原厂 Platform 22801。最终任务 `474db12c65c34839b0082156abfb8f4a` Succeeded；部署 **`20261030-180754-24f790b068db4aefbc229f6e77680cb8`**；当前实例 `fb02f615644d48babd6c86d1787e6f0c`，PID **65412**，窗口已显示。
+
+标准检查／包见 `artifacts/plant016-release-final.log`。真实 B 验证单对象组合、多植物权重／间距、独立 Seed、连续点种、网格坡面／Brep 附着、源撤销／删除、拓扑不可靠时保留手工、复制／缩放、保存／New／Open 及五工具页。最终版本四个组合同时排队完成（含两倍缩放），临时副本已清理；`plants016/bounded-verified.json`。原生选中图统计橙色自动轮廓 4114 像素、青色手工轮廓 608 像素；`selection-colors.json`。详情与限制见 Validation.md / PlantGroups.md。
+
+当前打开干净示例 `artifacts/examples/Planting-v016/SceneFlow-Planting-Composition-65412.3dm`，一个种植对象共 12 株，其中手工 2 株，承载面可修改。原共享库路径恢复，仅已有真实 Acer rubrum 的建议株距／依据由实际植物资料更新，未加入合成夹具。PNG、原生预览、选中轮廓、参数面板以及 individual/species/all 三份 PSD 均在同目录。`ready.json` 确认重开后的 12/2、五页健康、PSD 导出不改变 Modified。
+
+标准 Rhino `_Save` 已在实际修改对象属性后成功覆盖当前示例，Modified=false；`native-save-verified.json`。之前 SDK WriteFile 同路径失败的记录仍保留，见 Validation.md。
+
+输入 `RhinoSceneFlow` 打开工作区，选择种植对象自动打开参数；`RhinoSceneFlowPlant` 连续点种，Enter／Esc 结束。旧独立点兼容，不自动转换为组合。本轮未操作鼠标、未修改正式 Rhino 或其他通道。PID 15628、17672、45320、53240 均实际 NormalExit/code0、无新增 CrashEvents/Dumps，`exit-outcomes.json`。保留旧 PID 16092 UnknownExit 审阅记录，不改写历史结果。
+
+## 2026-10-30 v0.15 植物
+
+仅 B，管理 19540 / Platform 22801。实际生成、复用、整库整理、散布、三种 PSD、独立像素 oracle、ChatKit 消息和原生 New 取消通过，见 Validation.md / Planting.md。最终部署 `20261030-133859-afa56b19dafb49cd8fea7666a3bd0730`，任务 `14e2f38546a74e949a544b8d5fbef98e` 成功，PID 51448 / 实例 `c5cc32cac9bd4eeabf9b8f93335f620d`。最终 Alpha 轮廓几何预览实际透视／俯视检查及独立 PSD 解码通过，原生不再出现旧 PBR 卡片重叠矩形缺口。
+
+10 月 29 日系统提交内存约 97.5% 超过 94% 上限，任务未准入，B 保存并正常关闭。10 月 30 日内存恢复约 48% 后重试同一 requestId 成功，未调整资源策略。`Open-PlantDelivery.py` 打开模型时一次 HTTP 10054，重连 PID 不变；`Finish-PlantDelivery.py` 五页 error=null、导出保持 Modified、1000×700 PSD 1966 / 721 ms。关闭任务 `02e40c26d0b04c28a731209f5748c6e4` 初次超时，实际窗口确认 Update Available；后续实例记录 NormalExit/code0、无新增 CrashEvents / Dumps，`native-cutout-exit.json`。超时证据保留，没有强制结束 Rhino 或安装更新。
+
+示例 `artifacts/examples/Planting-v015/Planting-Demo-57912.3dm`、植物 PNG 及透视／俯视 PSD；唯一真实 Acer rubrum 已加入原库，合成夹具仍在独立测试库。`preview-0.png` / `preview-1.png` 已替换为最终原生预览；`native-cutout-verified.json` 是独立文件解码与保守内部覆盖核对，不是 Photoshop UI 验收。没有正式部署。
+
+管理器重开后单独 `test` 因本会话未准备测试组合而被拒绝（任务 `811776ffd5c649418ee51fe915e2715e`，未启动 Rhino），随后按正常流程 `build_test` 成功：任务 `4a1b8686c8874390bd547699de774eae`，同一代码的新部署 `20261030-134551-01c7fbe15e5945e3917176be47cda4a9`。当前 B PID **16092** / Platform **22801**，实例 `3f259a3576b247ce90142989e1400145`。重开示例、四株植物恢复、原库路径、五工具页及文档未修改检查通过，`native-cutout-restart-ready.json` / `native-cutout-deployment.json`。B 后台保留供测试。
 
 ## 2026-10-29 v0.14 随机去重复
 

@@ -3,6 +3,7 @@ internal static class PlantValidation
 {
     internal static void Run(string folder)
     {
+        PlantNamesValidation.Run();
         Directory.CreateDirectory(folder);
         void Check(bool value,string message){if(!value)throw new Exception(message);}
         var camera=new CameraProjection(new(0,0,10),new(1,0,0),new(0,1,0),new(0,0,1),-2,2,-2,2,1,20,true);

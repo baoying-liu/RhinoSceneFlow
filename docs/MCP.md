@@ -253,6 +253,19 @@ v0.12 原生渲染网格、管体展开和 `material_uv_renderer`：[接缝 UV �
 
 ## v0.15 植物
 
+### v0.16 参数化组合
+
+v0.16.1 另提供 `plant_ui_settings`：无参数读取，`settings:{language:"auto"|"zh"|"en",libraryView:"tiles"|"list",compositionView:"tiles"|"list"}` 按字段修改全局名称／显示设置，不改变文档。`plant_localize_names` 为缺名资产补全中英文，返回 job 或 null，继续用 `material_catalog_status/cancel` 查询／取消。plant.names 使用 zh/en 键；科学学名不随语言变化。`material_workspace_status.tools.planting.details` 增加 presentation、libraryShelf、compositionShelf 和 namesJob，提供当前卡片 ID、学名及显示名，便于 Agent 不操作鼠标完成检查。
+
+- `plant_group_create`：document、`spec:{name,surface,palette:[{asset,weight,spacingMeters}],settings:{density,layoutSeed,sizeSeed,mirrorSeed,minScale,maxScale,...}}`。返回 id，后台稳定等待后重算。Assets 快照由库填充，不需要调用方提供。
+- `plant_group_update`：document、groupId；可传完整 spec，或 settings／palette／surfaceId。传 settings 为整个设置对象，遗漏字段使用默认值；常规修改先读取 state.spec.settings，修改后完整提交。保留手工记录；更换承载面会显式重附着。
+- `plant_group_manual`：document、groupId、assetId、`point:[x,y,z]`（文档单位）。必须属于该组合；自动附着，新增手工记录，重算时计入目标总数。
+- `plant_group_state`：document、groupId。返回 spec、count、manual、detached、busy、stage、error。busy=false 且 error=null 后才应导出。
+- `plant_group_list`：document。枚举组合状态。`plant_instances` 同时返回旧独立植物和组合中的虚拟植物：id（组合为 rootId/memberId）、owner、manual、position、scaleWidth。
+- `plant_library` 资产 plant 新增 spacingMeters、spacingEvidence；旧资产明确默认 1 m。新 AI 识别返回实际资料支持的建议间距和用途假设。
+
+尺寸设置默认 minScale=.75、maxScale=1.5；滑块区间 minSliderLow=.5、minSliderHigh=1、maxSliderLow=1、maxSliderHigh=2。edgeDistance 米、edgeStrength 0..1、edgeCurve 五个 0..1 节点、edgeDensity／edgeSize；overrideSpacing 忽略间距，mirror 控制随机水平镜像。细节及限制见 [PlantGroups.md](PlantGroups.md)。所有操作仍走原厂 Platform；没有第二个 MCP 服务。
+
 仍通过原厂 Platform `run_python` 调用 `McpApi.Execute`，apiVersion=1。植物生成继续使用 `material_chat_start`：自动判断任务；支持原有 `referenceImages`、`reuseSimilar`。状态新增 `kind:plant`、`plant`（生成入库 ID）、`plantMatches`；`imagePath` 为真实新 PNG，找到已有候选时为空。查询/取消仍是 `material_chat_status/cancel`，不增加第二个聊天执行器。
 
 - `plant_library`：可选 query；返回 directory、assets。资产复用 MaterialAsset 的版本、相对 PNG 与 SHA 元数据，增加 `plant:{scientificName,family,genus,cultivar,sources,evidence,verifiedUtc,estimatedSize,anchorU,anchorV}`。PNG 存 baseColor 槽，植物库与材料库分离。

@@ -10,10 +10,19 @@ internal sealed class PlantPreviewGeometry:IDisposable
 {
     internal readonly Mesh[] Meshes=Enumerable.Range(0,8).Select(_=>new Mesh()).ToArray();
     internal readonly DisplayMaterial[] Materials;
+    internal readonly Line[] Outline;
     internal long Bytes {get;}
     internal PlantPreviewGeometry(string path,RgbaTexture image,int resolution)
     {
         string rgb=RgbPath(path,image);double scale=Math.Min(1,(double)resolution/Math.Max(image.Width,image.Height));int w=Math.Max(1,(int)Math.Ceiling(image.Width*scale)),h=Math.Max(1,(int)Math.Ceiling(image.Height*scale));
+        var mask=new bool[w*h];for(int y=0;y<h;y++)for(int x=0;x<w;x++)mask[y*w+x]=image.Sample((x+.5)/w,1-(y+.5)/h).A>=.02;
+        var outline=new List<Line>();bool Visible(int x,int y)=>x>=0&&y>=0&&x<w&&y<h&&mask[y*w+x];
+        for(int y=0;y<h;y++)for(int x=0;x<w;x++)if(Visible(x,y))
+        {
+            double l=(double)x/w,r=(double)(x+1)/w,t=1-(double)y/h,b=1-(double)(y+1)/h;
+            if(!Visible(x-1,y))outline.Add(new(l,b,0,l,t,0));if(!Visible(x+1,y))outline.Add(new(r,b,0,r,t,0));if(!Visible(x,y-1))outline.Add(new(l,t,0,r,t,0));if(!Visible(x,y+1))outline.Add(new(l,b,0,r,b,0));
+        }
+        Outline=outline.ToArray();
         for(int y=0;y<h;y++)
         {
             int x=0;
@@ -31,7 +40,7 @@ internal sealed class PlantPreviewGeometry:IDisposable
         {
             double transparency=1-level/8.0;var material=new DisplayMaterial(System.Drawing.Color.White,transparency){IsTwoSided=true,BackDiffuse=System.Drawing.Color.White,BackTransparency=transparency};material.SetBitmapTexture(rgb,true);material.SetBitmapTexture(rgb,false);return material;
         }).ToArray();
-        double rgbScale=Math.Min(1,2048.0/Math.Max(image.Width,image.Height));Bytes=(long)(image.Width*rgbScale)*(long)(image.Height*rgbScale)*4+Meshes.Sum(m=>(long)m.Vertices.Count*48+(long)m.Faces.Count*16);
+        double rgbScale=Math.Min(1,2048.0/Math.Max(image.Width,image.Height));Bytes=(long)(image.Width*rgbScale)*(long)(image.Height*rgbScale)*4+Meshes.Sum(m=>(long)m.Vertices.Count*48+(long)m.Faces.Count*16)+Outline.LongLength*48;
     }
     private static string RgbPath(string path,RgbaTexture image)
     {

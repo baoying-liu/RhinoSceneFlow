@@ -11,7 +11,7 @@ internal static class PlantApi
     private static int Int(JsonElement r,string key,int fallback)=>(int)Number(r,key,fallback);
     private static bool Mirror(JsonElement r)=>!r.TryGetProperty("mirror",out var m)||m.GetBoolean();
     private static RhinoDoc Doc(JsonElement r){var d=RhinoDoc.FromRuntimeSerialNumber(r.GetProperty("document").GetUInt32())??throw new ArgumentException("文档不存在。");NamedViewExportService.RequireActive(d);return d;}
-    internal static readonly string[] Operations=["plant_library","plant_import","plant_update","plant_select","plant_place","plant_scatter","plant_settings","plant_instances","plant_organize"];
+    internal static readonly string[] Operations=["plant_ui_settings","plant_localize_names","plant_group_create","plant_group_update","plant_group_state","plant_group_list","plant_group_manual","plant_library","plant_import","plant_update","plant_select","plant_place","plant_scatter","plant_settings","plant_instances","plant_organize"];
     internal static object Execute(string op,JsonElement r)=>op switch
     {
         "plant_library"=>new{directory=PlantService.Library.Root,assets=PlantService.Library.List(r.TryGetProperty("query",out var q)?q.GetString()??"":"")},
@@ -21,10 +21,28 @@ internal static class PlantApi
         "plant_place"=>new{objects=PlantService.Place(Doc(r),Id(r),Read<double[][]>(r,"points").Select(p=>p.Length==3?new Point3d(p[0],p[1],p[2]):throw new ArgumentException("points: [[x,y,z]] document units")).ToArray(),Int(r,"seed",42),Number(r,"minScale",1),Number(r,"maxScale",1),Mirror(r))},
         "plant_scatter"=>PlantService.Scatter(Doc(r),Id(r),Id(r,"surfaceId"),Int(r,"count",20),Number(r,"spacingMeters",1),Int(r,"seed",42),Number(r,"minScale",.85),Number(r,"maxScale",1.15),Mirror(r)),
         "plant_settings"=>Settings(r),
-        "plant_instances"=>new{objects=PlantService.Visible(Doc(r),Doc(r).Views.ActiveView.ActiveViewport).Select(o=>new{id=o.Id,settings=PlantService.Read(o),position=((Rhino.Geometry.Point)o.Geometry).Location}).ToArray()},
+        "plant_instances"=>new{objects=PlantService.Drawables(Doc(r),Doc(r).Views.ActiveView.ActiveViewport).Select(o=>new{id=o.Billboard.Id,owner=o.Object.Id,manual=o.Manual,position=o.Billboard.Anchor,scaleWidth=o.Billboard.Width}).ToArray()},
         "plant_organize"=>CatalogService.Organize(true),
+        "plant_ui_settings"=>Preferences(r),
+        "plant_localize_names"=>new{job=CatalogService.LocalizePlants()},
+        "plant_group_create"=>new{id=PlantGroups.Create(Doc(r),Read<PlantGroupSpec>(r,"spec"))},
+        "plant_group_update"=>UpdateGroup(Doc(r),r),
+        "plant_group_manual"=>Manual(Doc(r),r),
+        "plant_group_state"=>PlantGroups.State(Doc(r),Id(r,"groupId")),
+        "plant_group_list"=>new{groups=PlantGroups.Objects(Doc(r)).Select(o=>PlantGroups.State(Doc(r),o.Id)).ToArray()},
         _=>throw new ArgumentException("未知植物操作。")
     };
     private static object Settings(JsonElement r){if(r.TryGetProperty("settings",out _))PlantService.Settings=Read<BillboardSettings>(r,"settings");return PlantService.Settings;}
+    private static object Preferences(JsonElement r)
+    {
+        var p=PlantUiPreferences.Load();if(r.TryGetProperty("settings",out var values))
+        {if(values.TryGetProperty("language",out var l))p.Language=l.GetString()!;if(values.TryGetProperty("libraryView",out var v))p.LibraryView=v.GetString()!;if(values.TryGetProperty("compositionView",out var c))p.CompositionView=c.GetString()!;return PlantUiPreferences.Save(p);}return p;
+    }
+    private static object UpdateGroup(RhinoDoc doc,JsonElement r)
+    {
+        var id=Id(r,"groupId");var obj=doc.Objects.FindId(id)??throw new ArgumentException("种植对象不存在。");var spec=r.TryGetProperty("spec",out _)?Read<PlantGroupSpec>(r,"spec"):PlantGroups.Read(obj)??throw new ArgumentException("不是种植组合。");
+        if(r.TryGetProperty("settings",out _))spec.Settings=Read<PlantLayoutSettings>(r,"settings");if(r.TryGetProperty("palette",out _))spec.Palette=Read<PlantPaletteItem[]>(r,"palette");if(r.TryGetProperty("surfaceId",out _))spec.Surface=Id(r,"surfaceId");PlantGroups.Update(doc,id,spec);return PlantGroups.State(doc,id);
+    }
+    private static object Manual(RhinoDoc doc,JsonElement r){var p=Read<double[]>(r,"point");if(p.Length!=3)throw new ArgumentException("point: [x,y,z]");var id=Id(r,"groupId");PlantGroups.AddManual(doc,id,Id(r),new Point3d(p[0],p[1],p[2]));return PlantGroups.State(doc,id);}
     private static object Select(RhinoDoc doc,Guid id){PlantService.Library.Get(id);PlantService.Selected[doc.RuntimeSerialNumber]=id;SceneFlowWorkspace.Open("planting");SceneFlowWorkspace.Planting!.Select(id);return SceneFlowWorkspace.Planting.State();}
 }
