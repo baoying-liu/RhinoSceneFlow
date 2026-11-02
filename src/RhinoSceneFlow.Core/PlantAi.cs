@@ -29,7 +29,7 @@ public sealed class PlantAiAnswer
 public sealed record PlantNameLabel(Guid Id,string Zh,string En);
 public static class CodexPlantAgent
 {
-    public static bool BotanicalSource(string value)=>Uri.TryCreate(value,UriKind.Absolute,out var u)&&u.Scheme=="https"&&new[]{"kew.org","worldfloraonline.org","missouribotanicalgarden.org","ncsu.edu","usda.gov","gbif.org","rhs.org.uk"}.Any(d=>u.Host==d||u.Host.EndsWith("."+d,StringComparison.OrdinalIgnoreCase));
+    public static bool BotanicalSource(string value)=>BotanicalSources.Allowed(value);
     public static async Task<PlantAiAnswer> RunAsync(string directory,string operation,string request,MaterialAsset[] assets,string[] images,CancellationToken cancel,Action<string>? progress=null)
     {
         if(operation is not ("route" or "resolve" or "search" or "organize" or "localize"))throw new ArgumentException("Invalid plant AI operation.");
@@ -62,11 +62,17 @@ public static class CodexPlantAgent
             organize: no tools. Return each supplied ID exactly once in items, normalize Chinese names/categories/tags across the whole library, keeping real distinctions. Category should be the existing verified family, not invented taxonomy. Never change scientificName/family/genus/cultivar/sources/size/images, never delete or merge assets. 1..80 char names, 1..40 category, 1..8 tags each<=24 chars. Other arrays empty.
             For resolve also provide nameZh and nameEn: concise Chinese and English display names for the exact verified taxon and depicted variant. Preserve the immutable Latin scientificName separately. No planting recommendations in display names.
             localize: no tools or generation. Return every supplied asset ID exactly once in names with zh and en display labels (1..100 chars). Translate the EXISTING asset label and its variant/season qualifiers into Chinese and English, using the existing scientific identity as context. Do not re-identify species or invent cultivar names. Keep synthetic/test qualifiers. If a vernacular name is uncertain, use the existing Latin scientific name instead of inventing one. Preserve existing nonempty plant.names.zh/en labels. Other arrays empty. Never change scientific identity, sources, images, tags, dimensions or spacing.
-            """+"\nOPERATION: "+operation+"\nREQUEST: "+request+"\nCATALOG: "+JsonSerializer.Serialize(assets.Select(a=>new{a.Id,a.Name,a.Category,a.Tags,a.Plant}),MaterialLibrary.Json);
+            """+"\nSOURCE POLICY for resolve: also accept Singapore NParks (nparks.gov.sg), Missouri Botanical Garden's plantfinder.mobot.org, and University of Florida IFAS (ifas.ufl.edu). Prefer a specific accessible HTML species page that you actually open and that names BOTH the exact scientificName and family. For tropical species, actively search NParks as well as Kew. PDF-only sources and search snippets cannot satisfy the local page verifier. If one site is unavailable, try another supported official source for the SAME species; do not substitute an unrelated taxon.\nOPERATION: "+operation+"\nREQUEST: "+request+"\nCATALOG: "+JsonSerializer.Serialize(assets.Select(a=>new{a.Id,a.Name,a.Category,a.Tags,a.Plant}),MaterialLibrary.Json);
         using var timeout=CancellationTokenSource.CreateLinkedTokenSource(cancel);timeout.CancelAfter(TimeSpan.FromMinutes(5));var token=timeout.Token;
         using var child=new Process{StartInfo=CodexImageRunner.StartInfo(exe,args,directory)};child.Start();
         void Stop(){try{if(!child.HasExited)child.Kill(true);}catch(InvalidOperationException){}catch(System.ComponentModel.Win32Exception){}}
-        using var stop=token.Register(Stop);string message="";bool completed=false,failed=false,searched=false;
+        using var stop=token.Register(Stop);string message="";bool completed=false,failed=false,searched=false;var discovered=new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        void Discover(JsonElement value)
+        {
+            if(value.ValueKind==JsonValueKind.Object)foreach(var p in value.EnumerateObject())
+            {if(p.Name=="url"&&p.Value.ValueKind==JsonValueKind.String&&BotanicalSource(p.Value.GetString()!))discovered.Add(p.Value.GetString()!);else Discover(p.Value);}
+            else if(value.ValueKind==JsonValueKind.Array)foreach(var entry in value.EnumerateArray())Discover(entry);
+        }
         try
         {
             var error=child.StandardError.ReadToEndAsync(token);await child.StandardInput.WriteAsync(prompt.AsMemory(),token);child.StandardInput.Close();using var log=new StreamWriter(Path.Combine(directory,"events.jsonl"));
@@ -76,7 +82,7 @@ public static class CodexPlantAgent
                 using var doc=JsonDocument.Parse(line);var r=doc.RootElement;string type=r.GetProperty("type").GetString()!;
                 if(r.TryGetProperty("item",out var item)&&item.TryGetProperty("type",out var it))
                 {
-                    string kind=it.GetString()??"";if(kind.Contains("web_search",StringComparison.Ordinal)){searched=true;progress?.Invoke("正在查阅真实植物资料与科学分类…");}
+                    string kind=it.GetString()??"";if(kind.Contains("web_search",StringComparison.Ordinal)){searched=true;Discover(item);progress?.Invoke("正在查阅真实植物资料与科学分类…");}
                     if(type=="item.completed"&&kind=="agent_message")message=item.GetProperty("text").GetString()??"";
                 }
                 if(type=="turn.completed")completed=true;if(type is "error" or "turn.failed")failed=true;
@@ -91,21 +97,10 @@ public static class CodexPlantAgent
                 if(string.IsNullOrWhiteSpace(answer.NameZh)||string.IsNullOrWhiteSpace(answer.NameEn)||answer.NameZh.Length>100||answer.NameEn.Length>100||!double.IsFinite(answer.SpacingMeters)||answer.SpacingMeters<=0||answer.SpacingMeters>1000||string.IsNullOrWhiteSpace(answer.SpacingEvidence)||!double.IsFinite(answer.HeightMeters)||answer.HeightMeters<=0||answer.HeightMeters>150||answer.Tags.Length is <1 or >8||answer.Tags.Any(t=>t.Length>24))throw new InvalidDataException("植物名称、尺寸或标签无效。");
                 progress?.Invoke("正在核对来源页面中的学名与科名…");
                 using var http=new HttpClient{Timeout=TimeSpan.FromSeconds(25)};http.DefaultRequestHeaders.UserAgent.ParseAdd("RhinoSceneFlow/0.15 botanical-reference-check");
-                var checks=await Task.WhenAll(answer.Sources.Distinct().Take(6).Select(async source=>
-                {
-                    try
-                    {
-                        using var response=await http.GetAsync(source,HttpCompletionOption.ResponseHeadersRead,token);
-                        if(!response.IsSuccessStatusCode||!BotanicalSource(response.RequestMessage!.RequestUri!.AbsoluteUri))return (string?)null;
-                        using var body=await response.Content.ReadAsStreamAsync(token);using var limited=new MemoryStream();var buffer=new byte[16384];int bytes;
-                        while((bytes=await body.ReadAsync(buffer,token))>0){if(limited.Length+bytes>6_000_000)return null;limited.Write(buffer,0,bytes);}
-                        string text=System.Net.WebUtility.HtmlDecode(System.Text.RegularExpressions.Regex.Replace(System.Text.Encoding.UTF8.GetString(limited.ToArray()),"<[^>]+>"," "));
-                        text=System.Text.RegularExpressions.Regex.Replace(text,@"\s+"," ");
-                        return text.Contains(answer.ScientificName,StringComparison.OrdinalIgnoreCase)&&text.Contains(answer.Family,StringComparison.OrdinalIgnoreCase)?source:null;
-                    }
-                    catch(Exception e) when(e is HttpRequestException or TaskCanceledException){token.ThrowIfCancellationRequested();return null;}
-                }));
-                var verified=checks.Where(s=>s!=null).Select(s=>s!).ToArray();if(verified.Length==0)throw new InvalidDataException("无法从实际来源页面同时核实学名与科名，未开始生成。");
+                var checks=await BotanicalSources.CheckAsync(http,answer.Sources.Concat(discovered),answer.ScientificName,answer.Family,token);
+                await File.WriteAllTextAsync(Path.Combine(directory,"source-checks.json"),JsonSerializer.Serialize(checks,MaterialLibrary.Json),token);
+                var verified=checks.Where(s=>s.Outcome=="verified").Select(s=>s.FinalUrl).Distinct().ToArray();
+                if(verified.Length==0)throw new InvalidDataException("暂时无法读取能核实该植物学名和科名的官方页面，尚未生成图片。已尝试其他检索来源；请稍后重试或提供可访问的植物资料链接。详情见 source-checks.json。");
                 foreach(var bad in answer.Sources.Except(verified))answer.Evidence=answer.Evidence.Replace(bad,"（该链接未验证，已移除）",StringComparison.Ordinal);
                 answer.Sources=verified;
             }

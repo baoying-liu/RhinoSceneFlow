@@ -1,5 +1,25 @@
 # 沙盒 B：v0.2 自动化验收
 
+## 2026-10-31 v0.16.4 植物来源失败恢复
+
+家里 B 最终任务 `1b61618c571442c699e5619e3d93c331` Succeeded，部署 `20261031-042010-c1715b5f387047098bf9bc54e2d12b3d`，PID 33868 / Platform 22801。用户的 Tamarindus indica 请求旧日志仅返回 Kew 与 USDA PDF：真实 Kew HTTP 403，PDF 不能作为 HTML 核实；可用 NParks 出现在搜索事件里却不在白名单。修复支持 NParks / IFAS / MBG 域名，并从实际搜索事件收集备选 URL、逐页读取核实，不采纳搜索摘要作为已核实证据。
+
+插件实际经 `material_chat_start` 生成新透明 PNG 入库，资产 `6d51b311-bbd1-4e25-ac7f-cf2dba252745`，1333×1113，alpha 0..255，SHA 保持不变。中间测试发现正文提到另一植物可能误入来源，于最终版要求学名出现在标题/物种标题或明确 Scientific name 字段；实际 Dialium 页和 Tamarindus 属页被拒绝，新素材来源已按最终校验清理，保留 5 个已核实页面。`artifacts/botany0164/ready.json`、`final-identity-checks.json`、`image-verified.json`。植物库选中新素材，重开上轮已保存 Recovered 示例；不宣称恢复了未知退出时未保存的修改。
+
+旧 PID 90640 在本轮接管时已经无法通过 B MCP 读取，随后记录 UnknownExit / code0，有 RhinoClosing/Monitor shutdown 阶段，无新 CrashEvents/Dumps；保留 failed close `7c24a4bdc82a4df7a37545961843aec0` 和审阅确认，不改写成成功关闭。本轮没有控制其他测试通道或正式 Rhino，也没有使用鼠标。中间 B 104676 由最终安装任务正常替换。
+
+## 2026-10-30 家里 B v0.16.3 ChatKit
+
+安装任务 `b4a04c30c50a4f47b705013d216c1f00` Succeeded，部署 `20261031-032736-19c7ae79b8db4f9e806d5b379a6cbd51`，当前 PID 90640 / Platform 22801。本机缺失 ChatKit venv，安装固定 requirements 后 pip check 通过；随后原生日志实际出现从 Rhino Python 3.9 标准库导入造成的 `SRE module mismatch`。v0.16.3 为 ChatKit 子进程加入 `-I -X utf8`，保留父进程环境。带故意污染 PYTHONHOME/PYTHONPATH 的 SDK 协议测试通过；原生 WebView SDK 最终 ready=true/error=null，`artifacts/rhino-B/home0161/chatkit-ready.json`，不是只检查后端进程。
+
+系统提交内存约 96.3% 时启动被策略拒绝，未改变策略；正常关闭 B 释放内存后安装。PID 69292 NormalExit，70 对象的未保存工作由沙盒备份，恢复至原示例旁 `SceneFlow-Hillside-Retreat-Recovered-20261030-2327.3dm`，未覆盖原模型。恢复路径与备份在 `artifacts/home0161/chatkit-restored.json`；初次版本缺依赖和 Python 环境污染两次失败日志均保留。没有操作鼠标、正式 Rhino 或登录配置。
+
+## 2026-10-30 家里 B v0.16.2 山地小屋
+
+当前家里 B `0d327c4c84f644f089b73834ffd93cfe`，管理 19540 / Platform 22801。最终安装任务 `61fee537e4a54a21b54b6282098fadbd` Succeeded，部署 `20261031-030812-7138b04e107244678d527d06bbcb93af`，PID 69292。重开自有示例 `artifacts/examples/Hillside-Retreat/SceneFlow-Hillside-Retreat.3dm`，15 株（手工 4）、69 个有效 UV、五工具页健康、Modified=false。详见 [演示说明](HillsideDemo.md)。实际使用插件 AI 生成三种材质和一份透明植物；其他色板通过插件导入，不能称为 AI 生成。三个 Named Views，1200×900 PSD 四通道独立解码通过，最终导出 10736 ms。
+
+完整最终检查 `artifacts/home0161/persistent-uv-final-build.log` 通过；映射数值等价/UV 修改/变换修改 oracle 在 `fingerprint-oracle.json`。首次重开暴露 32 个 Brep 箱式记录的归档哈希问题，语义指纹修复、正常重算、保存重开后通过，失败记录保留。PID 78340、24568 实际 NormalExit；原生 Open 引起 HTTP 10054 后重连核实相同 PID，未当作崩溃或绕过验证。没有使用鼠标或操作正式 Rhino。
+
 ## 2026-10-30 v0.16.1 植物缩略图界面
 
 仅办公室 B，19540 管理 MCP / 22801 原厂 Platform。最终部署 `20261030-192503-3be88f99e1ad42eea68ece644f4094ca`，构建任务 `8a6b06af41b14dc1b3da5c1bcef5fe23`，真实正常关闭后重启任务 `d22c7b6e006042129499d36714619972` 成功。当前 PID **12568**，实例 `e5531381193148bd9a0ea659873c95e7`，B 窗口已显示。
@@ -207,3 +227,6 @@ ChatKit 实际对话、上传参考图、真实新图片、入库 / 选中和重
 ## 最新 v0.12（2026-10-28）
 
 任务 `66d93f90374a428da0df53aafd58251b`，部署 `20261028-151756-6ecc52b29a834dfc84d2c06fc3de60ed`，实例 `47abcdb63065428687fc43d77752e42e`，PID 66776 / Platform 22801。已修复原生 UV 回投影与渲染朝向，新增沿中心线管体展开；实测及限制见 UV-Continuity.md / Validation.md。示例模型 `artifacts/rhino-B/uv-v012/UV-Continuity-Brick.3dm`，预览 / PSD 在 `artifacts/examples/UV-v012`。已实际重开并检查恢复后的原生网格；没有使用鼠标或修改正式 Rhino。
+## 2026-10-30 家里 B 更新 v0.16.1
+
+家里 B `0d327c4c84f644f089b73834ffd93cfe`，管理 19540，原厂 Platform 22801。安装任务 `0c2b6bc79b4b48d18374e3f961f4a249` Succeeded，部署 `20261031-024925-bb7eb5098d66449fa73acb329a2cee99`，PID 78340。MCP 实测版本 0.16.1，五工具页 error=null，最后打开种植页，文档 Modified=false。家里使用 VS 18，原生 UV 构建脚本改为匹配本机 VS 17/18；完整 Build.ps1 验证及打包通过。证据 `artifacts/home0161/build.log`、`artifacts/rhino-B/home0161/ready.json`。窗口由沙盒显示；没有操作鼠标或正式 Rhino。本次未重新生成植物，也未重新运行公司示例的全部交互回归。

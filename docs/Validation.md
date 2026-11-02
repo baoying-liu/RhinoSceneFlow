@@ -1,5 +1,27 @@
 # v0.2.1 验收清单
 
+## 2026-10-31 v0.16.4 植物来源与实际生成
+
+复现用户失败的两个旧 botany 日志：`a3939124ba7c4354a7db3c812a115f8a` / `65b3c21355a74b68b7d9eb17ef0c392c`（共享库 chat-jobs）。原程序只核对回答中挑出的来源，Kew 403 / PDF 无法读取时直接结束，遗漏搜索到的 NParks。现核实最多 12 个支持域名页面、4 并发、6 MB 上限，记录状态/超时/不支持 PDF/身份不符/重定向。精确科学名+科名仍必须出现在同一真实物种页；标题或显式科学名字段防止相关物种提及误过。
+
+`BotanicalSourceValidation`：来源域名与恶意后缀、403 后备选 HTML、PDF 不按 HTML 处理、物种/科名分散不通过、错物种正文提及不通过、标题 NBSP 规范化、明确科学名字段、非支持重定向与取消；最终 `--plant-only` 通过，日志 `artifacts/botany0164/plant-validation.log`。最初未规范 NBSP 的强化版本失败证据留在 `final-validation.log`；修复后定向检查通过。首版完整 Core 检查在 `artifacts/home0161/botany-validation.log` 通过。
+
+真实 B 安装运行中 HttpClient 核实 Kew 403、NParks 200；插件生成一张全新 Tamarindus indica PNG，随后最终身份验证剔除错误引用，保留 NParks 物种页、UF/IFAS ST618、两棵 NParks Heritage Tamarind 和 IFAS Assessment，原 PNG/SHA 未改动。植物属性保留学名、分类、标签、12 m 表现高度和估计标记。并非用旧图代替生成；输出在本机共享植物库。最终 B PID 33868，部署和退出证据见 Sandbox-B.md。
+
+## 2026-10-30 v0.16.3 ChatKit 本机环境修复
+
+`Setup-ChatKit.ps1` 安装固定依赖、pip check 通过，脚本优先 Windows py launcher。初次安装后仍失败的真实日志：Rhino 导出的 Python 环境让 venv 子进程从 `.rhinocode/py39-rh8/Lib` 导入 argparse/re，触发 `SRE module mismatch`。ChatKit 以 `-I -X utf8` 启动，不修改 Rhino 自身变量。`Test-ChatKitProtocol.py` 故意设置不兼容 PYTHONHOME/PYTHONPATH，真实 SDK 的 SSE、上传、图片事件、持久化、token 轮换与鉴权仍通过（fixture agent，不调用模型）；`artifacts/home0161/chatkit-isolation.log`。
+
+沙盒管理构建/安装任务 `b4a04c30c50a4f47b705013d216c1f00` 成功；B PID 90640 内原生 WebView2 ExecuteScriptAsync 读取组件 ready=true、error=null，插件 chatKit=ready。恢复用户未保存模型副本，保留原路径文件；当前 AI 页已打开。未为本次 Python 启动修复重跑无关的几何/PSD 全套回归，也未实际生成一张新的材质图。详见 Sandbox-B.md 和 `chatkit-restored.json`。
+
+## 2026-10-30 v0.16.2 山地演示与持久化 UV
+
+家里 B 实际生成三种材质和一份经植物资料核实的 Betula nigra PNG，并通过插件的随机贴图准备、真实尺寸 UV、上材质、种植及工作台 PSD 完成演示。69 个非植物对象、15 株（4 手工）、3 Named Views；最终 PSD 1200×900、11 像素图层、底到顶 Arctic / 材质 / Shadow / 植物，10736 ms，独立 psd-tools 解码透明度与结构通过，不是 Photoshop UI 验收。
+
+第一次旧版重开真实发现 32 个 Brep 箱式 UV 无效；几何 CRC 未变，原生映射网格二进制归档变化。保留 `Hillside-Retreat/reopen-uv-review.json`。改为数值顶点、面、UV、法线和映射变换的语义指纹，备份仍用原生完整归档；保留仍匹配的旧哈希兼容分支，已失效记录正常重算。B 数值独立构造等价映射指纹相同，改 UV 或 UVW 变换指纹不同；`scripts/Test-MappingFingerprint.py`。
+
+最终 v0.16.2 完整 Build.ps1、实际保存/重开、69 个 UV valid、15/4 种植恢复、五页 error=null、Modified=false 及重新导出通过。`artifacts/examples/Hillside-Retreat/reopened.json` / `verified.json`；当前 PID 69292，最终任务 `61fee537e4a54a21b54b6282098fadbd`。PID 78340 / 24568 NormalExit。立即重开后种植短暂 busy 是稳定等待，未将其提前认定完成。第一次兼容代码的枚举命名空间编译错误已修正，最终构建日志通过。模型并非施工图；玻璃是示意不透明色板，等高线不动态更新，素材移机须重新关联，见 [演示说明](HillsideDemo.md)。
+
 ## 2026-10-30 v0.16.1 植物卡片／双语名称
 
 `plant0161-release.log` 完整构建、原有检查及打包通过。新增 `PlantNamesValidation` 验证中文／英文显示、缺名时科学名回退、外观 revision／图片 SHA／科学身份／默认株距不变、catalog revision 增长、旧快照拒绝及已有名称保护。新生成的植物带中英文显示名；旧库实际通过同一本地 Codex 元数据任务完成名称补全，不生成图片。发布仍使用既有共享库锁与事务恢复。
@@ -286,3 +308,6 @@ Build.ps1 核心回归通过，编译零警告 / 错误。B 最终使用部署 `
 取消、计算中修改中心线、改动辅助映射 hash 拒绝、恢复、保留无关 1000 通道（本插件使用 1001）通过。六次材质切换保留原 UV，原生 provider 的实际材质重复分别正确为 1/0.6、1/0.3 和 1、1。退休缓存在等待后回到 0，未持续累积。实际保存并重开自己的 3dm 后文档 serial 268435458，三个对象原生 UV / 法线误差仍 0，源 CRC 未变，读取后 modified=false。第一次 Open 因未设置保存选项进入保存提示，取消宏被当作测试文件名，保留诊断；正确设置 UpdateDocumentPath / SuppressDialogBoxes 并确认 modified=false 后 Open 成功。重开期间 HTTP 一次断开，PID 未退出，重连后继续通过，未强制结束 Rhino。
 
 1600×1200 的 atlas / tube 各导出真实材质、Rendered、Shadow+材质+Arctic 六份 PSD，并由 psd-tools 强制独立合成 / 图层解析。预览含采样、色调、光照差异，不宣称逐像素同色；SDK 返回 UV 与法线才作数值一致性检查。证据：`artifacts/rhino-B/uv-v012/{ready,export-verified,guards-verified,reopen-verified}.json`、`artifacts/examples/UV-v012/decoded.json`；原生截图 `tube-rendered.png`，示例 `tube-stack.psd`。仅 B 部署，正式 Rhino 未改。详情见 UV-Continuity.md。
+## 2026-10-30 家里安装检查 v0.16.1
+
+完整 `scripts/Build.ps1` 通过，包含原生 xatlas、种植布局、双语名称及跨进程材质库验证。B 安装任务 `0c2b6bc79b4b48d18374e3f961f4a249` 成功；PID 78340 经原厂 MCP 检查版本 0.16.1、五工具页无重建错误、文档未修改。保留 `artifacts/home0161/build.log` 与 `artifacts/rhino-B/home0161/ready.json`。首次编译因固定 VS 2022 generator 与本机 VS 18 工具链不匹配失败，改为匹配已安装 VS 主版本并刷新本地 CMake 缓存后通过；未安装系统工具或改变资源策略。本次为本机安装/打开检查，不代表重新执行所有公司场景回归。

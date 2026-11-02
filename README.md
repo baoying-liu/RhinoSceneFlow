@@ -1,5 +1,13 @@
 # RhinoSceneFlow
 
+Windows ZIP 分发包与离线安装验证见[分发说明](docs/Distribution.md)，接收者解压后运行 Install.cmd。
+
+v0.16.4：植物生成支持对已检索到的官方物种页面逐一核实，补充 NParks / IFAS / Missouri Botanical Garden 的来源地址；记录访问失败原因，避免一个站点受限就阻断生成。
+
+v0.16.3：隔离 ChatKit 的 Python 子进程，修复从 Rhino 继承内置 Python 环境导致的启动失败；首次安装仍运行 `scripts/Setup-ChatKit.ps1`。
+
+v0.16.2：修复自定义箱式 UV 在 Brep 保存重开后误判失效；新增[山地小屋演示](docs/HillsideDemo.md)，用插件实际完成 AI 材质、透明河桦、参数化种植和分层 PSD。
+
 v0.16.1：植物库和计算列表支持小图卡片／列表切换，中英文植物名称跟随设置，拉丁学名固定；AI 建议直接填入首次加入的默认参数。见 [种植界面](docs/PlantGroups.md)。
 
 v0.16.0 新增[参数化种植对象](docs/PlantGroups.md)：多植物组合、独立布局／大小／镜像 Seed、连续点种、边缘衰减及承载面变化重算。v0.15 的[植物生成、植物库与种植](docs/Planting.md)和独立植物 PSD 通道继续保留。

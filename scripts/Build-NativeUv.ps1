@@ -6,7 +6,13 @@ $vsRoot=& $vswhere -latest -products '*' -requires Microsoft.VisualStudio.Compon
 if(-not $vsRoot){throw 'Visual Studio C++ tools are required for xatlas.'}
 $cmake=Join-Path $vsRoot 'Common7/IDE/CommonExtensions/Microsoft/CMake/CMake/bin/cmake.exe'
 $build=Join-Path $root 'artifacts/native-uv-build'
-& $cmake -S (Join-Path $root 'src/RhinoSceneFlow.UvWorker') -B $build -G 'Visual Studio 17 2022' -A x64
+$vsVersion=& $vswhere -latest -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationVersion
+$generator = switch (([version]$vsVersion).Major) {
+    17 { 'Visual Studio 17 2022' }
+    18 { 'Visual Studio 18 2026' }
+    default { throw "Unsupported Visual Studio version: $vsVersion" }
+}
+& $cmake -S (Join-Path $root 'src/RhinoSceneFlow.UvWorker') -B $build -G $generator -A x64
 if($LASTEXITCODE -ne 0){throw 'Native UV configure failed.'}
 & $cmake --build $build --config $Configuration
 if($LASTEXITCODE -ne 0){throw 'Native UV build failed.'}

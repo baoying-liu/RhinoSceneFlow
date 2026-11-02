@@ -1,0 +1,53 @@
+RhinoSceneFlow 0.16.4 测试版 — Windows x64
+
+安装
+1. 完整解压 ZIP 到任意文件夹。不要在压缩包内直接运行。
+2. 保存模型并关闭 Rhino，双击 Install.cmd。无需管理员权限。
+   安装器会校验文件、离线安装专用 ChatKit/Python 环境，再使用 Rhino 自带 Yak 安装插件。
+3. 重新打开 Rhino，在命令行输入 RhinoSceneFlow，打开可停靠侧栏。
+
+运行条件
+- Windows 10/11 x64，Rhino 8.34 或更新版本，使用 .NET 8 运行模式。
+  本包依据 Rhino 8.34 SDK 制作，未验证旧版 Rhino 或 Mac/ARM。
+- AI 生成需要网络、你自己的 Codex 安装、ChatGPT 登录和可用的图片生成权限/额度。
+  建议安装 VS Code 的官方 OpenAI Codex 扩展，在 Codex 中登录你自己的 ChatGPT 账号。
+  如果插件找不到 Codex，请双击 Check-Environment.cmd 查看结果。
+  ChatKit 界面从 OpenAI 官方 CDN 加载，首次打开也需要网络。
+- 需要 Microsoft Edge WebView2 Evergreen Runtime；Windows 上通常已有。若界面空白请安装：
+  https://developer.microsoft.com/microsoft-edge/webview2/
+- 本包已含专用 Python、ChatKit 离线依赖、UV 原生 Worker 和自带 .NET 运行时的随机贴图 Worker。
+  不必单独安装 Python，也不必安装编译工具。
+- 日常界面功能不需要自己配置 MCP。用 Agent 控制 Rhino 时，才另行安装和配置原厂 Rhino-MCP-Platform；本包没有私自捆绑它。
+
+先试哪些功能
+- AI 素材对话：描述材质或植物，可附参考图片。材质可应用到当前物件或所在图层。
+- 材质库：浏览生成的材质，分类/标签检索。首次安装没有预置用户材质。
+- UV：选中物件计算真实尺寸 UV；普通物件可用投影，自由曲面可用 xatlas，曲面展开会有接缝和局部变形。
+- 植物库/种植：在 AI 对话中生成植物。植物先核实真实树种，入库后加入计算列表，再放置或散布。
+- PSD：先在 Rhino 保存 Named Views，再在 PSD 工具刷新视图、设置尺寸/图层，批量导出。
+
+资料位置
+材质：Documents/RhinoSceneFlow/Materials
+植物：上述目录下 Plants
+默认 PSD：Documents/RhinoSceneFlow/Exports
+ChatKit 运行环境：%LOCALAPPDATA%/RhinoSceneFlow/chatkit-runtime
+这些目录独立于插件安装目录，更新插件不会主动删除素材库。
+
+如果不能自动安装
+- 插件文件在 Packages 文件夹中，是 Rhino 官方 .yak 格式。可手动拖入 Rhino 安装，再重启。
+- 仅拖入 .yak 不会安装 ChatKit 环境，仍需运行一次 Install.cmd。
+- Rhino 安装在非默认位置时，可手动安装 .yak，并运行 Install.ps1 -StageOnly 只安装运行环境。
+- 不要删除插件目录中的 DLL、Worker、ChatKit 和 runtimes 文件夹。
+- 卸载插件：Rhino 的 PackageManager 中卸载 rhinosceneflow，再重启；本地素材库保留。
+
+隐私与范围
+这是测试版分发包，不是经过代码签名的商业安装器。请从发送者取得原始 ZIP。
+不包含发送者的 Codex、ChatGPT 登录、密钥、MCP 配置、聊天记录、模型或个人素材库。
+AI 功能使用你自己的账号；不要互相复制登录配置。
+本包未在你的电脑上实际验证，若有错误，请截图安装窗口或错误信息反馈。
+
+官方参考
+Rhino 包管理：https://developer.rhino3d.com/guides/yak/installing-and-managing-packages/
+Codex 安装/登录：https://learn.chatgpt.com/docs/ide
+ChatKit：https://developers.openai.com/api/docs/guides/custom-chatkit
+Python 嵌入发行版：https://www.python.org/downloads/release/python-31410/

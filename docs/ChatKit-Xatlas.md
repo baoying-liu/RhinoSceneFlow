@@ -1,5 +1,7 @@
 # ChatKit and xatlas (v0.11)
 
+v0.16.3：ChatKit 专用 Python 子进程使用 `-I -X utf8`，忽略 Rhino 内置 Python 导出的 PYTHONHOME/PYTHONPATH，避免跨版本标准库冲突。无需修改 Rhino 的 Python 安装或用户登录设置。Setup 脚本优先使用 `py -3`，安装后执行 pip check。
+
 `RhinoSceneFlowMaterials` opens the native Eto panel. The first tab contains the official OpenAI ChatKit web component hosted in WPF WebView2. **快捷生成** retains the native single-request form. The bottom Apply scope still reads the current Rhino selection at each click.
 
 The ChatKit Python SDK implements conversation storage, attachments and SSE. A random-token loopback HTTP endpoint serves this UI only; it is **not an MCP endpoint**. The SDK delegates turns over stdio to the plugin, which runs local Codex using its existing ChatGPT login. No OpenAI API key, Agent Builder workflow, embedded ChatGPT website or extra MCP server is required. Ordinary discussion returns text; explicit requests to create or revise a material invoke image generation. New images are verified against that invocation's Codex thread and imported into the material library. Previous generated images and uploaded references inform revisions. This is one local Codex invocation per turn with recent conversation supplied as context, not a resumed Codex CLI session.

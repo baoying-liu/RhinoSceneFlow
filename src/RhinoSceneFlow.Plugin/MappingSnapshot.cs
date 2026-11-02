@@ -24,6 +24,33 @@ internal sealed class MappingSnapshot
         // Validate round-trip before touching the document.
         using var restored=s.Build();return MaterialService.Serialize(s);
     }
+    // Rhino reserializes custom mapping meshes when saving a Brep. The native
+    // mesh archive contains cache/runtime data; it is suitable for restoration,
+    // but its bytes are not a persistent fingerprint of mapping coordinates.
+    public static string Fingerprint(TextureMapping mapping)
+    {
+        if(mapping.MappingType!=TextureMappingType.MeshMappingPrimitive)return Capture(mapping);
+        if(!mapping.TryGetMappingMesh(out var mesh))throw new NotSupportedException("Cannot read custom mapping mesh.");
+        using(mesh)
+        using(var bytes=new MemoryStream())
+        {
+            using(var writer=new BinaryWriter(bytes,System.Text.Encoding.UTF8,true))
+            {
+                writer.Write(mesh.Vertices.Count);
+                for(int i=0;i<mesh.Vertices.Count;i++)
+                {var p=mesh.Vertices.Point3dAt(i);writer.Write(p.X);writer.Write(p.Y);writer.Write(p.Z);}
+                writer.Write(mesh.Faces.Count);
+                foreach(var f in mesh.Faces){writer.Write(f.A);writer.Write(f.B);writer.Write(f.C);writer.Write(f.D);}
+                writer.Write(mesh.TextureCoordinates.Count);
+                foreach(var uv in mesh.TextureCoordinates){writer.Write(uv.X);writer.Write(uv.Y);}
+                // Normals participate in native mapping evaluation. Ignore unrelated
+                // display caches and mesh userdata, while retaining actual normals.
+                writer.Write(mesh.Normals.Count);
+                foreach(var n in mesh.Normals){writer.Write(n.X);writer.Write(n.Y);writer.Write(n.Z);}
+            }
+            return MaterialService.Serialize(new{Type=mapping.MappingType,mapping.Capped,Space=mapping.TextureSpace,Projection=(int)mapping.Projection,Primitive=Array(mapping.PrimitiveTransform),Uvw=Array(mapping.UvwTransform),Mesh=Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(bytes.ToArray()))});
+        }
+    }
     public TextureMapping Build()
     {
         TextureMapping mapping;

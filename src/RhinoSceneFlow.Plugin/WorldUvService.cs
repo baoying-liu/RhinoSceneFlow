@@ -31,7 +31,9 @@ public static partial class MaterialService
         public void Dispose(){foreach(var item in Items)item.Mapping?.Dispose();}
     }
     private static string Hash(string value)=>Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(value)));
-    private static string MapHash(TextureMapping map,Transform transform)=>Hash(MappingSnapshot.Capture(map)+Serialize(ToArray(transform)));
+    private static string MapHash(TextureMapping map,Transform transform)=>Hash(MappingSnapshot.Fingerprint(map)+Serialize(ToArray(transform)));
+    private static bool MapMatches(string expected,TextureMapping map,Transform transform)=>
+        expected==MapHash(map,transform)||(map.MappingType==TextureMappingType.MeshMappingPrimitive&&expected==Hash(MappingSnapshot.Capture(map)+Serialize(ToArray(transform))));
     internal static WorldUvRecord? ReadUv(RhinoObject obj)
     {
         var text=obj.Attributes.GetUserString(WorldUvKey);if(text==null)return null;
@@ -44,8 +46,8 @@ public static partial class MaterialService
         using var m=obj.GetTextureMapping(1,out var transform);if(m==null)return false;
         try
         {
-            if(r.MappingHash!=MapHash(m,transform))return false;
-            if(r.Version==2){using var stored=obj.GetTextureMapping(r.MeshChannel,out var sx);return stored!=null&&r.MeshHash==MapHash(stored,sx);}
+            if(!MapMatches(r.MappingHash,m,transform))return false;
+            if(r.Version==2){using var stored=obj.GetTextureMapping(r.MeshChannel,out var sx);return stored!=null&&MapMatches(r.MeshHash,stored,sx);}
             return true;
         }catch(NotSupportedException){return false;}
     }

@@ -45,3 +45,8 @@ v0.16 种植 UI 已升级为[参数化种植对象](PlantGroups.md)。下文的�
 ## 验证
 
 标准 Core 验证含朝向、透明边缘、建筑裁切、单株保留、交错物种合并、科学名称 PSD 嵌套和透空投影。B 测试入口 `Test-Plants.py`、`Export-Plants.py`、`Open-PlantFinal.py` / `Check-PlantFinal.py`、`Check-PlantJobs.py`。独立解码 `Verify-PlantPsd.py`，独立相机射线／源 PNG oracle `Extract-PlantOracle.py` / `Verify-PlantOracle.py`。真实生成会使用图像额度，不应无故重复。证据在 `artifacts/rhino-B/plants015`，不是 Photoshop UI 验证。
+# v0.16.4 来源核实
+
+识别后读取所选官方物种页，并尝试实际检索事件中出现的其他支持来源。来源包括 NParks（新加坡国家公园局）、UF/IFAS、Missouri Botanical Garden 的 mobot.org 子域，以及原有 Kew / WFO / NC State / USDA / GBIF / RHS。域名不是任意 gov/edu 放行。一个页面受限不会立即终止；不会把搜索摘要、无法解析的 PDF 或其他物种页面的顺带提及当成核实成功。
+
+成功要求物种名出现在页面标题、物种标题或明确科学名字段，正文同时含精确学名与科名。每次生成的 botany 目录保留 `source-checks.json`，区分 HTTP 错误、超时、不支持的内容、重定向、身份不符及 verified。全部失败时明确告知“尚未生成图片”，保留真实植物核实要求。

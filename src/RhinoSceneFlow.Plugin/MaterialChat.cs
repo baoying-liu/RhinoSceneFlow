@@ -124,6 +124,9 @@ internal sealed class MaterialChatHost : IDisposable
         var listener=new TcpListener(IPAddress.Loopback,0);listener.Start();int port=((IPEndPoint)listener.LocalEndpoint).Port;listener.Stop();
         string token=Convert.ToHexString(System.Security.Cryptography.RandomNumberGenerator.GetBytes(32));
         var info=new ProcessStartInfo(python){UseShellExecute=false,CreateNoWindow=true,RedirectStandardInput=true,RedirectStandardOutput=true,RedirectStandardError=true,StandardOutputEncoding=System.Text.Encoding.UTF8,StandardInputEncoding=new System.Text.UTF8Encoding(false)};
+        // Rhino's embedded Python can export PYTHONHOME/PYTHONPATH for another
+        // interpreter version. Keep this venv independent of its parent runtime.
+        info.ArgumentList.Add("-I");info.ArgumentList.Add("-X");info.ArgumentList.Add("utf8");
         info.ArgumentList.Add(Path.Combine(Path.GetDirectoryName(typeof(MaterialChatHost).Assembly.Location)!,"ChatKit","server.py"));info.ArgumentList.Add("--port");info.ArgumentList.Add(port.ToString());info.ArgumentList.Add("--data");info.ArgumentList.Add(data);info.Environment["SCENEFLOW_CHAT_TOKEN"]=token;info.Environment["PYTHONUTF8"]="1";
         process=new Process{StartInfo=info};process.Start();_=ReadAsync(process);_=LogAsync(process);
         using var http=new System.Net.Http.HttpClient{Timeout=TimeSpan.FromSeconds(1)};

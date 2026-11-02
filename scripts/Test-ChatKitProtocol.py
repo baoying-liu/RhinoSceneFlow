@@ -13,7 +13,9 @@ def bridge(child):
 def start(secret):
  s=socket.socket();s.bind(('127.0.0.1',0));port=s.getsockname()[1];s.close()
  env=os.environ.copy();env['SCENEFLOW_CHAT_TOKEN']=secret;env['PYTHONUTF8']='1'
- child=subprocess.Popen([str(python),str(root/'src/RhinoSceneFlow.Plugin/ChatKit/server.py'),'--port',str(port),'--data',str(out)],stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=open(out/'server.log','w'),text=True,encoding='utf-8',env=env)
+ poison=out/'poison-runtime';poison.mkdir(exist_ok=True);(poison/'argparse.py').write_text('raise RuntimeError("Inherited Python path was loaded")\n')
+ env['PYTHONHOME']=str(poison);env['PYTHONPATH']=str(poison)
+ child=subprocess.Popen([str(python),'-I','-X','utf8',str(root/'src/RhinoSceneFlow.Plugin/ChatKit/server.py'),'--port',str(port),'--data',str(out)],stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=open(out/'server.log','w'),text=True,encoding='utf-8',env=env)
  threading.Thread(target=bridge,args=(child,),daemon=True).start()
  for i in range(100):
   try:urllib.request.urlopen(f'http://127.0.0.1:{port}/health',timeout=1);return child,port
