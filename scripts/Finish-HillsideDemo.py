@@ -14,13 +14,13 @@ state=api('plant_group_state',groupId=planting['group']);assert not state['busy'
 ids=[oid for group in data['materialsets'].values() for oid in group]
 uv=api('material_uv_status',objects=ids)
 assert len(uv)==len(ids) and all(row['status']['valid'] and row['status']['metersPerUv']==1 for row in uv),uv
-rendered=str(Rhino.Display.DisplayModeDescription.RenderedId);arctic=str(next(m.Id for m in Rhino.Display.DisplayModeDescription.GetDisplayModes() if m.EnglishName=='Arctic'))
+display=os.path.join(folder,'display.json');rendered=json.load(open(display))['mode'] if os.path.exists(display) else str(Rhino.Display.DisplayModeDescription.RenderedId);arctic=str(next(m.Id for m in Rhino.Display.DisplayModeDescription.GetDisplayModes() if m.EnglishName=='Arctic'))
 views=api('named_views')
 for view in views:
  api('configure_view',viewId=view['id'],settings=dict(width=1600,height=1200,mode=rendered,layers=[dict(kind='plants',plantGrouping='species'),dict(kind='shadow',blend='mul ',opacity=45),dict(kind='texture',textureGrouping='material'),dict(kind='display',mode=arctic)],plantShadows=True))
 for row in WorkbenchService.Settings(doc):
  b=WorkbenchService.Preview(doc,row,1200);b.Save(os.path.join(folder,row.Name+'.png'),System.Drawing.Imaging.ImageFormat.Png);b.Dispose()
-doc.NamedViews.Restore(0,doc.Views.ActiveView,False);doc.Objects.UnselectAll();doc.Views.Redraw()
+doc.NamedViews.Restore(0,doc.Views.ActiveView,False);doc.Views.ActiveView.ActiveViewport.DisplayMode=Rhino.Display.DisplayModeDescription.GetDisplayMode(System.Guid(rendered));doc.Objects.UnselectAll();doc.Views.Redraw()
 model=json.load(open(os.path.join(folder,'views.json')))['model'];assert doc.Path==model
 assert Rhino.RhinoApp.RunScript('_-Save _Enter',False);assert not doc.Modified
 api('plant_select',assetId=planting['asset']['id']);doc.Objects.Select(System.Guid(planting['group']));doc.Views.Redraw()

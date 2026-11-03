@@ -6,13 +6,17 @@ $tag=Get-Date -Format 'yyyyMMdd-HHmmss'
 $release=Join-Path $root "artifacts/releases/RhinoSceneFlow-$version-Windows-x64-$tag"
 $yakStage=Join-Path $root "artifacts/distribution-build/$tag/yak"
 $inputRoot=Join-Path $root 'artifacts/distribution-input'
+# Refuse an old ChatKit-only offline runtime rather than ship a broken postproduction tool.
+foreach($pattern in @('psd_tools-1.10.9-*.whl','pillow-11.3.0-*.whl','numpy-2.2.6-*.whl','opencv_python_headless-4.12.0.88-*.whl','pyvips-3.2.0-*.whl','pyvips_binary-8.18.7-*.whl')){
+    if(-not(Get-ChildItem -Path (Join-Path $inputRoot "wheels/$pattern") -ErrorAction SilentlyContinue)){throw "Postproduction offline wheel missing: $pattern. Refresh and validate the embedded Python wheel set before making a ZIP."}
+}
 New-Item -ItemType Directory -Force -Path $release,$yakStage,(Join-Path $release 'Packages'),(Join-Path $release 'Runtime/wheels') | Out-Null
 # Curated, already tested deployment only. Exclude debug data, sandbox manifests,
 # local settings, credentials, user models and material/chat libraries.
 foreach($name in @('RhinoSceneFlow.Plugin.rhp','RhinoSceneFlow.Plugin.deps.json','RhinoSceneFlow.Core.dll','geometry3Sharp.dll','SceneFlow.UvWorker.exe','Microsoft.Web.WebView2.Core.dll','Microsoft.Web.WebView2.Wpf.dll')){
     Copy-Item -LiteralPath (Join-Path $DeploymentDirectory $name) -Destination $yakStage
 }
-foreach($name in @('ChatKit','runtimes')){Copy-Item -LiteralPath (Join-Path $DeploymentDirectory $name) -Destination $yakStage -Recurse}
+foreach($name in @('ChatKit','runtimes','PostProduction')){Copy-Item -LiteralPath (Join-Path $DeploymentDirectory $name) -Destination $yakStage -Recurse}
 Copy-Item -LiteralPath (Join-Path $inputRoot 'TextureWorker') -Destination $yakStage -Recurse
 Get-ChildItem -LiteralPath (Join-Path $yakStage 'TextureWorker') -Filter '*.pdb' -File | Remove-Item
 Copy-Item -LiteralPath (Join-Path $root 'third-party/geometry3Sharp-LICENSE.txt') -Destination $yakStage

@@ -64,6 +64,7 @@ public static class WorkbenchService
     }
     public static WorkbenchPlan[] Plan(RhinoDoc doc,IEnumerable<ViewExportRow> source,string directory,Func<string,FileCollision> collision)
     {
+        PlantEditing.RequireFinished(doc);
         NamedViewExportService.RequireActive(doc);var rows=source.Where(v=>v.Included).Select(v=>v.Copy()).ToArray();
         if(rows.Length==0)throw new ArgumentException("请勾选需要导出的视图。");
         if(!Path.IsPathFullyQualified(directory))throw new ArgumentException("请选择绝对路径的输出文件夹。");
@@ -144,6 +145,7 @@ public static class WorkbenchService
     }
     public static BatchReport Export(RhinoDoc doc,WorkbenchPlan[] plan,CancellationToken token=default)
     {
+        PlantEditing.RequireFinished(doc);
         var results=new List<BatchFileResult>();
         foreach(var item in plan)
         {

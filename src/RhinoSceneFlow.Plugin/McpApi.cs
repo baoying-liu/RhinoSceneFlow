@@ -26,10 +26,25 @@ public static class McpApi
             object response;
             switch (operation)
             {
+                case "postproduction_start":
+                    response=PostProduction.Start(Document(r),r.TryGetProperty("path",out var postPath)?postPath.GetString():null,r.TryGetProperty("browser",out var postBrowser)&&postBrowser.GetBoolean());break;
+                case "postproduction_status":
+                    response=PostProduction.Get(Guid.Parse(r.GetProperty("jobId").GetString()!));break;
+                case "postproduction_request":
+                    response=PostProduction.Request(r.GetProperty("route").GetString()!,r.TryGetProperty("method",out var postMethod)?postMethod.GetString()!:"GET",r.TryGetProperty("body",out var postBody)?postBody.GetRawText():null);break;
+                case "selection_properties":
+                    response=SelectionProperties.Inspect(Document(r),r.GetProperty("objects").EnumerateArray().Select(v=>Guid.Parse(v.GetString()!)).ToArray());break;
+                case "selection_material_update":
+                    response=SelectionProperties.Modify(Document(r),r.GetProperty("objects").EnumerateArray().Select(v=>Guid.Parse(v.GetString()!)).ToArray(),r.TryGetProperty("scope",out var ps)?ps.GetString()!:"material",r.TryGetProperty("name",out var pn)?pn.GetString():null,r.TryGetProperty("roughness",out var pr)?pr.GetDouble():null,r.TryGetProperty("metallic",out var pm)?pm.GetDouble():null,r.TryGetProperty("widthMeters",out var pw)?pw.GetDouble():null,r.TryGetProperty("heightMeters",out var ph)?ph.GetDouble():null);break;
                 case "describe":
-                    response = new { name = "RhinoSceneFlow", version = "0.16.4", transport = "Rhino-MCP-Platform.run_python",materialLibrary=MaterialApi.Contract,plants=PlantApi.Operations,
+                    response = new { name = "RhinoSceneFlow", version = "0.19.0", transport = "Rhino-MCP-Platform.run_python",materialLibrary=MaterialApi.Contract,plants=PlantApi.Operations,
                         entryPoint = "RhinoSceneFlow.Plugin.McpApi.Execute(string)",
                         operations = new object[] {
+                            new {name="postproduction_start",required=new[]{"document"},parameters="path?: absolute PSD/PSB; browser?:false(default); starts/reuses authenticated local Web workbench; file snapshot and current-document metadata only",output="Launch job id; poll postproduction_status. Completed launch is not completed PSD parsing."},
+                            new {name="postproduction_status",required=new[]{"jobId"},parameters="Launch/request job GUID",output="status,stage,url (contains local bearer fragment; do not log),project,importJob,response,error. PNG generation/fusion jobs have their own HTTP job/run IDs."},
+                            new {name="postproduction_request",required=new[]{"route"},parameters="Authenticated JSON-only Web request via original Platform. route:/api/status|projects/...|jobs/...; method:GET(default)|POST|PUT; body?:JSON. Supports generate, resume, review acceptance, retry, cancel, run/settings/status; no second MCP server.",output="Request job; poll postproduction_status for response, then poll backend image job via this same operation."},
+                            new { name="selection_properties",required=new[]{"document","objects"},parameters="objects:[GUID]; effective native materials and world UV status",output="Selected object properties" },
+                            new { name="selection_material_update",required=new[]{"document","objects"},parameters="scope:material(default)|layer|object; name?,roughness?,metallic?,widthMeters?,heightMeters?; document-only RDK edits with isolation and Undo; prepare UV through existing UV operations when needed",output="Affected objects and clone count" },
                             new { name="workbench_settings",required=new[]{"document"},parameters="Per-view configuration, exportable display modes and PSD blend keys",output="views, displayModes, blends" },
                             new { name="configure_view",required=new[]{"document","viewId","settings"},parameters="Patch width,height,mode,layers:[{kind:shadow|texture|material|display,textureGrouping:material(default)|object,mode:guid,blend:norm|mul |scrn|over|dark|lite,opacity:0..100,enabled:true}], camera:{yaw,pitch,zoom,panX,panY,panZ}, sun:{useDocument,azimuth,altitude},included. Saved per document path, without altering Named Views.",output="Updated view configuration" },
                             new { name="export_workbench",required=new[]{"document","directory"},parameters="views?: [Named View GUIDs] (otherwise included saved views); collision?: number|overwrite|cancel. Captures RGB display modes, unlit bitmap albedo (kind:texture, material-ID merge or per-object children in one group), legacy layer RGB (kind:material), and tiled shadows. Independent pass blend/opacity. Side <=8192; total <=8192 squared; PSD raw <=2GB.",output="Batch report" },

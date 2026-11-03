@@ -18,7 +18,7 @@ try {
     foreach ($name in @('Microsoft.Web.WebView2.Core.dll','Microsoft.Web.WebView2.Wpf.dll')) {
         Copy-Item -LiteralPath (Join-Path $outputPath $name) -Destination $packagePath -Force
     }
-    foreach ($name in @('runtimes','ChatKit','TextureWorker')) {
+    foreach ($name in @('runtimes','ChatKit','TextureWorker','PostProduction')) {
         Copy-Item -LiteralPath (Join-Path $outputPath $name) -Destination $packagePath -Recurse -Force
     }
     Copy-Item -LiteralPath (Join-Path $projectRoot 'third-party/FastNoiseLite/LICENSE') -Destination (Join-Path $packagePath 'FastNoiseLite-LICENSE.txt') -Force

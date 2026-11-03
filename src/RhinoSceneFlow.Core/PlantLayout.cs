@@ -40,7 +40,7 @@ public sealed class PlantLayoutSettings
 }
 public sealed record LayoutTriangle(Vec3 A,Vec3 B,Vec3 C);
 public sealed record LayoutEdge(Vec3 A,Vec3 B);
-public sealed record LayoutManual(string Id,Guid Asset,Vec3 Position,bool Detached=false);
+public sealed record LayoutManual(string Id,Guid Asset,Vec3 Position,bool Detached=false,double? CustomScale=null,bool? CustomMirror=null,double? SpacingMeters=null);
 public sealed record LayoutPlant(string Id,Guid Asset,Vec3 Position,bool Manual,double Scale,bool Mirror,bool Detached=false);
 public sealed record PlantLayoutResult(LayoutPlant[] Plants,int Target,int Attempts,bool Limited,double Area);
 
@@ -52,14 +52,15 @@ public static class PlantLayout
         ulong h=14695981039346656037UL^(uint)seed;foreach(char c in id){h^=c;h*=1099511628211UL;}h^=h>>30;h*=0xbf58476d1ce4e5b9UL;h^=h>>27;h*=0x94d049bb133111ebUL;return h^(h>>31);
     }
     public static double Random(string id,int seed)=>(Hash(id,seed)>>11)*(1.0/(1UL<<53));
-    public static PlantLayoutResult Generate(LayoutTriangle[] triangles,LayoutEdge[] edges,PlantPaletteItem[] palette,LayoutManual[] manual,PlantLayoutSettings settings,CancellationToken cancel=default)
+    public static PlantLayoutResult Generate(LayoutTriangle[] triangles,LayoutEdge[] edges,PlantPaletteItem[] palette,LayoutManual[] manual,PlantLayoutSettings settings,CancellationToken cancel=default,IReadOnlySet<string>? excluded=null)
     {
         settings.Validate();if(palette.Length is <1 or >64||palette.Any(p=>p.Asset==Guid.Empty||!double.IsFinite(p.Weight)||p.Weight<=0||!double.IsFinite(p.SpacingMeters)||p.SpacingMeters<0||p.SpacingMeters>1000)||palette.Select(p=>p.Asset).Distinct().Count()!=palette.Length)throw new ArgumentException("植物组合需为 1–64 种，间距和比重必须有效。");
         if(manual.Length>10000||triangles.Length>2_000_000||edges.Length>200000)throw new ArgumentException("种植快照过大。");
         var weights=new double[palette.Length];double totalWeight=0;for(int i=0;i<palette.Length;i++)weights[i]=totalWeight+=palette[i].Weight;
         var cumulative=new double[triangles.Length];double area=0;for(int i=0;i<triangles.Length;i++){var t=triangles[i];double a=(t.B-t.A).Cross(t.C-t.A).Length*.5;if(!double.IsFinite(a))throw new ArgumentException("曲面坐标无效。");cumulative[i]=area+=a;}
         double desired=area*settings.Density;if(!double.IsFinite(desired)||desired>10000)throw new ArgumentException("当前面积和密度超过 10000 株，请降低密度。");int target=(int)Math.Round(desired);
-        var result=new List<LayoutPlant>();double cell=Math.Max(.001,palette.Max(p=>p.SpacingMeters));var cells=new Dictionary<(long,long,long),List<(Vec3 P,double S)>>();
+        if(manual.Any(m=>m.SpacingMeters is double spacing&&(!double.IsFinite(spacing)||spacing<0||spacing>1000)))throw new ArgumentException("自定义植物间距无效。");
+        var result=new List<LayoutPlant>();double cell=Math.Max(.001,Math.Max(palette.Max(p=>p.SpacingMeters),manual.Select(m=>m.SpacingMeters??0).DefaultIfEmpty().Max()));var cells=new Dictionary<(long,long,long),List<(Vec3 P,double S)>>();
         (long X,long Y,long Z) Key(Vec3 p)=>((long)Math.Floor(p.X/cell),(long)Math.Floor(p.Y/cell),(long)Math.Floor(p.Z/cell));
         void AddCell(Vec3 p,double spacing){var k=Key(p);if(!cells.TryGetValue(k,out var values))cells[k]=values=[];values.Add((p,spacing));}
         var boundary=settings.EdgeStrength>0&&edges.Length>0?new EdgeTree(edges,cancel):null;
@@ -67,8 +68,9 @@ public static class PlantLayout
         LayoutPlant Make(string id,Guid asset,Vec3 p,bool hand,bool detached,double edge)=>new(id,asset,p,hand,(settings.MinScale+Random(id,settings.SizeSeed)*(settings.MaxScale-settings.MinScale))*(settings.EdgeSize?Math.Max(.01,edge):1),settings.Mirror&&Random(id,settings.MirrorSeed)<.5,detached);
         foreach(var m in manual)
         {
-            cancel.ThrowIfCancellationRequested();var entry=palette.FirstOrDefault(p=>p.Asset==m.Asset);if(entry==null)throw new ArgumentException("手工植物仍引用已移除的组合项，请先保留该项或移除对应手工植物。");
-            result.Add(Make(m.Id,m.Asset,m.Position,true,m.Detached,Edge(m.Position)));AddCell(m.Position,entry.SpacingMeters);
+            cancel.ThrowIfCancellationRequested();var entry=palette.FirstOrDefault(p=>p.Asset==m.Asset);if(entry==null&&m.CustomScale==null)throw new ArgumentException("手工植物仍引用已移除的组合项，请先保留该项或移除对应手工植物。");
+            if(m.CustomScale is double cs&&(!double.IsFinite(cs)||cs<=0||cs>100))throw new ArgumentException("自定义植物比例无效。");
+            var row=Make(m.Id,m.Asset,m.Position,true,m.Detached,Edge(m.Position));result.Add(row with{Scale=m.CustomScale??row.Scale,Mirror=m.CustomMirror??row.Mirror});AddCell(m.Position,entry?.SpacingMeters??m.SpacingMeters??palette.Max(p=>p.SpacingMeters));
         }
         var random=new System.Random(settings.LayoutSeed);int attempts=0,maxAttempts=Math.Min(500_000,Math.Max(1000,target*150));
         while(result.Count<target&&area>0&&attempts<maxAttempts)
@@ -78,7 +80,7 @@ public static class PlantLayout
             int pi=Array.BinarySearch(weights,random.NextDouble()*totalWeight);if(pi<0)pi=~pi;pi=Math.Min(pi,palette.Length-1);var entry=palette[pi];double edge=Edge(p);
             if(settings.EdgeDensity&&random.NextDouble()>edge)continue;
             bool valid=true;if(!settings.OverrideSpacing){var k=Key(p);for(int x=-1;x<=1&&valid;x++)for(int y=-1;y<=1&&valid;y++)for(int z=-1;z<=1&&valid;z++)if(cells.TryGetValue((k.X+x,k.Y+y,k.Z+z),out var near))foreach(var other in near)if((p-other.P).Length<(entry.SpacingMeters+other.S)*.5){valid=false;break;}}
-            if(!valid)continue;string id="auto:"+attempt;result.Add(Make(id,entry.Asset,p,false,false,edge));AddCell(p,entry.SpacingMeters);
+            if(!valid)continue;string id="auto:"+attempt;if(excluded?.Contains(id)==true)continue;result.Add(Make(id,entry.Asset,p,false,false,edge));AddCell(p,entry.SpacingMeters);
         }
         return new(result.ToArray(),target,attempts,result.Count<target,area);
     }

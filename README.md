@@ -1,5 +1,11 @@
 # RhinoSceneFlow
 
+v0.19.0：[AI 后期真实生成](docs/PostProduction-Generation.md)，命令 `RhinoSceneFlowPostProduction`。支持单块测试、共享风格、批量修改、像素蒙版约束、融合和完整 PNG；可取消/继续、重试和对比结果。
+
+v0.18.0 第一阶段：[AI 后期 Web 工作台](docs/PostProduction.md)，命令 `RhinoSceneFlowPostProduction`。支持 PSD 导入、图层与分块规划、GPT 描述助手；实际生图和融合尚未接入。
+
+v0.17.4：[Plants List 与属性工具](docs/PlantsList-Properties.md)修正选择轮廓造成的悬空假阴影，保留真实植物阴影、单株动态预览与即时位置更新。命令：`RhinoSceneFlowPlantsList`、`RhinoSceneFlowProperties`。
+
 Windows ZIP 分发包与离线安装验证见[分发说明](docs/Distribution.md)，接收者解压后运行 Install.cmd。
 
 v0.16.4：植物生成支持对已检索到的官方物种页面逐一核实，补充 NParks / IFAS / Missouri Botanical Garden 的来源地址；记录访问失败原因，避免一个站点受限就阻断生成。
@@ -144,3 +150,6 @@ v0.11 ChatKit 对话、参考图片、xatlas 异步展开和新增 `material_cha
 
 
 v0.12 修复原生视口跨 UV 岛插值和内向测试模型的渲染朝向，新增 `RhinoSceneFlowTubeUV`：[管体与接缝 UV 使用说明](docs/UV-Continuity.md)。
+## AI 后期 Web 工作台（v0.18.0 第一阶段）
+
+命令 `RhinoSceneFlowPostProduction`，或工作区菜单「AI 后期 · Web 工作台」。先运行 `scripts/Setup-PostProduction.ps1`。支持独立导入 PSD、Rhino 文件交接、图层用途、分块预览、GPT 描述助手和 JSON 方案保存；实际生图、NetVips/OpenCV 融合与结果 PSD 尚未接入。详见 [后期工作台说明](docs/PostProduction.md)。

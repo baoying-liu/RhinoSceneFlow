@@ -27,9 +27,10 @@ public sealed class PlantTool:Panel
     private static NumericStepper Seed()=>Ui.Number(int.MinValue,int.MaxValue,0,115);
     internal static void StopDocument(uint serial){foreach(var t in tools.Where(t=>t.document==serial).ToArray())t.Stop();}
     internal static void PresentationChanged(){foreach(var t in tools.Where(t=>!t.stopped).ToArray())t.Guard(t.RefreshPresentation);}
-    public PlantTool(RhinoDoc doc)
+    private readonly bool propertiesOnly;
+    public PlantTool(RhinoDoc doc,bool propertiesOnly=false)
     {
-        document=doc.RuntimeSerialNumber;tools.Add(this);
+        document=doc.RuntimeSerialNumber;this.propertiesOnly=propertiesOnly;tools.Add(this);
         foreach(var (key,text) in new[]{("auto","跟随 Rhino"),("zh","中文"),("en","English")})language.Items.Add(new ListItem{Key=key,Text=text});
         foreach(var picker in new[]{libraryView,compositionView})foreach(var (key,text) in new[]{("tiles","小方块"),("list","列表")})picker.Items.Add(new ListItem{Key=key,Text=text});
         var library=Ui.Layout();library.AddRow(Ui.Button("在 AI 对话中生成植物",()=>SceneFlowWorkspace.Open("materials")));library.AddRow(query);library.AddRow(ToolUi.Row(new Label{Text="显示方式"},libraryView,null));library.AddRow(list);
@@ -39,15 +40,15 @@ public sealed class PlantTool:Panel
         var edge=Ui.Layout();edge.AddRow(ToolUi.Row(new Label{Text="边缘距离 m"},edgeDistance,null));edge.AddRow(ToolUi.Row(new Label{Text="强度 0–1"},edgeStrength,null));edge.AddRow(ToolUi.Row(edgeDensity,edgeSize,null));edge.AddRow(new Label{Text="衰减曲线：边界 0% → 内部 100%",Wrap=WrapMode.Word});edge.AddRow(new PlantCurvePreview(curve));edge.AddRow(ToolUi.Row(curve.Cast<Control?>().ToArray()));edge.AddRow(new Label{Text="手工植物保留位置，只参与大小衰减。",Wrap=WrapMode.Word});
         foreach(var (key,text) in new[]{("auto","自动朝向"),("z","只绕 Z 轴"),("free","完全朝向相机")})facing.Items.Add(new ListItem{Key=key,Text=text});facing.SelectedKey=PlantService.Settings.Mode;angle.Value=PlantService.Settings.Angle;
         var global=Ui.Layout();global.AddRow(facing);global.AddRow(ToolUi.Row(new Label{Text="切换角度 °"},angle,null));global.AddRow(Ui.Button("保存全局朝向",()=>Guard(()=>PlantService.Settings=new(){Mode=facing.SelectedKey??"auto",Angle=angle.Value})));
-        libraryExpander.Content=library;var body=Ui.Layout();body.AddRow(libraryExpander);body.AddRow(composition);body.AddRow(new Expander{Header="布局与随机",Content=general,Expanded=true});body.AddRow(new Expander{Header="边缘衰减",Content=edge});body.AddRow(new Expander{Header="全局相机朝向",Content=global});
-        var root=Ui.Layout();root.AddRow(ToolUi.Row(ToolUi.Heading("种植组合"),null,language));root.AddRow(context);root.AddRow(ToolUi.Row(name,Ui.Button("新组合",NewDraft),null));root.Add(new Scrollable{Content=body,ExpandContentWidth=true},true,true);
+        libraryExpander.Content=library;var body=Ui.Layout();if(!propertiesOnly)body.AddRow(libraryExpander);body.AddRow(composition);body.AddRow(new Expander{Header="布局与随机",Content=general,Expanded=true});body.AddRow(new Expander{Header="边缘衰减",Content=edge});body.AddRow(new Expander{Header="全局相机朝向",Content=global});
+        var root=Ui.Layout();root.AddRow(ToolUi.Row(ToolUi.Heading("种植组合"),null,language));root.AddRow(context);if(propertiesOnly)root.AddRow(name);else root.AddRow(ToolUi.Row(name,Ui.Button("新组合",NewDraft),null));root.Add(new Scrollable{Content=body,ExpandContentWidth=true},true,true);
         root.AddRow(Ui.Button("选择曲面并生成 / 重新关联",()=>Guard(Scatter)));root.AddRow(Ui.Button("连续点种 · Esc 结束",()=>Guard(PlacePoint)));root.AddRow(status);Content=root;
         query.TextChanged+=(_,_)=>RefreshList();list.SelectionChanged+=id=>{if(!binding)Guard(()=>Select(id));};list.Activated+=id=>Guard(()=>{Select(id);AddSelected();});
         palette.SelectionChanged+=_=>PaletteFields();spacing.ValueChanged+=(_,_)=>PaletteChanged();weight.ValueChanged+=(_,_)=>PaletteChanged();
         foreach(var n in new[]{density,layoutSeed,sizeSeed,mirrorSeed,edgeDistance,edgeStrength}.Concat(curve))n.ValueChanged+=(_,_)=>Changed();foreach(var c in new[]{mirror,ignoreSpacing,edgeDensity,edgeSize})c.CheckedChanged+=(_,_)=>Changed();minimum.Changed+=Changed;maximum.Changed+=Changed;name.TextChanged+=(_,_)=>Changed();
         palette.AssetDropped+=id=>Guard(()=>{Select(id);AddSelected();});
         foreach(var picker in new[]{language,libraryView,compositionView})picker.SelectedValueChanged+=(_,_)=>{if(!binding)Guard(()=>PlantUiPreferences.Save(new(){Language=language.SelectedKey??"auto",LibraryView=libraryView.SelectedKey??"tiles",CompositionView=compositionView.SelectedKey??"tiles"}));};
-        Bind();RefreshPresentation();poll.Elapsed+=(_,_)=>Guard(Poll);poll.Start();
+        Bind();RefreshPresentation();poll.Elapsed+=(_,_)=>Guard(Poll);poll.Start();if(propertiesOnly)Poll();
     }
     public void Select(Guid id)
     {
@@ -92,13 +93,13 @@ public sealed class PlantTool:Panel
     private void Poll()
     {
         if(PlantGroups.Picking)return;
-        if(pending&&(DateTime.UtcNow-changed).TotalSeconds>.6){pending=false;Pull();if(group.HasValue){PlantGroups.Update(Doc,group.Value,draft);status.Text="参数已保存，正在更新…";}}
+        if(pending&&(DateTime.UtcNow-changed).TotalSeconds>.6){pending=false;Pull();if(group.HasValue){var current=PlantGroups.Read(Doc.Objects.FindId(group.Value)!)!;draft.Individuals=current.Individuals;draft.Manual=current.Manual;PlantGroups.Update(Doc,group.Value,draft);status.Text="参数已保存，正在更新…";}}
         var chosen=Doc.Objects.GetSelectedObjects(false,false).Where(PlantGroups.IsGroup).ToArray();string signature=string.Join(";",chosen.Select(o=>o.Id));
-        if(signature!=selectionSignature){selectionSignature=signature;if(chosen.Length==1){group=chosen[0].Id;draft=PlantGroups.Read(chosen[0])!;libraryExpander.Expanded=false;Bind();}}
+        if(propertiesOnly&&signature!=selectionSignature){selectionSignature=signature;if(chosen.Length==1){group=chosen[0].Id;draft=PlantGroups.Read(chosen[0])!;libraryExpander.Expanded=false;Bind();}}
         if(group.HasValue){var obj=Doc.Objects.FindId(group.Value);if(obj==null){group=null;context.Text="种植对象已删除或撤销";}else if(!pending){if(obj.Attributes.GetUserString(PlantGroups.Key)!=boundSpec){draft=PlantGroups.Read(obj)!;Bind();}var state=JsonSerializer.SerializeToElement(PlantGroups.State(Doc,group.Value),MaterialLibrary.Json);status.Text=state.GetProperty("stage").GetString()??"";}}
         if(catalogJob.HasValue){var job=CatalogService.Get(catalogJob.Value);status.Text=job.Stage;if(job.Status!="running"){catalogJob=null;Refresh();}}
         if(namesJob.HasValue){var job=CatalogService.Get(namesJob.Value);if(job.Status!="running"){namesJob=null;if(job.Status=="completed"){Refresh();PaletteList();}else status.Text=job.Stage;}}
-        if(!namesJob.HasValue&&!CatalogService.Busy)
+        if(!propertiesOnly&&!namesJob.HasValue&&!CatalogService.Busy)
         {
             string key=PlantService.Library.Root+"|"+catalogSignature;
             if(key!=namesAttempt){var job=CatalogService.LocalizePlants();if(job!=null){namesAttempt=key;namesJob=job.Id;}else if(!MaterialChat.Busy&&!MaterialGeneration.HasActiveWorkers)namesAttempt=key;}

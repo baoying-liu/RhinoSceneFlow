@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>SceneFlow · AI 后期</title><link rel="stylesheet" href="/style.css"></head>
+<body>
+<header><div><span class="mark">SF</span><strong>AI 后期</strong><span class="muted">SceneFlow</span></div><div id="connection">正在连接本机服务…</div><button id="shutdown">关闭服务</button></header>
+<section class="topbar"><select id="projects" aria-label="项目"><option value="">选择项目</option></select><button id="refreshProjects">刷新项目</button><label class="button">导入 PSD<input id="upload" type="file" accept=".psd,.psb" hidden></label><details><summary>从本机路径导入</summary><div class="path"><input id="path" placeholder="C:\…\Named View.psd" aria-label="PSD 完整路径"><button id="importPath">读取文件</button></div></details><span id="documentInfo" class="muted"></span></section>
+<div id="notice" role="status">导入 PSD，保留图层结构，先规划再生成。</div>
+<main>
+<aside class="layers"><div class="sectionTitle"><h2>图层</h2><span id="layerCount"></span></div><p class="muted">可修改：提供编辑范围。参考：只提供上下文。保持原样：恢复原始可见像素。排除：从本版底图移除。</p><div id="layers"><div class="empty">选择 PSD 后在这里查看图层。</div></div></aside>
+<section class="workspace">
+<div class="canvasHead"><h2 id="projectName">开始一个后期项目</h2><label><input type="checkbox" id="grid" checked> 显示分块</label></div>
+<div class="generationActions startActions"><button id="testTile">测试选中分块</button><button id="generateAll" class="primary">开始整图 AI 处理</button><button id="stopGeneration" hidden>取消处理</button><span id="requestEstimate" class="muted"></span></div>
+<div class="resultBar"><select id="runs" aria-label="处理版本"><option value="">尚无处理版本</option></select><button id="resumeRun">继续 / 重试失败块</button><button id="downloadPng">下载完整 PNG</button></div>
+<div class="viewerTools"><select id="viewMode" aria-label="对比模式"><option value="original">原图</option><option value="result">AI 结果</option><option value="compare">左右对比</option><option value="mask">可修改范围</option><option value="style">共享风格参考</option></select><input id="wipe" aria-label="对比位置" type="range" min="0" max="100" value="50"><span id="resultInfo" class="muted"></span></div>
+<div class="viewport" id="viewport"><canvas id="canvas" width="900" height="650"></canvas><div id="emptyCanvas">导入 Rhino 导出的 PSD<br><small>也支持本机已有的 8-bit RGB PSD / PSB</small></div></div>
+<div id="tileInfo" class="muted">点击分块查看坐标、选择测试范围。</div>
+<div class="settings"><label>分块最大边长<select id="size"><option>512</option><option selected>1024</option><option>1536</option><option>2048</option></select></label><label>每侧上下文<select id="overlap"><option>32</option><option>64</option><option selected>128</option><option>256</option></select></label><button id="save">保存并刷新分块</button><button id="download">下载处理方案</button></div>
+<details class="advanced"><summary>整体处理描述</summary><textarea id="prompt" placeholder="在右侧讨论并采用描述，或直接填写后再开始处理。" maxlength="16000"></textarea></details>
+<details class="advanced"><summary>生成与融合设置</summary><div class="settings"><label>轮廓保护（像素）<select id="edgeGuard"><option>0</option><option selected>1</option><option>2</option><option>3</option></select></label><label><input id="colorMatch" type="checkbox" checked> 校正重叠区域色差</label><label><input id="reuseStyle" type="checkbox" checked> 沿用所选版本的风格与可复用图块</label></div><p class="muted">先生成共享风格参考，再逐块修改。仅修改蒙版允许的像素；轮廓检查是提示，不能保证所有建筑细节准确。已跳过的空白分块不调用生图。</p></details>
+<div id="runStatus" role="status" class="muted"></div><div id="tileStates"></div><div class="generationActions"><button id="inspectTile">查看选中块结果</button><button id="acceptTile">确认此块并合并</button><button id="retryTile">重试选中问题块</button></div>
+</section>
+<aside class="chat"><div class="sectionTitle"><h2>描述助手</h2><span class="badge">本机 Codex · GPT</span></div><p class="muted">讨论风格与局部处理要求，生成可编辑的描述。</p><div id="messages" aria-live="polite"><div class="empty">例如：保留建筑结构，改成柔和水彩风格，丰富草地细节。</div></div><div id="chatStatus" role="status"></div><label class="muted"><input id="includePreview" type="checkbox" checked> 将整图预览发给助手作为参考</label><textarea id="message" rows="4" maxlength="8000" placeholder="描述想要的效果…"></textarea><div class="chatActions"><button id="send" class="primary">发送</button><button id="cancel" hidden>取消任务</button></div></aside>
+</main><footer>原始 PSD 保留在项目快照中 · 生成与融合输出完整 PNG · <span id="jobStatus">没有进行中的任务</span></footer>
+<dialog id="tileDialog"><button id="closeTile">关闭</button><p id="tileDetails"></p><img id="tileImage" alt="选中分块的 AI 结果"></dialog>
+<script src="/app.js"></script></body></html>

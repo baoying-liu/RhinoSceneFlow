@@ -28,9 +28,11 @@ if(-not(Test-Path -LiteralPath $python)){
 $probe=@'
 import sys
 try:
-    import chatkit,fastapi,uvicorn
+    import chatkit,fastapi,uvicorn,psd_tools,PIL,cv2,pyvips
     from importlib.metadata import version
     assert version('openai-chatkit')=='1.6.5' and version('fastapi')=='0.162.0' and version('uvicorn')=='0.54.0' and version('python-multipart')=='0.0.32'
+    assert version('psd-tools')=='1.10.9' and version('Pillow')=='11.3.0'
+    assert version('opencv-python-headless')=='4.12.0.88' and version('numpy')=='2.2.6' and version('pyvips')=='3.2.0' and version('pyvips-binary')=='8.18.7'
 except Exception:
     sys.exit(1)
 '@

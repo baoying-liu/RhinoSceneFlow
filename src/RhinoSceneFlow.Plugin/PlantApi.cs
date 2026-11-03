@@ -11,9 +11,19 @@ internal static class PlantApi
     private static int Int(JsonElement r,string key,int fallback)=>(int)Number(r,key,fallback);
     private static bool Mirror(JsonElement r)=>!r.TryGetProperty("mirror",out var m)||m.GetBoolean();
     private static RhinoDoc Doc(JsonElement r){var d=RhinoDoc.FromRuntimeSerialNumber(r.GetProperty("document").GetUInt32())??throw new ArgumentException("文档不存在。");NamedViewExportService.RequireActive(d);return d;}
-    internal static readonly string[] Operations=["plant_ui_settings","plant_localize_names","plant_group_create","plant_group_update","plant_group_state","plant_group_list","plant_group_manual","plant_library","plant_import","plant_update","plant_select","plant_place","plant_scatter","plant_settings","plant_instances","plant_organize"];
+    internal static readonly string[] Operations=["plant_edit_transform","plant_edit_cancel","plant_edit_pick","plant_loose_update","plant_list_select","plant_group_manage","plant_edit_enter","plant_edit_exit","plant_edit_status","plant_individual_update","plant_ui_settings","plant_localize_names","plant_group_create","plant_group_update","plant_group_state","plant_group_list","plant_group_manual","plant_library","plant_import","plant_update","plant_select","plant_place","plant_scatter","plant_settings","plant_instances","plant_organize"];
     internal static object Execute(string op,JsonElement r)=>op switch
     {
+        "plant_edit_transform"=>EditTransform(Doc(r),r),
+        "plant_edit_cancel"=>CancelEdit(),
+        "plant_edit_pick"=>Pick(Doc(r),r),
+        "plant_loose_update"=>Loose(Doc(r),r),
+        "plant_list_select"=>ListSelect(Doc(r),r),
+        "plant_group_manage"=>PlantsListTool.Manage(Doc(r),Read<Guid[]>(r,"groups"),r.TryGetProperty("name",out var gn)?gn.GetString():null,r.TryGetProperty("layerId",out _)?Id(r,"layerId"):null,r.TryGetProperty("visible",out var gv)?gv.GetBoolean():null,r.TryGetProperty("locked",out var gl)?gl.GetBoolean():null),
+        "plant_edit_enter"=>Edit(Doc(r),r),
+        "plant_edit_exit"=>ExitEdit(),
+        "plant_edit_status"=>PlantEditing.State(),
+        "plant_individual_update"=>Individual(Doc(r),r),
         "plant_library"=>new{directory=PlantService.Library.Root,assets=PlantService.Library.List(r.TryGetProperty("query",out var q)?q.GetString()??"":"")},
         "plant_import"=>PlantService.Import(Read<MaterialAsset>(r,"asset"),r.GetProperty("path").GetString()!),
         "plant_update"=>PlantService.Library.Update(Read<MaterialAsset>(r,"asset")),
@@ -32,6 +42,26 @@ internal static class PlantApi
         "plant_group_list"=>new{groups=PlantGroups.Objects(Doc(r)).Select(o=>PlantGroups.State(Doc(r),o.Id)).ToArray()},
         _=>throw new ArgumentException("未知植物操作。")
     };
+    private static object CancelEdit(){PlantEditing.Cancel();return PlantEditing.State();}
+    private static object EditTransform(RhinoDoc doc,JsonElement r)
+    {
+        var values=Read<double[]>(r,"transform");if(values.Length!=16||values.Any(v=>!double.IsFinite(v)))throw new ArgumentException("transform: 16 finite row-major values");var t=Transform.Identity;for(int i=0;i<16;i++)t[i/4,i%4]=values[i];
+        return new{individualId=PlantEditing.ApplyTransform(doc,t,r.TryGetProperty("copy",out var copy)&&copy.GetBoolean())};
+    }
+    private static object Pick(RhinoDoc doc,JsonElement r)
+    {
+        var vp=doc.Views.ActiveView.ActiveViewport;if(r.TryGetProperty("viewportId",out var id)&&Guid.Parse(id.GetString()!)!=vp.Id)throw new ArgumentException("活动视口已变化。");
+        return new{hit=PlantEditing.Pick(doc,vp,r.GetProperty("x").GetInt32(),r.GetProperty("y").GetInt32())};
+    }
+    private static object Loose(RhinoDoc doc,JsonElement r){var id=Id(r,"objectId");PlantEditing.ModifyLoose(doc,id,r.TryGetProperty("assetId",out _)?Id(r):null,r.TryGetProperty("scale",out var s)?s.GetDouble():null,r.TryGetProperty("mirror",out var m)?m.GetBoolean():null);return new{id};}
+    private static object ListSelect(RhinoDoc doc,JsonElement r){SceneFlowWorkspace.Open("plantsList");var tool=(PlantsListTool)SceneFlowWorkspace.Hosts["plantsList"].Tool!;tool.Select(Read<Guid[]>(r,"groups"));tool.Refresh();return tool.State();}
+    private static object Edit(RhinoDoc doc,JsonElement r){PlantEditing.Enter(doc,Id(r,"groupId"),r.TryGetProperty("individualId",out var row)?row.GetString():null);return PlantEditing.State();}
+    private static object ExitEdit(){PlantEditing.Exit();return PlantEditing.State();}
+    private static object Individual(RhinoDoc doc,JsonElement r)
+    {
+        Point3d? point=null;if(r.TryGetProperty("point",out _)){var p=Read<double[]>(r,"point");if(p.Length!=3||p.Any(v=>!double.IsFinite(v)))throw new ArgumentException("point: [x,y,z]");point=new(p[0],p[1],p[2]);}
+        return new{individualId=PlantEditing.Modify(doc,Id(r,"groupId"),r.GetProperty("individualId").GetString()!,!r.TryGetProperty("custom",out var c)||c.GetBoolean(),r.TryGetProperty("assetId",out _)?Id(r):null,r.TryGetProperty("scale",out var scale)?scale.GetDouble():null,r.TryGetProperty("mirror",out var mirror)?mirror.GetBoolean():null,point)};
+    }
     private static object Settings(JsonElement r){if(r.TryGetProperty("settings",out _))PlantService.Settings=Read<BillboardSettings>(r,"settings");return PlantService.Settings;}
     private static object Preferences(JsonElement r)
     {

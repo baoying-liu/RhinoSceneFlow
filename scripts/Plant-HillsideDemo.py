@@ -11,9 +11,12 @@ def api(op,**kw):
 assert tree['status']=='completed' and tree['plant']
 path=os.path.join(folder,'planting.json');assert not os.path.exists(path),'Preserve existing planted group.'
 asset=next(a for a in api('plant_library')['assets'] if a['id']==tree['plant'])
-group=api('plant_group_create',spec=dict(name='Hillside river birch / 河桦种植',surface=data['carrier'],palette=[dict(asset=asset['id'],weight=1,spacingMeters=5.5)],settings=dict(density=.017,layoutSeed=2038,sizeSeed=105,mirrorSeed=82,minScale=.75,maxScale=1.25,edgeDistance=1.8,edgeStrength=.35,edgeCurve=[0,.2,.55,.85,1])))['id']
+area=Rhino.Geometry.AreaMassProperties.Compute(doc.Objects.FindId(System.Guid(data['carrier'])).Geometry)
+try:density=15.0/area.Area
+finally:area.Dispose()
+group=api('plant_group_create',spec=dict(name='Hillside river birch / 河桦种植',surface=data['carrier'],palette=[dict(asset=asset['id'],weight=1,spacingMeters=5.5)],settings=dict(density=density,layoutSeed=2038,sizeSeed=105,mirrorSeed=82,minScale=.75,maxScale=1.25,edgeDistance=1.8,edgeStrength=.35,edgeCurve=[0,.2,.55,.85,1])))['id']
 for p in [[-20,-12,0],[19,-9,0],[-16,17,0],[17,17,0]]:api('plant_group_manual',groupId=group,assetId=asset['id'],point=p)
-li=doc.Layers.Add('12 Planting - River Birch Group',Color.FromArgb(93,139,87));o=doc.Objects.FindId(System.Guid(group));a=o.Attributes.Duplicate();a.LayerIndex=li;doc.Objects.ModifyAttributes(o.Id,a,True)
+li=doc.Layers.Add('12 Planting - River Birch Group',Color.FromArgb(93,139,87));api('plant_group_manage',groups=[group],layerId=str(doc.Layers[li].Id))
 api('plant_settings',settings=dict(mode='auto',angle=60,transition=5))
 api('plant_select',assetId=asset['id']);api('plant_ui_settings',settings=dict(language='zh',libraryView='tiles',compositionView='tiles'))
 with open(path,'w') as f:json.dump(dict(group=group,asset=asset,carrier=data['carrier']),f,indent=2)

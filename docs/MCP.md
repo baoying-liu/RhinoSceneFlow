@@ -1,5 +1,25 @@
 # 原厂 Rhino-MCP-Platform 接入
 
+## v0.17 Plants List 与选择属性
+
+`material_workspace_open` 新增 `page:plantsList|properties`；工作区现在有七个页面，前五个页面的 GUID 与顺序保持。所有文档请求带 `apiVersion:1,document:<当前运行序列>`，继续通过原厂 Platform 的 `run_python` 调用 `McpApi.Execute`。
+
+| operation | 参数与行为 |
+| --- | --- |
+| `plant_list_select` | `groups:[GUID]`，同步列表和文档选择；隐藏／锁定对象只保留列表选择，不强行显示或解锁 |
+| `plant_group_manage` | `groups:[GUID]`，可选 `name,layerId,visible,locked`；更新真实对象属性，支持 Undo |
+| `plant_edit_enter` | `groupId,individualId?`；进入组合编辑或选定单株，布局必须已完成 |
+| `plant_edit_exit` / `plant_edit_status` | 退出或读取当前文档单株编辑状态 |
+| `plant_edit_cancel` | 恢复进入隔离编辑前的组合配置并退出 |
+| `plant_edit_transform` | `transform:[16 个 row-major 有限数],copy?:false`；当前选中单株，与 Gumball 共用提交路径，移动后附着承载面；copy 增加组合成员而非文档物件 |
+| `plant_edit_pick` | `x,y,viewportId?`；活动视口像素位置的透明度/遮挡拾取，只读返回 hit |
+| `plant_individual_update` | `groupId,individualId,custom?:true,assetId?,scale?,mirror?,point?:[x,y,z]`；点为文档世界坐标，吸附承载面；返回新的稳定 `individualId`，后续使用返回值。`custom:false` 恢复程序结果 |
+| `plant_loose_update` | `objectId,assetId?,scale?,mirror?`；兼容旧的独立植物对象 |
+| `selection_properties` | `objects:[GUID]`，读取普通物件的有效材质与 UV 状态 |
+| `selection_material_update` | `objects:[GUID],scope?:material|layer|object,name?,roughness?,metallic?,widthMeters?,heightMeters?`；默认修改当前文档中相同原生材质；局部修改按需复制，返回目标与复制数量。低层 API 只修改材质，自动 UV 准备由属性 UI 队列执行，Agent 可先调用已有 UV API |
+
+`plant_group_state.spec.individuals` 保存独立覆盖；`plant_group_list` 包含隐藏与锁定组合。单株自定义不是额外 Rhino 对象，不需要临时代理，PSD 与视口读取同一份组合结果。相关行为与限制见 [Plants List 与属性](PlantsList-Properties.md)。
+
 ## v0.13 停靠工作区与材质检索 / 分类
 
 以下操作继续经过 `McpApi.Execute`；请求带 `apiVersion:1`。涉及模型 / UI 的请求带当前 `document`（RhinoDoc RuntimeSerialNumber）。
@@ -279,3 +299,11 @@ v0.16.1 另提供 `plant_ui_settings`：无参数读取，`settings:{language:"a
 - `plant_organize`：异步整库 AI 整理，返回 CatalogJob；查询/取消使用既有 `material_catalog_status/cancel`，jobId。科学身份、来源、图片和尺寸不变。
 
 Workbench 图层新增 `{kind:"plants",plantGrouping:"individual"|"species"|"all"}`，默认 species 并置顶；blend/opacity/enabled、配置复制仍支持。视图配置 `plantShadows:true` 控制独立阴影中是否包含植物透空投影。`kind:display/texture/material` 不烘焙植物。规则及限制见 [Planting.md](Planting.md)。
+## AI 后期工作台（v0.18.0）
+
+`postproduction_start {document,path?,browser?:false}` starts/reuses the authenticated local Web UI and optionally submits an existing PSD/PSB snapshot. Returns a launch job; `postproduction_status {jobId}` polls it. `completed` means service/file handoff, not completed PSD parsing or image generation. `importJob` identifies the HTTP service's parse job. `url` contains a local bearer fragment: do not log it. Native workspace page is `post`; command is `RhinoSceneFlowPostProduction`. No new MCP listener. Phase 1 covers PSD/layers/description/tile planning only. See [PostProduction.md](PostProduction.md).
+
+
+## AI 后期实际生图（v0.19.0）
+
+新增 `postproduction_request {route,method:"GET"|"POST"|"PUT",body?}`，仍经原厂 Platform；仅接受相对 `/api/status`、`/api/projects/...`、`/api/jobs/...` JSON 路由。返回后台 launch job，用 `postproduction_status {jobId}` 读取 response；response 中的 jobId 是独立 Web 作业，继续经该桥查询。可向 `/api/projects/{id}/generate` POST `{revision,mode:"tile"|"all",tileId?}`；输出 PNG，源 PSD 保留。桥不回传 bearer、不传输二进制、不新增 MCP 服务。接口与取消/重试/人工接受流程见 [PostProduction-Generation.md](PostProduction-Generation.md)。B 已验证 GET、POST 和无额外生图的恢复融合。

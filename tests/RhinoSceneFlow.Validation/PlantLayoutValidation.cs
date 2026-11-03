@@ -15,6 +15,12 @@ static class PlantLayoutValidation
         s.MirrorSeed++;var mirrored=PlantLayout.Generate(surface,edges,palette,manual,s);Check(resized.Plants.Select(p=>p.Scale).SequenceEqual(mirrored.Plants.Select(p=>p.Scale)),"mirror seed must not alter size");Check(resized.Plants.Where((p,i)=>p.Mirror!=mirrored.Plants[i].Mirror).Count()>10,"mirror stream changes");
         s.LayoutSeed++;var moved=PlantLayout.Generate(surface,edges,palette,manual,s);Check(moved.Plants[0].Position==manual[0].Position,"layout must preserve hand positions");Check(original.Plants[1].Position!=moved.Plants[1].Position,"layout seed changes auto positions");
         s.Density=0;Check(PlantLayout.Generate(surface,edges,palette,manual,s).Plants.Length==1,"manual beyond target retained");
+        var fixedId="custom:test";var fixedPlant=new LayoutManual(fixedId,Guid.NewGuid(),new(5,5,1),false,2.75,true);
+        s.Density=.4;var customized=PlantLayout.Generate(surface,edges,palette,[fixedPlant],s,excluded:new HashSet<string>{"auto:0"});
+        Check(customized.Plants.Length==customized.Target&&customized.Plants.Count(p=>p.Id==fixedId)==1&&!customized.Plants.Any(p=>p.Id=="auto:0"),"customized automatic instance counts toward target without original duplicate");
+        s.LayoutSeed+=5;s.SizeSeed+=5;s.MirrorSeed+=5;s.MinScale=.8;s.MaxScale=1.8;
+        var changed=PlantLayout.Generate(surface,edges,palette,[fixedPlant],s);var retained=changed.Plants.Single(p=>p.Id==fixedId);
+        Check(retained.Position==fixedPlant.Position&&retained.Scale==2.75&&retained.Mirror&&retained.Asset==fixedPlant.Asset,"customized position/type/scale/mirror survive all group seeds and ranges");
         s.Density=.6;s.EdgeStrength=1;s.EdgeDistance=2;s.EdgeCurve=[0,0,.3,.8,1];var boundary=PlantLayout.Generate(surface,edges,palette,[new("edge",a,new(0,0,0))],s);Check(boundary.Plants[0].Scale<=.015,"manual edge size");
         s.EdgeStrength=0;s.OverrideSpacing=true;s.Density=8;var dense=PlantLayout.Generate(surface,edges,palette,[],s);Check(dense.Plants.Length==dense.Target,"override spacing reaches density");Check(dense.Plants.Count(p=>p.Asset==b)>dense.Plants.Count(p=>p.Asset==a)*2,"weighted mixture");
         var json=JsonSerializer.Serialize(original,MaterialLibrary.Json);Check(JsonSerializer.Deserialize<PlantLayoutResult>(json,MaterialLibrary.Json)!.Plants.SequenceEqual(original.Plants),"persist value snapshots without recursive vector properties");

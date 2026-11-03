@@ -8,6 +8,8 @@ public readonly record struct Rgb(byte R, byte G, byte B)
 public sealed record ColorGroup(string Name, Rgb Color);
 public readonly record struct Vec3(double X, double Y, double Z)
 {
+    // Record-generated PrintMembers also prints Unit, which recursively prints another Vec3.
+    public override string ToString() => FormattableString.Invariant($"Vec3({X:R}, {Y:R}, {Z:R})");
     public static Vec3 operator +(Vec3 a, Vec3 b) => new(a.X + b.X, a.Y + b.Y, a.Z + b.Z);
     public static Vec3 operator /(Vec3 a, double s) => a * (1/s);
     public static Vec3 operator *(Vec3 a, double s) => new(a.X * s, a.Y * s, a.Z * s);

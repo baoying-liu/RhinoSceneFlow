@@ -10,7 +10,7 @@ namespace RhinoSceneFlow.Plugin;
 
 public static class SceneFlowWorkspace
 {
-    private static readonly Type[] pages=[typeof(MaterialToolPanel),typeof(MaterialLibraryToolPanel),typeof(UvToolPanel),typeof(PlantToolPanel),typeof(ExportToolPanel)];
+    private static readonly Type[] pages=[typeof(MaterialToolPanel),typeof(MaterialLibraryToolPanel),typeof(UvToolPanel),typeof(PlantToolPanel),typeof(ExportToolPanel),typeof(PlantsListToolPanel),typeof(PropertiesToolPanel),typeof(PostProductionToolPanel)];
     private static readonly Dictionary<uint,Guid> selectedAssets=[];
     private static readonly Dictionary<uint,string> materialScopes=[];
     internal static readonly Dictionary<string,WorkspaceHost> Hosts=[];
@@ -18,15 +18,15 @@ public static class SceneFlowWorkspace
     private static bool opening;
     internal static void Register(SceneFlowPlugin plugin)
     {
-        string[] titles=["SceneFlow · AI 素材","SceneFlow · 材质库","SceneFlow · UV","SceneFlow · 种植","SceneFlow · PSD"];
-        string[] icons=["Materials","Library","Uv","Planting","Export"];
+        string[] titles=["SceneFlow · AI 素材","SceneFlow · 材质库","SceneFlow · UV","SceneFlow · 种植","SceneFlow · PSD","SceneFlow · Plants List","SceneFlow · 属性","SceneFlow · AI 后期"];
+        string[] icons=["Materials","Library","Uv","Planting","Export","Planting","Uv","Export"];
         for(int i=0;i<pages.Length;i++)Panels.RegisterPanel(plugin,pages[i],titles[i],typeof(SceneFlowPlugin).Assembly,"RhinoSceneFlow.Plugin.Resources."+icons[i]+".ico",PanelType.System);
         RhinoDoc.CloseDocument+=OnDocumentClosed;
     }
     private static void OnDocumentClosed(object? sender,DocumentEventArgs e){uint serial=e.Document.RuntimeSerialNumber;selectedAssets.Remove(serial);materialScopes.Remove(serial);UnwrapService.CancelDocument(serial);RandomTextureService.CancelDocument(serial);}
     public static object Open(string page="materials")
     {
-        var type=page switch{"materials"=>pages[0],"library"=>pages[1],"uv"=>pages[2],"planting"=>pages[3],"export"=>pages[4],_=>throw new ArgumentException("page: materials | library | uv | planting | export")};
+        var type=page switch{"materials"=>pages[0],"library"=>pages[1],"uv"=>pages[2],"planting"=>pages[3],"export"=>pages[4],"plantsList"=>pages[5],"properties"=>pages[6],"post"=>pages[7],_=>throw new ArgumentException("page: materials | library | uv | planting | export | plantsList | properties | post")};
         if(opening)return State();opening=true;
         try
         {
@@ -95,7 +95,7 @@ public abstract class WorkspaceHost:Panel,IPanel
     protected WorkspaceHost(string page)
     {
         this.page=page;SceneFlowWorkspace.Hosts[page]=this;SceneFlowWorkspace.AllHosts.Add(this);Padding=new(8);MinimumSize=new(320,300);
-        var nav=new DropDown();foreach(var p in new[]{("materials","AI · 素材对话"),("library","材质库 · 浏览与应用"),("uv","UV · 真实尺寸展开"),("planting","植物库 · 种植"),("export","PSD · 视图导出")})nav.Items.Add(new ListItem{Key=p.Item1,Text=p.Item2});nav.SelectedKey=page;
+        var nav=new DropDown();foreach(var p in new[]{("materials","AI · 素材对话"),("library","材质库 · 浏览与应用"),("uv","UV · 真实尺寸展开"),("planting","植物库 · 种植"),("plantsList","Plants List · 组合管理"),("properties","属性 · 当前选择"),("export","PSD · 视图导出"),("post","AI 后期 · Web 工作台")})nav.Items.Add(new ListItem{Key=p.Item1,Text=p.Item2});nav.SelectedKey=page;
         nav.SelectedValueChanged+=(_,_)=>{if(nav.SelectedKey!=page){SceneFlowWorkspace.Open(nav.SelectedKey!);nav.SelectedKey=page;}};
         var menu=new Button{Text="⋯",Width=28,ToolTip="工作区布局"};var context=new ContextMenu();var group=new ButtonMenuItem{Text="将所有工具放入同一容器"};group.Click+=(_,_)=>{try{SceneFlowWorkspace.Group();}catch(Exception e){RhinoApp.WriteLine(e.Message);}};context.Items.Add(group);menu.Click+=(_,_)=>context.Show(menu);
         var navigation=new TableLayout{Spacing=new(6,0),Rows={new TableRow(new TableCell(nav,true),menu)}};
@@ -112,13 +112,13 @@ public abstract class WorkspaceHost:Panel,IPanel
         try
         {
             body.Content=null;var old=Tool;Tool=null;old?.Dispose();serial=next;error=null;
-            Tool=doc==null?new Label{Text="打开 Rhino 模型后开始。"}:page switch{"materials"=>new MaterialsTool(doc),"library"=>new MaterialsTool(doc,true),"uv"=>new UvTool(doc),"export"=>new ExportPanel(doc),"planting"=>new PlantTool(doc),_=>new Label{Text="打开工具"}};
+            Tool=doc==null?new Label{Text="打开 Rhino 模型后开始。"}:page switch{"materials"=>new MaterialsTool(doc),"library"=>new MaterialsTool(doc,true),"uv"=>new UvTool(doc),"export"=>new ExportPanel(doc),"planting"=>new PlantTool(doc),"plantsList"=>new PlantsListTool(doc),"properties"=>new PropertiesTool(doc),"post"=>new PostProductionTool(doc),_=>new Label{Text="打开工具"}};
             body.Content=Tool;
         }
         catch(Exception e){serial=next;error=e.ToString();Tool=new Label{Text="工具切换文档失败："+e.Message,Wrap=WrapMode.Word};body.Content=Tool;RhinoApp.WriteLine(error);}
         finally{rebinding=false;}
     }
-    public object State()=>new{page,document=serial,error,details=Tool switch{MaterialsTool m=>m.GetState(),UvTool u=>u.GetState(),ExportPanel e=>e.GetState(),PlantTool p=>p.State(),_=>new{placeholder=true}}};
+    public object State()=>new{page,document=serial,error,details=Tool switch{MaterialsTool m=>m.GetState(),UvTool u=>u.GetState(),ExportPanel e=>e.GetState(),PlantTool p=>p.State(),PlantsListTool l=>l.State(),PropertiesTool p=>p.State(),PostProductionTool p=>p.State(),_=>new{placeholder=true}}};
     public void PanelShown(uint documentSerialNumber,ShowPanelReason reason){SceneFlowWorkspace.Hosts[page]=this;RefreshDocument();if(Tool is MaterialsTool m)m.Activate();}
     public void PanelHidden(uint documentSerialNumber,ShowPanelReason reason){}
     public void PanelClosing(uint documentSerialNumber,bool onCloseDocument){}
@@ -135,6 +135,14 @@ public abstract class WorkspaceHost:Panel,IPanel
 [Guid("7AF3B3D7-3243-4D82-A249-85FC9D0244B5")]public sealed class UvToolPanel:WorkspaceHost{public UvToolPanel():base("uv") {}}
 [Guid("1912E513-436A-4104-9E1E-A1C7C2D8B006")]public sealed class PlantToolPanel:WorkspaceHost{public PlantToolPanel():base("planting") {}}
 [Guid("D49742BA-B6FA-4321-8458-0C6D09F1DB18")]public sealed class ExportToolPanel:WorkspaceHost{public ExportToolPanel():base("export") {}}
+[Guid("FB004A79-13AF-4F08-A249-302BA8A80621")]public sealed class PlantsListToolPanel:WorkspaceHost{public PlantsListToolPanel():base("plantsList") {}}
+[Guid("99E5C935-4F86-4E7C-9DD8-FC9F9D30364D")]public sealed class PropertiesToolPanel:WorkspaceHost{public PropertiesToolPanel():base("properties") {}}
+[Guid("86D17DD6-0F4B-48AB-BF31-3E21149D67D3")]public sealed class PostProductionToolPanel:WorkspaceHost{public PostProductionToolPanel():base("post") {}}
+
+public sealed class PlantsListCommand:Rhino.Commands.Command
+{public override string EnglishName=>"RhinoSceneFlowPlantsList";protected override Rhino.Commands.Result RunCommand(RhinoDoc doc,Rhino.Commands.RunMode mode){SceneFlowWorkspace.Open("plantsList");return Rhino.Commands.Result.Success;}}
+public sealed class PropertiesCommand:Rhino.Commands.Command
+{public override string EnglishName=>"RhinoSceneFlowProperties";protected override Rhino.Commands.Result RunCommand(RhinoDoc doc,Rhino.Commands.RunMode mode){SceneFlowWorkspace.Open("properties");return Rhino.Commands.Result.Success;}}
 
 public sealed class WorkspaceCommand:Rhino.Commands.Command
 {

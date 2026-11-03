@@ -1,5 +1,7 @@
 using RhinoSceneFlow.Core;
 
+if(new Vec3(1,2,3).ToString()!="Vec3(1, 2, 3)"||default(Vec3).ToString()!="Vec3(0, 0, 0)")throw new Exception("Vector diagnostic formatting must not recurse through Unit.");
+
 if(args.FirstOrDefault()=="--plant-only"){PlantLayoutValidation.Run();PlantValidation.Run("artifacts/validation");return;}
 if(args.FirstOrDefault()=="--plant-ai")
 {

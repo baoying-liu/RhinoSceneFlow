@@ -43,6 +43,7 @@ public static class ExportService
     private static ExportReport ExportInternal(RhinoDoc doc, int width, string? path, bool overwrite,
         Guid? expectedViewport, CancellationToken cancellation, ShadowSettings? shadow, string backend = "ray")
     {
+        PlantEditing.RequireFinished(doc);
         if (RhinoApp.InvokeRequired) throw new InvalidOperationException("Export must run on Rhino's UI thread.");
         var watch = Stopwatch.StartNew();
         var view = doc.Views.ActiveView ?? throw new InvalidOperationException("No active model view.");

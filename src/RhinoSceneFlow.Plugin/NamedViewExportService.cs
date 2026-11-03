@@ -62,6 +62,7 @@ public static class NamedViewExportService
     }
     public static NamedViewPlan[] Plan(RhinoDoc doc,IReadOnlyList<NamedViewSpec> views,string directory,BatchChannels channels,Func<string,FileCollision> resolve)
     {
+        PlantEditing.RequireFinished(doc);
         RequireActive(doc);
         if(!channels.Material&&!channels.Shadow)throw new ArgumentException("至少选择一个导出通道。");
         if(views.Count==0)throw new ArgumentException("请勾选需要导出的 Named View。");
