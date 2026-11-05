@@ -326,3 +326,12 @@ B 首次部署 20261103-184348-05d3f08d32dc4e26b9321cf6d3d96e4a / PID 45272，�
 Office B channel 1cee488700ad42f59492743cc4a2a3fe，加载任务 3430613e9d464405a7a289ae225e091a Succeeded；deployment 20261103-220417-79c5f26c51b74052891e5a27c8705280，PID 31060，原厂 Platform 22801，插件 0.19.0。原厂 MCP postproduction_request 的 GET 与 POST 实测通过，POST 恢复/融合结果同哈希、无额外生图。Native New/Open 后同 PID，已恢复 PlantOutline-Fixed.3dm，70 个对象、Modified=false，工具 error=null。证据 artifacts/rhino-B/postproduction019/{bridge-verified,bridge-post-verified,ready}.json。未操作正式 Rhino，未使用系统鼠标。
 
 旧 PID 9396 的升级任务 6db231b5a7a5497d86b7b36ac2e7c2e6 曾 CloseTimedOut；备份已完成、端口释放，用户确认选择 No/暂不更新后，确认旧进程退出再加载。保留原超时记录，不冒称 NormalExit/code0。最终独立 Web PID 66816、端口 58945 保持运行，示例比较页面已打开；原有项目与模型不覆盖。
+
+
+## 2026-11-04 · 家里 B 更新至 v0.19.0
+
+家里 B 0d327c4c84f644f089b73834ffd93cfe，仅通过管理 MCP 19540 构建/加载；任务 153dd948369b4976b28c8c20c4a55105 Succeeded，部署 20261105-041952-9385324b092944bfbb22f579dd97d12f（UTC 名称），PID 147608，原厂 Platform 22801。编译零警告/错误，原生 describe 确认 0.19.0，八个工具全部实例化且 error=null，ChatKit ready。初次测试页名 plants 无效被 API 正常拒绝，改为实际 plantsList 后通过，没有改动产品。
+
+原默认 Python 3.14 venv 缺少新版图像依赖；保留为 %LOCALAPPDATA%/RhinoSceneFlow/chatkit-runtime-before019-20261104，默认路径创建独立 CPython 3.11 venv 并安装两个固定 requirements，pip check 通过。ChatKit SDK 协议（fixture agent，不调用模型）、raster 保护/alpha/排除/融合 pixel oracle、fresh image 来源与 Windows 原子 JSON 竞争检查通过。证据 artifacts/postproduction-raster/73a0e23925ff4f51af98e12979a50ff6/verified.json、artifacts/postproduction-provenance/83ca4d2853e94f69859632b0a77c8382/verified.json。
+
+原厂 MCP postproduction_request /api/status 实测服务 0.19.0、codexAvailable/generationAvailable=true，Web PID 59236；本机 Codex ChatGPT 登录有效。这一轮未消耗生图额度，不把接口能力检查称为新的真实生图测试。当前本机空文档上 Native New/Open 空白夹具/New 通过，同一 PID、八工具重绑健康；10054 后按文档与 PID 重连确认，不当作崩溃。最终空白未命名文档 Modified=false，B 窗口显示且 AI 素材页打开。证据 artifacts/rhino-B/home019/{native-ready,new,open,ready}.json，postproduction019/bridge-verified.json，提交/运行环境日志 artifacts/home019。没有使用系统鼠标、没有部署正式 Rhino、没有修改原材质/植物库、没有制作离线 ZIP。
