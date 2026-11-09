@@ -13,7 +13,7 @@ foreach($pattern in @('psd_tools-1.10.9-*.whl','pillow-11.3.0-*.whl','numpy-2.2.
 New-Item -ItemType Directory -Force -Path $release,$yakStage,(Join-Path $release 'Packages'),(Join-Path $release 'Runtime/wheels') | Out-Null
 # Curated, already tested deployment only. Exclude debug data, sandbox manifests,
 # local settings, credentials, user models and material/chat libraries.
-foreach($name in @('RhinoSceneFlow.Plugin.rhp','RhinoSceneFlow.Plugin.deps.json','RhinoSceneFlow.Core.dll','geometry3Sharp.dll','SceneFlow.UvWorker.exe','Microsoft.Web.WebView2.Core.dll','Microsoft.Web.WebView2.Wpf.dll')){
+foreach($name in @('RhinoSceneFlow.Plugin.rhp','RhinoSceneFlow.rui','RhinoSceneFlow.Plugin.deps.json','RhinoSceneFlow.Core.dll','geometry3Sharp.dll','SceneFlow.UvWorker.exe','Microsoft.Web.WebView2.Core.dll','Microsoft.Web.WebView2.Wpf.dll')){
     Copy-Item -LiteralPath (Join-Path $DeploymentDirectory $name) -Destination $yakStage
 }
 foreach($name in @('ChatKit','runtimes','PostProduction')){Copy-Item -LiteralPath (Join-Path $DeploymentDirectory $name) -Destination $yakStage -Recurse}

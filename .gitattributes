@@ -1,0 +1,3 @@
+
+# Preserve upstream byte hashes and browser SRI across Windows checkouts.
+src/RhinoSceneFlow.Plugin/PostProduction/vendor/photocraft/** -text

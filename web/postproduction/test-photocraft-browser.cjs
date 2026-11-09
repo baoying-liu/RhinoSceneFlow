@@ -10,6 +10,7 @@ const root=path.resolve(__dirname,'../..'),{chromium}=require(path.join(root,'ar
  try{
  const page=await browser.newPage({viewport:{width:1600,height:1000}}),errors=[];page.on('pageerror',e=>errors.push(e.message));
  await page.goto(base+'/#token=workflow-fixture-token');
+ await page.locator('.contentFields').waitFor();await page.locator('.contextTools>summary').click();
  async function open(){await page.locator('.workActions').getByRole('button',{name:'Edit in PhotoCraft'}).click();await page.waitForFunction(()=>document.querySelector('.photoCraftOverlay .primary')?.disabled===false,{timeout:90000});await page.waitForTimeout(900);await page.frameLocator('iframe').locator('canvas#photocraft_canvas').focus();}
  async function paint(y){await page.keyboard.press('b');await page.mouse.move(590,y);await page.mouse.down();await page.mouse.move(650,y+12,{steps:14});await page.mouse.up();}
  const slots=[];
@@ -27,7 +28,7 @@ const root=path.resolve(__dirname,'../..'),{chromium}=require(path.join(root,'ar
  await page.locator('.editReferencePreview').click();await page.locator('.referenceComparison [role=slider]').waitFor();await page.screenshot({path:path.join(f.folder,'photocraft-reference-compare.png')});await page.getByRole('button',{name:'Close',exact:true}).click();
  await open();await paint(565);await page.getByRole('button',{name:'Cancel',exact:true}).click();
  let b=await get('/boards/'+f.board);assert.deepEqual(b.nodes.find(n=>n.id===f.original).editReference,slots[1]);
- await page.reload();await page.locator('.editingReference .thumbBox img').waitFor();
+ await page.reload();await page.locator('.contentFields').waitFor();await page.locator('.contextTools>summary').click();await page.locator('.editReferencePreview').scrollIntoViewIfNeeded();await page.locator('[data-guide-layer=appearance] .thumbBox img').waitFor();
  await page.screenshot({path:path.join(f.folder,'photocraft-reference-returned.png')});assert.deepEqual(errors,[]);
  const report={realPhotoCraft:'0.21.0 Web/Wasm',paintedTwice:true,reopenedEditableProject:true,singleSlotReplaced:true,cancelPreservedSlot:true,reloadThumbnail:true,referenceComparison:true,sourcePixelsAndVersionsUnchanged:true,modelCalls:0,folder:f.folder,slots};
  fs.writeFileSync(path.join(f.folder,'photocraft-browser-verified.json'),JSON.stringify(report,null,2));console.log(JSON.stringify(report));

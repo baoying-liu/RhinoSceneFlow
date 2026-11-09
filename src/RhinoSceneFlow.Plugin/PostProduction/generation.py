@@ -28,6 +28,7 @@ class Generate(BaseModel):
 
 def signature(snapshot):
     value={k:snapshot[k] for k in ('sourceSha256','prompt','layers','edgeGuard')}
+    value.update(rasterVersion=snapshot.get('rasterVersion',1),tiles=snapshot.get('tiles',[]))
     return hashlib.sha256(json.dumps(value,sort_keys=True,ensure_ascii=False).encode()).hexdigest()
 
 
@@ -89,7 +90,7 @@ class Engine:
         if not self.api['codex'] or not Path(self.api['codex']).is_file():raise ValueError('未找到本机 Codex。')
         snapshot=self.api['plan_for'](ident)
         if not snapshot['prompt'].strip():raise ValueError('请先填写或采用一份整体处理描述。')
-        snapshot.update(tileSize=project['settings']['size'],edgeGuard=body.edgeGuard,approvedAnchor=body.anchor)
+        snapshot.update(tileSize=project['settings']['size'],edgeGuard=body.edgeGuard,approvedAnchor=body.anchor,rasterVersion=2)
         selected=snapshot['tiles'] if body.mode=='all' else [t for t in snapshot['tiles'] if t['id']==body.tileId]
         if not selected:raise ValueError('请点击预览中的一个分块。')
         run=uuid.uuid4().hex;folder=self.api['project_dir'](ident)/'runs'/run;folder.mkdir(parents=True)
@@ -177,7 +178,7 @@ VISUAL BRIEF:\n'''+prompt
         result=read_json(folder/'composed.json')
         if result['accepted']:
             state['output']=result
-            self.api['update'](state['project'],latestRun=state['id'])
+            if not result.get('needsReview') and not result.get('partial'):self.api['update'](state['project'],latestRun=state['id'])
         self.save(folder,state)
 
     async def work(self,job,state):
@@ -219,6 +220,10 @@ VISUAL BRIEF:\n'''+prompt
                         self.check(job);quality=read_json(attempt/'quality.json')
                         tile.update(status='review' if quality['review'] else 'completed',quality=quality,receipt=receipt,
                                     image=str((attempt/'candidate.png').relative_to(folder)).replace('\\','/'))
+                        self.save(folder,state);await self.raster(job,'overlap',folder,tile['id']);self.check(job)
+                        overlap=read_json(folder/'overlap.json');quality['overlap']=overlap
+                        if overlap['review']:quality['review']=True;tile['status']='review'
+                        write_json(attempt/'quality.json',quality)
                     except asyncio.CancelledError:raise
                     except Exception as error:tile.update(status='failed',error=str(error),image=None)
                     self.save(folder,state)
@@ -227,7 +232,9 @@ VISUAL BRIEF:\n'''+prompt
                 self.check(job)
                 complete=all(t['status'] in ('completed','skipped') for t in state['tiles'])
                 text=('单块测试完成，其他区域保留底图' if state['mode']=='tile' else '处理完成，可下载完整 PNG') if complete else '部分分块未完成或需要检查，可查看结果并继续处理'
-                state.update(status='completed' if complete else 'partial',stage=text)
+                needs_review=complete and bool((state.get('output') or {}).get('needsReview'))
+                if needs_review:text='最终融合图需要检查；当前可用结果未替换'
+                state.update(status='review' if needs_review else 'completed' if complete else 'partial',stage=text)
                 job.update(status='completed',stage=text,result=dict(run=state['id'],partial=not complete))
         except asyncio.CancelledError:
             for tile in state['tiles']:
@@ -263,11 +270,20 @@ VISUAL BRIEF:\n'''+prompt
             try:
                 job.update(status='running',stage='正在合并已确认图块')
                 await self.fuse(job,self.folder(ident,run),state)
-                state.update(status='completed' if all(t['status'] in ('completed','skipped') for t in state['tiles']) else 'partial',stage='已合并确认的图块')
+                state.update(status='review' if (state.get('output') or {}).get('needsReview') else 'completed' if all(t['status'] in ('completed','skipped') for t in state['tiles']) else 'partial',stage='已合并确认的图块')
                 self.save(self.folder(ident,run),state);job.update(status='completed',stage=state['stage'])
             except asyncio.CancelledError:job.update(status='cancelled',stage='合并已取消')
             except Exception as error:job.update(status='failed',stage=str(error))
         task=asyncio.create_task(accepted());task.project=ident;task.job=job['id'];self.active[run]=task
+        return dict(run=run,job=job['id'])
+
+    async def accept_output(self,ident,run,fusion_id):
+        self.idle(ident);state=self.state(ident,run);output=state.get('output') or {}
+        if fusion_id!=state.get('fusionId'):raise HTTPException(409,'Merged image changed; inspect the current result first')
+        if not output.get('needsReview') or not all(t['status'] in ('completed','skipped') for t in state['tiles']):raise ValueError('Approve the individual tiles before reviewing the complete image')
+        if output.get('checks',{}).get('hardFailure'):raise ValueError('Pixel integrity failures cannot be accepted')
+        output['reviewAccepted']=True;output['needsReview']=False;state.update(status='completed',stage='最终图已由用户确认')
+        self.api['update'](ident,latestRun=run);self.save(self.folder(ident,run),state);job=self.api['new_job'](ident,'generation');job.update(status='completed',stage=state['stage'])
         return dict(run=run,job=job['id'])
 
 
@@ -286,6 +302,8 @@ def register(app,api):
     async def resume(ident:str,run:str):return await engine.resume(ident,run)
     @router.post('/api/projects/{ident}/runs/{run}/accept/{tile}')
     async def accept(ident:str,run:str,tile:int):return await engine.accept(ident,run,tile)
+    @router.post('/api/projects/{ident}/runs/{run}/accept-output')
+    async def accept_output(ident:str,run:str,body:dict):return await engine.accept_output(ident,run,body.get('fusionId'))
     @router.post('/api/projects/{ident}/runs/{run}/retry/{tile}')
     async def retry(ident:str,run:str,tile:int):return await engine.retry(ident,run,tile)
     @router.get('/api/projects/{ident}/runs/{run}/image/{kind}')

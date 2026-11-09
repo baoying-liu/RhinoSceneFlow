@@ -1,5 +1,6 @@
 """After the real browser test: pixel/project oracles, slot guards and package roundtrip."""
-import copy,json,sys,uuid,shutil,struct,urllib.request,urllib.error
+import copy,json,sys,uuid,shutil,struct,urllib.request,urllib.error,io
+from psd_tools import PSDImage
 from pathlib import Path
 from PIL import Image
 import numpy as np
@@ -34,7 +35,9 @@ assert counts[1]>counts[0]>300,counts
 assert all(np.array_equal(im[0,0],a[0,0]) for im in images),'Unpainted source must retain its colour'
 projects=[call(prefix+'/assets/'+s['project'],raw=True) for s in browser['slots']]
 one,two=session(),session()
-assert call(prefix+'/edit-reference/'+one+'/input',raw=True)==projects[1],'Reopen exact editable project'
+reopened=PSDImage.open(io.BytesIO(call(prefix+'/edit-reference/'+one+'/input',raw=True)))
+assert any(l.name=='SceneFlow Instructions [SF1]' for l in reopened)
+prior=PSDImage.open(io.BytesIO(projects[1]));assert [l.name for l in reopened if l.name!='SceneFlow Instructions [SF1]']==[l.name for l in prior if l.name!='SceneFlow Instructions [SF1]'],'Preserve editable ordinary layers while refreshing SF instructions'
 apply(one,projects[0]);reject(lambda:apply(two,projects[1]),409)
 restore=session();apply(restore,projects[1]);reject(lambda:apply(restore,projects[1]),409)
 invalid=session();reject(lambda:apply(invalid,struct.pack('>4sH6sHIIHH',b'8BPS',1,b'\0'*6,4,1,9000,8,3)),400)
@@ -58,5 +61,5 @@ assert (worker/'reference-sheet.png').is_file()
 pack=store.package(bid);restored=store.unpack(pack);rn=next(n for n in restored['nodes'] if n['id']==node);assert rn['editReference']==ref and store.asset(restored['id'],ref['project']).read_bytes()==projects[1]
 changed=store.read(bid);cn=next(n for n in changed['nodes'] if n['id']==node);cn['asset']=next(n for n in changed['nodes'] if n['id']==f['child'])['asset'];store.commit(changed,record=False)
 assert not context.live_reference(next(n for n in store.read(bid)['nodes'] if n['id']==node))
-report=dict(realBrowserEvidence=browser['folder'],paintedPixels=counts,exactProjectReopen=True,staleSessionRejected=True,repeatedApplyRejected=True,invalidPSDRejected=True,cancelSessionRemoved=True,jsonMcpFileApply=True,singleSlotOutsideHistory=True,sourceAndVersionsPreserved=True,cleanInputNotOverwritten=True,generationReferenceSheet=True,packageRoundTrip=True,changedSourceDisablesOldReference=True,modelCalls=0,folder=str(out))
+report=dict(realBrowserEvidence=browser['folder'],paintedPixels=counts,editableOrdinaryLayersReopened=True,staleSessionRejected=True,repeatedApplyRejected=True,invalidPSDRejected=True,cancelSessionRemoved=True,jsonMcpFileApply=True,singleSlotOutsideHistory=True,sourceAndVersionsPreserved=True,cleanInputNotOverwritten=True,generationReferenceSheet=True,packageRoundTrip=True,changedSourceDisablesOldReference=True,modelCalls=0,folder=str(out))
 (out/'verified.json').write_text(json.dumps(report,indent=2));print(json.dumps(report))

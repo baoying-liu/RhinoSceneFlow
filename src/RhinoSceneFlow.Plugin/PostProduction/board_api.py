@@ -104,6 +104,53 @@ class BoardApi:
             parent=next((r for r in b['nodes'] if r['id']==n['parentId']),None)
             if parent:result['parent']=str(self.store.asset(id,parent['asset']))
         return result
+    def generation_snapshot(self,id,node):
+        """One resolver for preflight and execution; displayed history stays pinned."""
+        b=self.store.read(id);target=self.node(b,node)
+        if target.get('original') or target.get('deleted') or target.get('archived'):raise ValueError('Choose an active generated-image draft')
+        snapshot=self.snapshot(id,node);n=snapshot['node'];parent,notes=self.store.effective(b,target)
+        if not parent or parent.get('pending'):raise ValueError('A completed input image is required')
+        snapshot['inputVersion']=self.store.pixel_snapshot(parent);snapshot['inputNotes']=notes
+        snapshot['inputName']=parent['name']
+        if parent.get('original'):snapshot['inputTemplate']=dict(id=parent['id'],prompt=parent['params']['prompt'])
+        snapshot['image']=str(self.store.asset(id,parent['asset']));snapshot['parent']=snapshot['image']
+        snapshot.pop('psd',None);snapshot.pop('layers',None)
+        if parent.get('original') and (parent.get('source') or {}).get('psdAsset'):
+            snapshot.update(psd=str(self.store.asset(id,parent['source']['psdAsset'])),layers=parent['source']['layers'])
+        n.update(asset=parent['asset'],preview=parent['preview'],width=parent['width'],height=parent['height'])
+        if notes:n['params']['prompt']+='\nArchived modification intent:\n'+'\n'.join(x['summary'] for x in notes)
+        return snapshot
+    def prepared_input(self,s,folder):
+        version=copy.deepcopy(s['inputVersion'])
+        if read_json(folder/'prepared.json').get('sourceAdjusted'):
+            version.update(originalAsset=version.get('originalAsset',version['asset']),asset=self.store.put_asset(s['board'],folder/'base.png'),preview=self.store.put_asset(s['board'],folder/'base-preview.png'),prepared=True)
+        return version
+    async def preflight(self,id,node,body):
+        s=self.generation_snapshot(id,node)
+        if body.get('revision')!=s['revision']:raise HTTPException(409,'Board changed; save or reload before checking input')
+        stage=body.get('stage','whole')
+        self.validate_stage(s,stage)
+        folder=self.task_folder(id);write_json(folder/'snapshot.json',s);job=self.api['new_job'](id,'preflight')
+        try:
+            job.update(status='running',stage='Preparing input preview')
+            await self.raster(job,'prepare' if stage=='whole' else 'detail',folder)
+            images={k:self.store.put_asset(id,folder/v) for k,v in (dict(input='input.png',context='markup.png',mask='mask.png').items() if stage=='whole' else [])}
+            prepared=read_json(folder/'prepared.json') if stage=='whole' else {}
+            job.update(status='completed',stage='Input preview ready')
+            actual_input=self.prepared_input(s,folder) if stage=='whole' else s['inputVersion']
+            return dict(node=node,revision=s['revision'],stage=stage,input={**actual_input,'name':s['inputName']},scope=prepared.get('scope'),sourceAdjusted=prepared.get('sourceAdjusted',False),notes=s['inputNotes'],images=images,
+                annotations=s['node']['annotations'] if stage=='whole' else [],references=[dict(id=r['node']['id'],name=r['node']['name'],clip=r['clip'],editingReference=r.get('editingReference',False)) for r in s['references']] if stage=='whole' else [],
+                editablePixels=prepared.get('editablePixels'),totalPixels=prepared.get('totalPixels'),ready=stage=='detail' or bool(s['node']['params']['prompt'].strip() or s['node']['annotations'] or s['references']),stale=self.store.read(id)['revision']!=s['revision'])
+        except BaseException:
+            job.update(status='failed',stage='Input check failed');raise
+    def validate_stage(self,s,stage):
+        if stage not in ('whole','detail'):raise ValueError('stage: whole | detail')
+        if stage=='whole' and s['node']['params'].get('editScope')=='local' and not any(a['kind']=='edit' and (a.get('raster') or a.get('closed') and len(a.get('points',[]))>=3) and a.get('enabled',True) for a in s['node']['annotations']):
+            raise ValueError('Local editing requires a closed edit region inside the context frame')
+        if stage=='detail':
+            if s['inputVersion'].get('stage') not in ('whole','detail'):raise ValueError('Choose an approved whole-image result before high-resolution refinement')
+            target=self.node(self.store.read(s['board']),s['node']['id'])
+            if (s['node']['annotations'] or s['references']) and s['contextSignature']!=target.get('baseline',{}).get('contextSignature'):raise ValueError('Update the whole image with new annotations/references before high-resolution refinement')
     async def start(self,id,node,body):
         b=self.store.read(id)
         if body.get('revision')!=b['revision']:raise HTTPException(409,'Board changed; save or reload before generating')
@@ -113,30 +160,52 @@ class BoardApi:
         if target.get('original'):raise ValueError('Create a child draft from the original input first')
         if target.get('locked') and not target.get('inputChanged'):raise ValueError('Unlock this image before updating')
         self.store.check_capacity(target)
-        snapshot=self.snapshot(id,node);n=snapshot['node']
-        parent,notes=self.store.effective(b,target)
-        if not parent or parent.get('pending'):raise ValueError('A completed input image is required')
-        snapshot['inputVersion']=self.store.pixel_snapshot(parent);snapshot['inputNotes']=notes
-        if parent.get('original'):snapshot['inputTemplate']=dict(id=parent['id'],prompt=parent['params']['prompt'])
-        snapshot['image']=str(self.store.asset(id,parent['asset']));snapshot['parent']=snapshot['image']
-        snapshot.pop('psd',None);snapshot.pop('layers',None)
-        if parent.get('original') and (parent.get('source') or {}).get('psdAsset'):
-            snapshot.update(psd=str(self.store.asset(id,parent['source']['psdAsset'])),layers=parent['source']['layers'])
-        n['asset']=parent['asset'];n['preview']=parent['preview'];n['width']=parent['width'];n['height']=parent['height']
-        if notes:n['params']['prompt']+='\nArchived modification intent:\n'+'\n'.join(x['summary'] for x in notes)
+        snapshot=self.generation_snapshot(id,node);n=snapshot['node'];stage=body.get('stage','whole')
         if n['kind']!='image' or n.get('archived'):raise ValueError('Select a main image')
-        if not n['params']['prompt'].strip() and not n['annotations'] and not snapshot['references']:raise ValueError('Write a brief or add instructions inside the frame')
+        if stage!='detail' and not n['params']['prompt'].strip() and not n['annotations'] and not snapshot['references']:raise ValueError('Write a brief or add instructions inside the frame')
         if not self.api['codex'] or not Path(self.api['codex']).is_file():raise ValueError('Local Codex is unavailable')
-        stage=body.get('stage','whole')
-        if stage not in ('whole','detail'):raise ValueError('stage: whole | detail')
-        if stage=='detail' and parent.get('original'):raise ValueError('Choose an approved whole-image result before high-resolution refinement')
-        if stage=='detail' and (n['annotations'] or snapshot['references']) and snapshot['contextSignature']!=target.get('baseline',{}).get('contextSignature'):raise ValueError('Update the whole image with new annotations/references before high-resolution refinement')
+        self.validate_stage(snapshot,stage)
         folder=self.task_folder(id);write_json(folder/'snapshot.json',snapshot);job=self.api['new_job'](id,'board')
         task=dict(id=folder.name,job=job['id'],board=id,node=node,stage=stage,status='queued',phase='queued',created=time.time(),sourceRevision=b['revision'])
         write_json(folder/'task.json',task)
         target['busy']=task['id'];self.store.commit(b)
         runner=asyncio.create_task(self.work(job,folder,task,snapshot));self.track(job,runner,folder,task)
         return task
+    async def recompose(self,id,task_id,body):
+        b=self.store.read(id)
+        if body.get('revision')!=b['revision']:raise HTTPException(409,'Board changed; reload before rebuilding the merged image')
+        if any(t['status'] in ('queued','running','review') for t in self.tasks(id)):raise HTTPException(409,'Finish current board tasks first')
+        b=self.store.read(id)
+        if body.get('revision')!=b['revision']:raise HTTPException(409,'Board changed; reload before rebuilding the merged image')
+        old=read_json(self.store.folder(id)/'tasks'/ident(task_id)/'task.json');snapshot=read_json(self.store.folder(id)/'tasks'/task_id/'snapshot.json')
+        if old['stage']!='detail' or old['status']!='completed':raise ValueError('Choose a completed tiled task')
+        n=self.node(b,old['node']);latest=self.generation_snapshot(id,n['id'])
+        if n.get('deleted') or n.get('archived') or n.get('pending'):raise ValueError('Choose an active completed image')
+        if n['params']!=snapshot['node']['params'] or latest['inputVersion']['versionId']!=snapshot['inputVersion']['versionId'] or latest['contextSignature']!=snapshot.get('contextSignature'):raise ValueError('Inputs or settings changed; create a new high-resolution task')
+        self.store.check_capacity(n);state=self.generation.state(old['project'],old['run']);self.generation.idle(old['project'])
+        if not state['tiles'] or not all(t['status'] in ('completed','skipped') for t in state['tiles']):raise ValueError('Every tile must be approved before rebuilding')
+        folder=self.task_folder(id);write_json(folder/'snapshot.json',snapshot);job=self.api['new_job'](id,'board');task=dict(id=folder.name,job=job['id'],board=id,node=n['id'],stage='detail',status='queued',phase='queued',created=time.time(),sourceRevision=b['revision'],project=old['project'],run=old['run'],recomposedFrom=task_id)
+        write_json(folder/'task.json',task);n['busy']=task['id'];self.store.commit(b)
+        async def run():
+            try:
+                task.update(status='running',phase='compositing');job.update(status='running',stage='compositing');write_json(folder/'task.json',task)
+                child=await self.generation.resume(old['project'],old['run'])
+                try:
+                    while self.api['jobs'][child['job']]['status'] in ('queued','running'):self.check(job);await asyncio.sleep(.2)
+                except asyncio.CancelledError:
+                    self.api['jobs'][child['job']].update(status='cancelled',stage='Cancelled');self.generation.cancel(child['job']);raise
+                self.check(job);state=self.generation.state(old['project'],old['run'])
+                if state['status']=='review':task.update(status='review',phase='review');job.update(status='completed',stage='review');return
+                if state['status']!='completed' or not state.get('output'):raise ValueError('Rebuilding the merged image failed')
+                src=self.generation.folder(old['project'],old['run']);v=state['output']
+                n=self.store.publish(id,task['node'],self.store.put_asset(id,src/v['image']),self.store.put_asset(id,src/v['preview']),v['width'],v['height'],'detail',dict(task=task['id'],projectId=old['project'],runId=old['run'],recomposedFrom=task_id),snapshot)
+                task.update(status='completed',phase='completed',result=n['id']);job.update(status='completed',stage='completed')
+            except asyncio.CancelledError:task.update(status='cancelled',phase='cancelled');job.update(status='cancelled',stage='cancelled')
+            except Exception as e:task.update(status='failed',phase='failed',error=str(e));job.update(status='failed',stage=str(e))
+            finally:
+                task['finished']=time.time();write_json(folder/'task.json',task);b=self.store.read(id);n=self.node(b,task['node'])
+                if n.get('busy')==task['id'] and task['status']!='review':n.pop('busy',None);self.store.commit(b)
+        runner=asyncio.create_task(run());self.track(job,runner,folder,task);return task
     async def work(self,job,folder,task,snapshot):
         def phase(value):
             self.check(job);task.update(status='running',phase=value);job.update(status='running',stage=value);write_json(folder/'task.json',task)
@@ -147,6 +216,7 @@ class BoardApi:
                     phase('preparing')
                     if not (folder/'prepared.json').is_file():await self.raster(job,'prepare',folder)
                     prep=read_json(folder/'prepared.json')
+                    snapshot['inputVersion']=self.prepared_input(snapshot,folder);write_json(folder/'snapshot.json',snapshot)
                     phase('generating')
                     approach={'faithful':'Polish existing appearance without inventing new design elements.','detail':'Complete plausible missing construction and landscape details within the intended design.','concept':'Explore a coherent design interpretation while respecting the stated design freedom.'}[p['preset']]
                     brief=(f"Preset: {p['preset']}. {approach} Detail completion target: {p['detail']}/100; design freedom: {p['freedom']}/100. These are qualitative instructions, not numeric model strength. "
@@ -232,7 +302,9 @@ def register(app,root,api,generation):
     @router.post('/api/boards/{id}/nodes/{node}/branch')
     async def branch(id:str,node:str,body:dict={}):
         if body.get('revision')!=store.read(id)['revision']:raise HTTPException(409,'Board changed; reload first')
-        return store.branch(id,node,body.get('sibling',False))
+        return store.branch(id,node,body.get('sibling',False),body.get('stage'))
+    @router.post('/api/boards/{id}/nodes/{node}/preflight')
+    async def preflight(id:str,node:str,body:dict):return await board.preflight(id,node,body)
     @router.get('/api/boards/{id}/nodes/{node}/context')
     async def canvas_context(id:str,node:str):
         snap=board.snapshot(id,node)
@@ -281,12 +353,15 @@ def register(app,root,api,generation):
         t=read_json(store.folder(id)/'tasks'/ident(task)/'task.json')
         if not t.get('project') or not t.get('run'):raise ValueError('No tiled result')
         return board.generation.state(t['project'],t['run'])
+    @router.post('/api/boards/{id}/tasks/{task}/recompose')
+    async def recompose(id:str,task:str,body:dict):return await board.recompose(id,task,body)
     @router.post('/api/boards/{id}/tasks/{task}/review')
     async def review_action(id:str,task:str,body:dict):
         t=read_json(store.folder(id)/'tasks'/ident(task)/'task.json');action=body.get('action')
         if action=='accept':return await generation.accept(t['project'],t['run'],body['tile'])
         if action=='retry':return await generation.retry(t['project'],t['run'],body['tile'])
         if action=='resume':return await generation.resume(t['project'],t['run'])
+        if action=='acceptOutput':return await generation.accept_output(t['project'],t['run'],body.get('fusionId'))
         raise ValueError('action: accept | retry | resume')
     @router.post('/api/boards/{id}/generate')
     async def generate(id:str,body:dict):return await board.start(id,body['node'],body)

@@ -580,3 +580,20 @@ B 最终构建 `5abd54a2d16f4a9585c6ccf94faeca18` 零警告零错误；Web 资�
 真实官方 PhotoCraft 再编辑/替换保留隐藏状态通过：`artifacts/workflow021-http/ba96c31489b64c5590554fa542e2077b/photocraft-browser-verified.json`；配套输入／工程包／会话保护回归 `artifacts/photocraft-reference/16cffa4e763d4967afb17df8efbb52a0/verified.json`，隐藏的参考仍实际进入生成准备的 reference-sheet。BoardWorkflow `dbdf584f68c5413c999ed92fd60787d9`、ReferenceGallery `b9caf212fd5f48d59e95857f10a1a88d`、CanvasContext `74bb753706e74def8a54d76fb48be0f7` 通过。全部无图像模型调用。
 
 B 上用户已经编辑的原始图参考层（不是新造的测试层）默认显示，源码／构建／活动部署一致；读取并显示后真实案例逐字段未变。最终证据 `artifacts/rhino-B/reference-visibility022`，构建 `0a16f7477666468f8076f5d6af22d041` 零警告零错误。
+
+
+## 2026-11-09 ? ?? B ????
+
+? Sandbox-B.md ??????? dc8913c865ad44cca3d7c565ba13e935 ???? 0.22.0??? MCP ? Web ??/PhotoCraft ?? SHA ??????????????????? MCP 0.3.0 ???0.4.0 ??? DLL ????????????????????/??????? Rhino ????????????????????????????????????????? artifacts/rhino-B/company022/verified.json?
+
+## 2026-11-09 · AI 任务流程 0.22.1
+
+scripts/Build.ps1 完整通过，零编译警告/错误，Core/UV/随机贴图/植物/PSD/跨进程材质库检查通过，日志 artifacts/taskflow0221-build.log。最终 B 发布见 Sandbox-B.md，原生版本/原厂 JSON MCP/工具栏/活动静态文件均实测，不把浏览器检查称为新的模型画质验证。
+
+新增 Test-TaskInputs.py：artifacts/task-inputs/67eaba377473484b87ca54b7ec67186f/verified.json，验证原子高清草稿、无描述高清、预检只读、真实 raster、最新输入解析、固定比较输入、归档跳过和陈旧检查拒绝。实际 Edge + HTTP 的 test-task-flow-browser.cjs 最终证据 artifacts/workflow021-http/a89bc2fb281243f4baa515fa781f34ab/task-flow-verified.json：高清/同级来源、描述首屏、真实输入/mask、辅助标注底图不标 AI 结果、关闭预检无迟到弹回、画布框入口、原始像素/版本保留，零 page errors / 模型调用。
+
+既有回归通过：BoardWorkflow b794c4b475964501bca4791feef2983a；CanvasContext 537d1b17e198471097351473ef88a99a；BoardInvariants bd9df112492546139e8f50bfdd6a3ae8；ReferenceGallery 5fa747b8c98e4edda4ba5bbaa831ecff；BoardLayout 15d5a2a3a3584bf79afab8cd2e729c5d；PostProductionBoards 9eee0466bd8c40069e1fc477a6af6d7f。
+
+参考层实际像素/锁定/左右对比/刷新/平滑/画布/选择/导出回归：artifacts/workflow021-http/57c61b1ce8964abfbaec8123f2ec4dcf/reference-visibility-verified.json。原位文字（中文、多行、composition 分支、zoom、blur/Esc、刷新、像素不变）：artifacts/workflow021-http/3e14cb44dcb045088e74f30a198e3c84/inline-text-browser-verified.json。旧测试把新文字仍断言成 per-node annotations，首次失败证据保留 1c700bc888e24763b9c88ed8ed1336df；实际文字已正确写入 world-space board.marks。断言已改为恰好一份 world mark、正确世界坐标，原两份 legacy marks 不变，未改产品去迎合旧断言。
+
+最终 Hillside 页面实测 artifacts/ui-audit-20261109/release-case-verified.json 与 release-case-{list,mask,canvas}.png；原厂桥预检 artifacts/rhino-B/taskflow0221/bridge.json。全部为输入/界面/保护语义验证，零新增模型调用。测试中九个自有 idle fixture 服务已正常 shutdown，未结束用户服务/进程来清理测试。

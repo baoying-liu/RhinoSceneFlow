@@ -10,7 +10,7 @@ try {
     $packagePath = Join-Path $projectRoot 'artifacts/package/RhinoSceneFlow'
     New-Item -ItemType Directory -Path $packagePath -Force | Out-Null
     $outputPath = Join-Path $projectRoot "src/RhinoSceneFlow.Plugin/bin/$Configuration/net8.0-windows"
-    foreach ($name in @('RhinoSceneFlow.Plugin.rhp', 'RhinoSceneFlow.Core.dll', 'RhinoSceneFlow.Plugin.deps.json', 'geometry3Sharp.dll', 'SceneFlow.UvWorker.exe')) {
+    foreach ($name in @('RhinoSceneFlow.Plugin.rhp', 'RhinoSceneFlow.rui', 'RhinoSceneFlow.Core.dll', 'RhinoSceneFlow.Plugin.deps.json', 'geometry3Sharp.dll', 'SceneFlow.UvWorker.exe')) {
         Copy-Item -LiteralPath (Join-Path $outputPath $name) -Destination $packagePath -Force
     }
     Copy-Item -LiteralPath (Join-Path $projectRoot 'third-party/geometry3Sharp-LICENSE.txt') -Destination $packagePath -Force

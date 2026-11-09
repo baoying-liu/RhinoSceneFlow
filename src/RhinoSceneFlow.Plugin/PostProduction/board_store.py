@@ -8,7 +8,7 @@ import board_layout as layout
 
 ASSET = re.compile(r'^[a-f0-9]{64}(?:-preview)?\.(?:png|jpg|webp|psd)$')
 PRESETS = {'faithful':(20,5), 'detail':(65,15), 'concept':(80,55)}
-DEFAULTS = dict(generationStage='whole',prompt='', preset='detail', detail=65, freedom=15, blend=100, edgeGuard=1,
+DEFAULTS = dict(generationStage='whole',editScope='auto',prompt='', preset='detail', detail=65, freedom=15, blend=100, edgeGuard=1,
                 tileSize=1024, overlap=128, outputSize=2048, roles={},referencePurpose='general')
 
 def ident(value):
@@ -27,6 +27,7 @@ def params(value):
     if set(result)-set(DEFAULTS):raise ValueError('Unknown generation parameter')
     if result['preset'] not in PRESETS or not isinstance(result['prompt'],str) or len(result['prompt'])>16000:raise ValueError('Invalid brief')
     if result['generationStage'] not in ('whole','detail'):raise ValueError('Invalid generation stage')
+    if result['editScope'] not in ('auto','whole','local'):raise ValueError('Edit scope: whole | local')
     if result['referencePurpose'] not in ('general','style','material','form','plant','palette'):raise ValueError('Invalid reference purpose')
     for key in ('detail','freedom','blend'):finite(result[key],0,100)
     finite(result['edgeGuard'],0,3)
@@ -40,9 +41,14 @@ def annotations(values):
     if not isinstance(values,list) or len(values)>1000:raise ValueError('Maximum 1000 annotations per image')
     result=[];total=0
     for value in values:
-        a={k:v for k,v in value.items() if k in ('id','kind','points','x','y','text','color','size','enabled','closed')}
+        a={k:v for k,v in value.items() if k in ('id','kind','points','x','y','text','color','size','enabled','visible','closed','raster','rasterPose')}
         ident(a['id'])
         if 'closed' in a and type(a['closed']) is not bool:raise ValueError('closed must be boolean')
+        for k in ('visible','enabled'):
+            if k in a and type(a[k]) is not bool:raise ValueError(k+' must be boolean')
+        if a.get('raster'):
+            if not ASSET.fullmatch(a['raster']) or not a['raster'].endswith('.png'):raise ValueError('Invalid annotation raster')
+            q=a['rasterPose'];a['rasterPose']={k:finite(q[k],.001 if k in ('width','height') else -1_000_000) for k in ('x','y','width','height')}
         if a['kind'] not in ('pen','arrow','text','label','protect','edit'):raise ValueError('Unknown annotation tool')
         a['size']=finite(a.get('size',4),1,100)
         if not re.fullmatch(r'#[a-fA-F0-9]{6}',a.get('color','#e6a74b')):raise ValueError('Invalid annotation color')
@@ -285,6 +291,12 @@ class Store:
             if len(ids)!=len(old['nodes']):raise ValueError('Duplicate image ID')
             for n in old['nodes']:
                 params(n['params']);annotations(n['annotations']);finite(n['width'],1,8192);finite(n['height'],1,8192)
+                controls=n.get('guideControls',{})
+                if not isinstance(controls,dict) or set(controls)-{'visible','enabled','specialVisible','specialEnabled'} or any(type(v) is not bool for v in controls.values()):raise ValueError('Invalid guide controls')
+                for k in ('contextVisible','contextEnabled'):
+                    if k in n and type(n[k]) is not bool:raise ValueError('Invalid reference controls')
+                for a in annotations(n['annotations']):
+                    if a.get('raster') and 'assets/'+a['raster'] not in names:raise ValueError('Missing instruction raster')
                 for key in ('asset','preview'):
                     if not ASSET.fullmatch(n[key]) or 'assets/'+n[key] not in names:raise ValueError('Missing image asset')
                 if n.get('parentId') and n['parentId'] not in ids:raise ValueError('Missing parent image')
@@ -302,6 +314,8 @@ class Store:
                 while parent.get('parentId'):
                     if parent['id'] in chain:raise ValueError('Cyclic version relationship')
                     chain.add(parent['id']);parent=next(p for p in old['nodes'] if p['id']==parent['parentId'])
+            for a in annotations(old.get('marks',[])):
+                if a.get('raster') and 'assets/'+a['raster'] not in names:raise ValueError('Missing canvas instruction raster')
             b=self.create(str(old.get('name','Imported board'))[:160],remember=False);clean=copy.deepcopy(b);p=self.folder(b['id'])
             try:
                 for f in files:
@@ -350,7 +364,7 @@ class Store:
         for n in b['nodes']:
             parent,skipped=self.effective(b,n);current=n.get('input') or {}
             n['inputChanged']=bool(parent and (parent['versionId']!=current.get('versionId') or parent['id']!=current.get('id') or skipped!=n.get('inputNotes',[])))
-    def branch(self,id,node,sibling=False):
+    def branch(self,id,node,sibling=False,stage=None):
         b=self.read(id);before=copy.deepcopy(b);n=next(r for r in b['nodes'] if r['id']==node)
         if n.get('deleted'):raise ValueError('Image was deleted')
         if len(b['nodes'])>=1000:raise ValueError('Board image limit reached; create another board')
@@ -360,6 +374,10 @@ class Store:
         if not parent:raise ValueError('Input image unavailable')
         if parent.get('pending'):raise ValueError('Generate the input image first')
         settings=copy.deepcopy(n['params'])
+        if stage is not None:
+            if stage not in ('whole','detail'):raise ValueError('stage: whole | detail')
+            if stage=='detail' and (parent.get('original') or parent.get('stage') not in ('whole','detail')):raise ValueError('Choose a completed generated image for high-resolution output')
+            settings['generationStage']=stage
         if not n['original']:settings['prompt']=''
         r=self.append(id,parent['asset'],parent['preview'],parent['width'],parent['height'],Path(n['name']).stem+' · '+str(len(b['nodes'])+1)+'.png',parent=parent['id'],stage='draft',settings=settings,record=False)
         b=self.read(id);r=next(v for v in b['nodes'] if v['id']==r['id'])

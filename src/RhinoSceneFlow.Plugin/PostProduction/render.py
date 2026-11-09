@@ -68,7 +68,13 @@ def prepare(folder):
     visit(psd)
     if len(actual)!=len(rows):raise ValueError('PSD 图层数量已改变。')
     roles={id(l):r for l,r in actual}
-    base=psd.composite(force=True, layer_filter=lambda layer: layer.is_visible() and roles.get(id(layer))!='exclude')
+    excluded=any(l.is_visible() and role=='exclude' for l,role in actual)
+    # A layer_filter forces recompositing, even when it removes nothing.
+    if excluded:base=psd.composite(force=True,layer_filter=lambda layer: layer.is_visible() and roles.get(id(layer))!='exclude')
+    elif snapshot.get('canonicalBase'):
+        with Image.open(snapshot['canonicalBase']) as image:base=image.convert('RGBA')
+        if base.size!=(w,h):raise ValueError('Canonical input dimensions changed')
+    else:base=psd.composite()
     if base is None:raise ValueError('排除后没有可见图像。')
     base=base.convert('RGBA');base.save(folder/'base.png')
     editable=np.zeros((h,w),np.uint8)
@@ -140,6 +146,23 @@ def prepare(folder):
     if not np.any(editable):raise ValueError('没有可修改的可见像素，请将需要处理的像素图层设为“可修改”。')
 
 
+def displacement(source,target):
+    """Forward/backward-consistent OpenCV feature tracks; diagnostic only, never warp pixels."""
+    ratio=min(1,768/max(source.shape[:2]));size=(max(1,round(source.shape[1]*ratio)),max(1,round(source.shape[0]*ratio)))
+    a=cv2.cvtColor(cv2.resize(source,size),cv2.COLOR_RGB2GRAY);b=cv2.cvtColor(cv2.resize(target,size),cv2.COLOR_RGB2GRAY)
+    points=cv2.goodFeaturesToTrack(a,400,.02,8)
+    if points is None or len(points)<12:return dict(tracks=0,review=False)
+    forward,ok,_=cv2.calcOpticalFlowPyrLK(a,b,points,None,winSize=(31,31),maxLevel=3)
+    if forward is None:return dict(tracks=0,review=False)
+    backward,back_ok,_=cv2.calcOpticalFlowPyrLK(b,a,forward,None,winSize=(31,31),maxLevel=3)
+    if backward is None:return dict(tracks=0,review=False)
+    valid=(ok.ravel()>0)&(back_ok.ravel()>0)&(np.linalg.norm(backward-points,axis=2).ravel()<1.5)
+    shifts=np.linalg.norm(forward-points,axis=2).ravel()[valid]/ratio
+    if len(shifts)<12:return dict(tracks=int(len(shifts)),review=False)
+    median,p90=np.percentile(shifts,[50,90]);limit=max(3,max(source.shape[:2])*.004)
+    return dict(tracks=int(len(shifts)),median=float(median),p90=float(p90),review=bool(median>limit or p90>limit*3 and np.mean(shifts>limit)>.25))
+
+
 def quality(directory, candidate):
     directory=Path(directory)
     placement=read_json(directory/'placement.json')
@@ -162,8 +185,25 @@ def quality(directory, candidate):
     x,y=placement['offset'];w,h=placement['width'],placement['height']
     image.crop((x,y,x+w,y+h)).save(directory/'candidate.png')
     thumbnail(directory/'candidate.png',directory/'candidate-preview.png',768)
-    return dict(generatedSize=original_size,normalizedSize=[size,size],edgeDistanceP90=p90,
-                changedMean=delta,review=review,note='轮廓距离仅为检查提示；不能证明窗框、道路等所有结构正确。')
+    motion=displacement(source[y:y+h,x:x+w],target[y:y+h,x:x+w])
+    return dict(generatedSize=original_size,normalizedSize=[size,size],edgeDistanceP90=p90,geometry=motion,
+                changedMean=delta,review=review or motion['review'],note='轮廓及位移均为检查提示，不能证明所有结构正确。')
+
+
+def overlap_quality(folder,tile_id):
+    state=read_json(folder/'run.json');tile=next(t for t in state['tiles'] if t['id']==tile_id);checks=[]
+    for neighbor in state['tiles']:
+        if neighbor['id']==tile_id or neighbor['status']!='completed' or not neighbor.get('image'):continue
+        x=max(tile['context'][0],neighbor['context'][0]);y=max(tile['context'][1],neighbor['context'][1]);r=min(tile['context'][2],neighbor['context'][2]);b=min(tile['context'][3],neighbor['context'][3])
+        if r-x<16 or b-y<16:continue
+        def piece(t):return crop(folder/t['image'],(x-t['context'][0],y-t['context'][1],r-t['context'][0],b-t['context'][1]))[:,:,:3]
+        a,bb=piece(tile),piece(neighbor);mask=crop(folder/'edit-mask.png',(x,y,r,b))[:,:,0]>64
+        if np.count_nonzero(mask)<64:continue
+        motion=displacement(a,bb);difference=cv2.GaussianBlur(a.astype(np.float32),(0,0),3)-cv2.GaussianBlur(bb.astype(np.float32),(0,0),3)
+        # Remove only a bounded uniform colour offset before testing inconsistency.
+        difference-=np.clip(np.median(difference[mask],axis=0),-24,24);error=float(np.mean(np.abs(difference[mask])))
+        checks.append(dict(neighbor=neighbor['id'],colorError=error,geometry=motion,review=bool(error>18 or motion['review'])))
+    return dict(checks=checks,review=any(c['review'] for c in checks))
 
 
 def feather(tile):
@@ -204,13 +244,14 @@ def compose(folder):
     base=vips(folder/'base.png');w,h=base.width,base.height
     corrections=offsets(folder,accepted) if state.get('colorMatch',True) else np.zeros((len(accepted),3))
     strips=[];strip_dir=folder/('fusion-'+state['fusionId']);strip_dir.mkdir(exist_ok=True)
-    changed=0
+    changed=0;artifact_pixels=0
     # Multi-band reconstruction is bounded to a strip with 64px pyramid halos.
     for top in range(0,h,384):
         bottom=min(h,top+384);sy=max(0,top-64);sb=min(h,bottom+64)
         source=array(base.crop(0,sy,w,sb-sy));rgb=source[:,:,:3]
         if source.shape[2]==3:source=np.dstack([source,np.full((sb-sy,w),255,np.uint8)])
         mask=crop(folder/'edit-mask.png',(0,sy,w,sb))[:,:,0]
+        lower=rgb.astype(np.int16);upper=lower.copy()
         blender=cv2.detail_MultiBandBlender(0,4)
         blender.prepare((0,0,w,sb-sy))
         coverage=np.zeros((sb-sy,w),np.uint8)
@@ -218,26 +259,40 @@ def compose(folder):
             x,y,r,b=tile['context'];ty=max(y,sy);tb=min(b,sb)
             if ty>=tb:continue
             piece=crop(folder/tile['image'],(0,ty-y,r-x,tb-y))[:,:,:3].astype(np.float32)+corrections[index]
+            bounded=np.clip(np.round(piece),0,255).astype(np.int16)
+            region=np.s_[ty-sy:tb-sy,x:r,:];lower[region]=np.minimum(lower[region],bounded);upper[region]=np.maximum(upper[region],bounded)
             weight=feather(tile)[ty-y:tb-y,:]
-            blender.feed(np.clip(np.round(piece),0,255).astype(np.int16),weight,(x,ty-sy))
-            coverage[ty-sy:tb-sy,x:r]=np.maximum(coverage[ty-sy:tb-sy,x:r],weight)
-        result,_=blender.blend(None,None) if np.any(coverage) else (rgb,None)
+            blender.feed(bounded,weight,(x,ty-sy))
+            coverage[ty-sy:tb-sy,x:r]=np.minimum(255,coverage[ty-sy:tb-sy,x:r].astype(np.uint16)+weight)
+        result,result_mask=blender.blend(None,None) if np.any(coverage) else (rgb,None)
         alpha=mask.astype(np.float32)/255
         # Single-block trials fade to the unchanged source beyond their core.
         alpha*=coverage.astype(np.float32)/255
+        if result_mask is not None:alpha[result_mask==0]=0
         mixed=np.clip(np.round(rgb.astype(np.float32)*(1-alpha[:,:,None])+result.astype(np.float32)*alpha[:,:,None]),0,255).astype(np.uint8)
         mixed[mask==0]=rgb[mask==0]  # byte-exact readonly/background restoration
+        # Reject numerical fusion corruption independently of per-tile AI diagnostics.
+        bad=np.any((mixed.astype(np.int16)<lower-16)|(mixed.astype(np.int16)>upper+16),axis=2)&(mask>64)&(coverage==255)
+        artifact_pixels+=int(np.count_nonzero(bad[top-sy:bottom-sy]))
         rgba=np.dstack([mixed,source[:,:,3]])
         out=rgba[top-sy:bottom-sy]
         changed+=int(np.count_nonzero(np.any(out[:,:,:3]!=source[top-sy:bottom-sy,:,:3],axis=2)))
         path=strip_dir/(str(top)+'.png');Image.fromarray(out).save(path);strips.append(path)
+    if artifact_pixels>max(32,w*h//2000):raise ValueError('Fusion exceeded candidate colour bounds; output was not published')
     result=vips(strips[0])
     for strip in strips[1:]:result=result.join(vips(strip),'vertical')
     target=folder/('result-'+state['fusionId']+'.png');result.pngsave(str(target))
+    complete=all(t['status'] in ('completed','skipped') for t in state['tiles'])
+    checks=dict(review=False,partial=True)
+    if complete:
+        from fusion_checks import inspect
+        def preview(path,width,height):return array(pyvips.Image.thumbnail(str(path),width,height=height,size='force'))
+        checks=inspect(folder,target,accepted,crop,preview);write_json(folder/('checks-'+state['fusionId']+'.json'),checks)
+        if checks['hardFailure']:raise ValueError('Final image changed protected pixels or alpha; output was not published')
     preview=folder/('result-'+state['fusionId']+'-preview.png');thumbnail(target,preview)
     report=dict(accepted=len(accepted),partial=any(t['status'] not in ('completed','skipped') for t in state['tiles']),
                 image=target.name,preview=preview.name,changedPixels=changed,width=w,height=h,
-                colorOffsets=corrections.tolist(),fusion='OpenCV multiband / overlap color offsets / exact protected pixels')
+                checks=checks,needsReview=checks['review'],artifactPixels=artifact_pixels,colorOffsets=corrections.tolist(),fusion='OpenCV multiband / normalized overlap coverage / exact protected pixels')
     write_json(folder/('fusion-'+state['fusionId']+'.json'),report)
     return report
 
@@ -247,4 +302,5 @@ if __name__=='__main__':
     if operation=='prepare':prepare(folder)
     elif operation=='quality':write_json(folder/'quality.json',quality(folder,sys.argv[3]))
     elif operation=='compose':write_json(folder/'composed.json',compose(folder))
+    elif operation=='overlap':write_json(folder/'overlap.json',overlap_quality(folder,int(sys.argv[3])))
     else:raise ValueError('Unknown raster operation')

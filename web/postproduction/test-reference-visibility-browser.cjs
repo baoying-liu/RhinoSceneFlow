@@ -9,6 +9,7 @@ const root=path.resolve(__dirname,'../..'),{chromium}=require(path.join(root,'ar
  try{
  const page=await browser.newPage({viewport:{width:1800,height:1100}}),errors=[];page.on('pageerror',e=>errors.push(e.message));
  await page.goto(base+'/#token=workflow-fixture-token');
+ await page.locator('.contextTools>summary').click();
  const eye=()=>page.locator('.referenceEye');
  const visible=()=>page.locator('.currentPreview .editingReferenceOverlay');
  async function stable(){await page.waitForTimeout(260);}
@@ -18,8 +19,8 @@ const root=path.resolve(__dirname,'../..'),{chromium}=require(path.join(root,'ar
  const wipe=page.locator('.currentPreview [role=slider]');await wipe.focus();await page.keyboard.press('ArrowRight');const originalWipe=await wipe.getAttribute('aria-valuenow');
  await eye().click();await visible().waitFor({state:'detached'});await stable();assert.deepEqual(await listPixels(),[[100,139,114],[155,175,141],[100,139,114]]);assert.equal(await wipe.getAttribute('aria-valuenow'),originalWipe);
  let b=await api('/boards/'+f.board),n=b.nodes.find(n=>n.id===f.child);assert.equal(n.editReference.visible,false);assert(n.editReference.enabled);assert.deepEqual(await api(`/boards/${f.board}/nodes/${f.child}/context`),context);assert.equal(n.dirty,before.dirty);assert.deepEqual(n.params,before.params);assert.equal(n.asset,before.asset);assert.equal(n.versionId,before.versionId);assert.deepEqual(n.versions,before.versions);assert.deepEqual(b.historyState,b0.historyState);
- await page.reload();await page.getByRole('button',{name:'Show editing reference',exact:true}).waitFor();assert.equal(await visible().count(),0);
- await eye().click();await visible().waitFor();await page.getByRole('button',{name:'Disable AI reference',exact:true}).click();await stable();assert.equal(await eye().getAttribute('aria-pressed'),'true');assert.equal(await visible().count(),1);assert.deepEqual((await listPixels())[0],[237,75,68]);await page.getByRole('button',{name:'Enable AI reference',exact:true}).click();
+ await page.reload();await page.locator('.contextTools>summary').click();await page.getByRole('button',{name:'Show editing reference',exact:true}).waitFor();assert.equal(await visible().count(),0);
+ await eye().click();await visible().waitFor();await api(`/boards/${f.board}/nodes/${f.child}/control`,{revision:(await api('/boards/'+f.board)).revision,action:'unlock'});await page.reload();await page.locator('[data-guide-layer=appearance] input').click();await page.waitForTimeout(350);await stable();assert.equal(await eye().getAttribute('aria-pressed'),'true');assert.equal(await visible().count(),1);assert.deepEqual((await listPixels())[0],[237,75,68]);await page.locator('[data-guide-layer=appearance] input').click();await page.waitForTimeout(350);
  // Continuous list has the same result-side overlay and working comparison divider.
  await page.locator('.workActions').getByRole('button',{name:'Smooth',exact:true}).click();const card=page.locator('.feedCard.selected');await card.locator('.editingReferenceOverlay').waitFor();await card.scrollIntoViewIfNeeded();await stable();assert.equal(await card.locator('[role=slider]').count(),1);let box=await card.locator('.feedImage').boundingBox();assert.deepEqual((await pixels([{x:box.x+box.width*.375,y:box.y+box.height*.5}]))[0],[237,75,68]);await eye().click();await card.locator('.editingReferenceOverlay').waitFor({state:'detached'});await eye().click();
  // Canvas draws a non-listening layer, so it cannot intercept image selection/drag.

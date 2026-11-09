@@ -25,7 +25,7 @@ public sealed class PostProductionJob
 /// <summary>Owned file snapshots only cross this boundary. No RhinoDoc access on workers.</summary>
 public static class PostProduction
 {
-    private const string ServiceVersion="0.22.0";
+    private static readonly string ServiceVersion=typeof(PostProduction).Assembly.GetName().Version!.ToString(3);
     private static readonly ConcurrentDictionary<Guid,PostProductionJob> jobs=new();
     private static readonly SemaphoreSlim launch=new(1);
     private static readonly string root=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"RhinoSceneFlow","postproduction");

@@ -19,6 +19,9 @@ def ingest(folder):
     with Image.open(folder/'image.png') as full:write_json(folder/'image.json',dict(width=full.width,height=full.height))
 
 def editor_seed(folder):
+    if 'layout' in read_json(folder/'editor.json'):
+        from editor_layers import seed
+        return seed(folder)
     from psd_tools import PSDImage
     from psd_tools.api.layers import PixelLayer
     im=opened(read_json(folder/'editor.json')['image'])
@@ -38,6 +41,9 @@ def editor_read(folder):
     psd=PSDImage.open(folder/'upload.psd')
     if not 1<=psd.width<=8192 or not 1<=psd.height<=8192 or psd.width*psd.height>8192*8192:
         raise ValueError('Reference limit: 8192 pixels per side')
+    if (folder/'layers-manifest.json').is_file():
+        from editor_layers import read
+        return read(folder,psd)
     # PhotoCraft writes its own full-size compatibility composite. Do not reinterpret layers.
     if not psd.has_preview():raise ValueError('Save the PSD with Maximize Compatibility enabled')
     im=psd.topil()
@@ -52,7 +58,7 @@ def font(size):
     return ImageFont.load_default()
 
 def prepare(folder):
-    s=read_json(folder/'snapshot.json');n=s['node'];im=opened(s['image']);w,h=im.size
+    s=read_json(folder/'snapshot.json');n=s['node'];im=opened(s['image']);original=np.array(im);w,h=im.size
     if s.get('parent') and n['params']['blend']<100:im=Image.blend(opened(s['parent']).resize(im.size,Image.Resampling.LANCZOS),im,n['params']['blend']/100)
     mask=Image.new('L',(w,h),255);p=n['params'];sx=w/n['pose']['width'];sy=h/n['pose']['height']
     if s.get('psd') and s.get('layers'):
@@ -62,14 +68,18 @@ def prepare(folder):
         layers=[dict(l,role=p['roles'].get(l['id'],l.get('role','generate'))) for l in s['layers']]
         layers=[dict(l,role='generate' if l['role']=='structure' else l['role']) for l in layers]
         with Path(s['psd']).open('rb') as stream:digest=hashlib.file_digest(stream,'sha256').hexdigest()
-        write_json(temp/'snapshot.json',dict(sourceSha256=digest,layers=layers,edgeGuard=int(p['edgeGuard']),tileSize=1024,tiles=[]))
+        write_json(temp/'snapshot.json',dict(sourceSha256=digest,layers=layers,canonicalBase=s['image'],edgeGuard=int(p['edgeGuard']),tileSize=1024,tiles=[]))
         psd_prepare(temp);im=opened(temp/'base.png');mask=Image.open(temp/'edit-mask.png').convert('L')
     frame=n['frame'];fx,fy,fr,fb=frame['x'],frame['y'],frame['x']+frame['width'],frame['y']+frame['height']
     enabled=[]
     for a in n['annotations']:
         if not a.get('enabled',True):continue
         if context.area(context.bounds(a),dict(x=fx,y=fy,width=fr-fx,height=fb-fy))>0:enabled.append(a)
-    local=Image.new('L',(w,h),0 if any(a['kind']=='edit' for a in enabled) else 255)
+    scope=p.get('editScope','auto')
+    has_edit=any(a['kind']=='edit' and (a.get('raster') or a.get('closed') and len(a.get('points',[]))>=3) for a in enabled)
+    if scope=='local' and not has_edit:raise ValueError('Local editing requires a closed edit region inside the context frame')
+    use_edits=scope=='local' or scope=='auto' and any(a['kind']=='edit' for a in enabled)
+    local=Image.new('L',(w,h),0 if use_edits else 255)
     markup=im.copy();draw=ImageDraw.Draw(markup);md=ImageDraw.Draw(local)
     notes=[]
     # Clip instructions to the selected frame before drawing; frame does not crop the output.
@@ -77,6 +87,15 @@ def prepare(folder):
     if box[2]>box[0] and box[3]>box[1]:ImageDraw.Draw(clip).rectangle(box,fill=255)
     for a in enabled:
         pts=[(q[0]*sx,q[1]*sy) for q in a.get('points',[])];size=max(1,round(a.get('size',4)*sx));color=a.get('color','#e6a74b')
+        if a['kind']=='edit' and not use_edits:continue
+        if a.get('raster'):
+            if a['kind']=='edit':
+                q=a['rasterPose'];ink=opened(Path(s['image']).parent/a['raster']).getchannel('A').resize((max(1,round(q['width']*sx)),max(1,round(q['height']*sy))),Image.Resampling.NEAREST)
+                layer=Image.new('L',(w,h),0);layer.paste(ink,(round(q['x']*sx),round(q['y']*sy)))
+                import PIL.ImageChops as chops
+                local=chops.lighter(local,layer) if a['kind']=='edit' else chops.subtract(local,layer);md=ImageDraw.Draw(local)
+            continue
+        if a['kind']=='edit' and scope=='local' and not (a.get('closed') and len(pts)>=3):continue
         if a['kind'] in ('edit','protect'):
             if a.get('closed') and len(pts)>=3:md.polygon(pts,fill=255 if a['kind']=='edit' else 0)
             elif len(pts)>1:md.line(pts,fill=255 if a['kind']=='edit' else 0,width=size,joint='curve')
@@ -92,6 +111,10 @@ def prepare(folder):
     # Protect always wins regardless of annotation order.
     for a in enabled:
         if a['kind']=='protect':
+            if a.get('raster'):
+                q=a['rasterPose'];ink=opened(Path(s['image']).parent/a['raster']).getchannel('A').resize((max(1,round(q['width']*sx)),max(1,round(q['height']*sy))),Image.Resampling.NEAREST);layer=Image.new('L',(w,h),0);layer.paste(ink,(round(q['x']*sx),round(q['y']*sy)))
+                import PIL.ImageChops as chops
+                local=chops.subtract(local,layer);md=ImageDraw.Draw(local);continue
             pts=[(q[0]*sx,q[1]*sy) for q in a.get('points',[])];size=max(1,round(a['size']*sx))
             if a.get('closed') and len(pts)>=3:md.polygon(pts,fill=0)
             elif len(pts)>1:md.line(pts,fill=0,width=size,joint='curve')
@@ -100,6 +123,7 @@ def prepare(folder):
     arr=np.asarray(mask).astype(np.uint16)*np.asarray(local).astype(np.uint16)//255
     arr=arr*np.asarray(clip).astype(np.uint16)//255;arr[np.asarray(im)[:,:,3]==0]=0
     mask=Image.fromarray(arr.astype(np.uint8));mask.save(folder/'mask.png');im.save(folder/'base.png')
+    preview=im.copy();preview.thumbnail((1200,1200));preview.save(folder/'base-preview.png')
     markup=Image.composite(markup,im,clip)
     # A square letterbox gives deterministic coordinate backfill for arbitrary model output sizes.
     scale=1536/max(w,h);rw,rh=max(1,round(w*scale)),max(1,round(h*scale));ox,oy=(1536-rw)//2,(1536-rh)//2
@@ -107,7 +131,7 @@ def prepare(folder):
         target=Image.new('RGB' if name!='editable' else 'L',(1536,1536),bg);small=image.resize((rw,rh),Image.Resampling.LANCZOS if name!='editable' else Image.Resampling.NEAREST)
         target.paste(small,(ox,oy),small.getchannel('A') if small.mode=='RGBA' else None);target.save(folder/(name+'.png'))
     spatial=context_diagram(folder,s,im,enabled)
-    write_json(folder/'prepared.json',dict(spatial=spatial,width=w,height=h,offset=[ox,oy],size=[rw,rh],editablePixels=int(np.count_nonzero(arr)),totalPixels=w*h,notes=notes))
+    write_json(folder/'prepared.json',dict(sourceAdjusted=not np.array_equal(original,np.asarray(im)),scope='local' if use_edits else 'whole',spatial=spatial,width=w,height=h,offset=[ox,oy],size=[rw,rh],editablePixels=int(np.count_nonzero(arr)),totalPixels=w*h,notes=notes))
     for i,r in enumerate(s.get('references',[])):
         ref=opened(r['path']);clip=r['clip'];left=max(0,min(ref.width-1,math.floor(clip[0]*ref.width)));top=max(0,min(ref.height-1,math.floor(clip[1]*ref.height)))
         ref=ref.crop((left,top,max(left+1,min(ref.width,math.ceil(clip[2]*ref.width))),max(top+1,min(ref.height,math.ceil(clip[3]*ref.height)))))
@@ -142,7 +166,10 @@ def context_diagram(folder,s,im,marks):
     for a in marks:
         pts=[xy(q[0],q[1]) for q in a.get('points',[])];size=max(1,round(a['size']*scale));color=a['color'];b=context.bounds(a)
         item=dict(id=a['id'],kind=a['kind'],bounds={k:b[k]/p['width' if k in ('x','width') else 'height'] for k in b})
-        if a['kind'] in ('text','label'):
+        if a.get('raster'):
+            paste(opened(Path(s['image']).parent/a['raster']),a['rasterPose']);item['rasterInstruction']=True
+            item['instruction']='Read this edited instruction from the spatial diagram; its text/shape pixels are guidance, not output content.'
+        elif a['kind'] in ('text','label'):
             item['text']=a.get('text','');x,y=xy(a.get('x',0),a.get('y',0));ft=font(a['size']*scale)
             if a['kind']=='label':
                 box=d.multiline_textbbox((x,y),item['text'],font=ft);d.rounded_rectangle((box[0]-5,box[1]-4,box[2]+5,box[3]+4),radius=4,fill='#24382c',outline=color)

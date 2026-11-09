@@ -66,10 +66,19 @@ def tiles(width, height, size, overlap):
     if math.ceil(width / step) * math.ceil(height / step) > 512:
         raise ValueError('分块超过 512 个，请增大分块尺寸。')
     result = []
-    for y in range(0, height, step):
-        for x in range(0, width, step):
-            core = [x, y, min(width, x + step), min(height, y + step)]
-            context = [max(0, x-overlap), max(0, y-overlap), min(width, core[2]+overlap), min(height, core[3]+overlap)]
+    nx,ny=math.ceil(width/step),math.ceil(height/step)
+    def window(center,extent,limit):
+        extent=min(extent,limit);start=max(0,min(limit-extent,round(center-extent/2)))
+        return start,start+extent
+    # Balanced cores and inward-shifted context avoid tiny white-padded border tiles.
+    for iy in range(ny):
+        for ix in range(nx):
+            x,r=round(ix*width/nx),round((ix+1)*width/nx)
+            y,b=round(iy*height/ny),round((iy+1)*height/ny)
+            core=[x,y,r,b]
+            extent=min(size,max(r-x+2*overlap,b-y+2*overlap,round(size*.75)))
+            left,right=window((x+r)/2,extent,width);top,bottom=window((y+b)/2,extent,height)
+            context=[left,top,right,bottom]
             result.append(dict(id=len(result)+1, core=core, context=context, status='planned'))
     return result
 
