@@ -23,7 +23,9 @@ def read_json(path):
 
 def write_json(path, value):
     path = Path(path)
-    temp = path.with_name(path.name+'.'+uuid.uuid4().hex+'.tmp')
+    # Do not repeat a long destination name: nested Windows run folders otherwise
+    # push the temporary file past MAX_PATH even when the final JSON path is valid.
+    temp = path.with_name('.'+uuid.uuid4().hex+'.tmp')
     temp.write_text(json.dumps(value, ensure_ascii=False, indent=2), encoding='utf-8')
     try:
         # Windows readers and sync/indexing software can briefly deny rename.

@@ -95,11 +95,20 @@ def prepare(folder):
             protected[y:b,x:r][visible>0]=255
         transmittance[y:b,x:r]=((t*(255-a)+127)//255).astype(np.uint8)
     source_alpha=np.asarray(base)[:,:,3]
+    guard_contours=contours
+    if snapshot.get('approvedAnchor'):
+        # A flattened approved image has no semantic alpha boundaries. Diagnose
+        # visible image edges instead of mistaking the white canvas border for a building.
+        gray=cv2.cvtColor(np.asarray(base.convert('RGB')),cv2.COLOR_RGB2GRAY)
+        contours=cv2.Canny(cv2.GaussianBlur(gray,(5,5),1),80,160)
+        contours[:2,:]=0;contours[-2:,:]=0;contours[:,:2]=0;contours[:,-2:]=0
     editable[source_alpha==0]=0
     editable[protected>0]=0
     guard=int(snapshot.get('edgeGuard',1))
     if guard:
-        boundary=cv2.dilate(contours,np.ones((guard*2+1,guard*2+1),np.uint8))
+        # Visual Canny edges are diagnostic only. Pasting their old pixels into a
+        # slightly shifted AI image creates double edges, not geometric protection.
+        boundary=cv2.dilate(guard_contours,np.ones((guard*2+1,guard*2+1),np.uint8))
         editable[boundary>0]=0
     Image.fromarray(editable).save(folder/'edit-mask.png')
     Image.fromarray(protected).save(folder/'protected-mask.png')
@@ -115,6 +124,7 @@ def prepare(folder):
     size=snapshot['tileSize']
     for tile in snapshot['tiles']:
         core=tile['core'];x,y,r,b=tile['context']
+        if snapshot.get('approvedAnchor'):size=max(r-x,b-y)
         count=int(np.count_nonzero(editable[core[1]:core[3],core[0]:core[2]]))
         counts.append(dict(id=tile['id'],editablePixels=count))
         if not count:continue

@@ -25,7 +25,7 @@ public sealed class PostProductionJob
 /// <summary>Owned file snapshots only cross this boundary. No RhinoDoc access on workers.</summary>
 public static class PostProduction
 {
-    private const string ServiceVersion="0.19.0";
+    private const string ServiceVersion="0.22.0";
     private static readonly ConcurrentDictionary<Guid,PostProductionJob> jobs=new();
     private static readonly SemaphoreSlim launch=new(1);
     private static readonly string root=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"RhinoSceneFlow","postproduction");
@@ -33,7 +33,7 @@ public static class PostProduction
     public static PostProductionJob Get(Guid id)=>jobs.TryGetValue(id,out var job)?job:throw new ArgumentException("后期启动任务不存在。");
     public static PostProductionJob Request(string route,string method,string? body=null)
     {
-        if(!System.Text.RegularExpressions.Regex.IsMatch(route,@"^/api/(status|projects|jobs)(/[A-Za-z0-9_-]+)*$")||route.Contains("..",StringComparison.Ordinal))throw new ArgumentException("需要工作台 /api/status、projects 或 jobs 的相对 JSON 路由。");
+        if(!System.Text.RegularExpressions.Regex.IsMatch(route,@"^/api/(status|projects|jobs|boards|board-preferences)(/[A-Za-z0-9_-]+)*$")||route.Contains("..",StringComparison.Ordinal))throw new ArgumentException("需要工作台 status、projects、jobs、boards 或 board-preferences 的相对 JSON 路由。");
         if(method is not ("GET" or "POST" or "PUT"))throw new ArgumentException("method: GET | POST | PUT");
         var job=new PostProductionJob{Stage="正在连接后期工作台"};jobs[job.Id]=job;string? codex=CodexImageRunner.FindExecutable();
         _=Task.Run(async()=>
@@ -135,7 +135,7 @@ internal sealed class PostProductionTool:Panel
     internal PostProductionTool(RhinoDoc doc)
     {
         this.doc=doc;var layout=Ui.Layout();layout.AddRow(ToolUi.Heading("AI 后期 · Web 工作台"));
-        layout.AddRow(new Label{Text="在独立网页中查看 PSD 图层、规划分块，与 GPT 整理处理描述。",Wrap=WrapMode.Word});
+        layout.AddRow(new Label{Text="在列表与画布之间切换：先整图探索、标注修改，再高清细化。图片、版本与工程自动保存在本机，显示语言可在网页设置中调整。",Wrap=WrapMode.Word});
         layout.AddRow(Ui.Button("打开 Web 工作台",()=>Start(null)));
         layout.AddRow(new Label{Text="当前导出文件夹中的 PSD"});layout.AddRow(files);
         layout.AddRow(Ui.Button("刷新文件列表",Refresh),Ui.Button("发送所选 PSD",()=>{if(files.SelectedKey is {} path)Start(path);else status.Text="请先选择一个 PSD。";}));

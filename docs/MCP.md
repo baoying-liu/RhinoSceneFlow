@@ -307,3 +307,74 @@ Workbench 图层新增 `{kind:"plants",plantGrouping:"individual"|"species"|"all
 ## AI 后期实际生图（v0.19.0）
 
 新增 `postproduction_request {route,method:"GET"|"POST"|"PUT",body?}`，仍经原厂 Platform；仅接受相对 `/api/status`、`/api/projects/...`、`/api/jobs/...` JSON 路由。返回后台 launch job，用 `postproduction_status {jobId}` 读取 response；response 中的 jobId 是独立 Web 作业，继续经该桥查询。可向 `/api/projects/{id}/generate` POST `{revision,mode:"tile"|"all",tileId?}`；输出 PNG，源 PSD 保留。桥不回传 bearer、不传输二进制、不新增 MCP 服务。接口与取消/重试/人工接受流程见 [PostProduction-Generation.md](PostProduction-Generation.md)。B 已验证 GET、POST 和无额外生图的恢复融合。
+
+
+## Studio 画板（v0.20.0）
+
+原厂 `postproduction_request` 扩展到 `/api/boards/...` 与 `/api/board-preferences`，仍只允许相对 JSON GET/POST/PUT，无新 MCP listener。保存／导出使用 POST `/api/boards/{id}/save` 与 `/api/boards/{id}/export {node,format,blend}` 返回本机文件路径；不需要鼠标或二进制桥传。画板 PUT 带 revision；whole/detail 任务、取消、分块接受／重试和语言设置见 [Studio.md](Studio.md)。
+
+## v0.21 Studio 节点工作流（原厂 Platform JSON 转发）
+
+继续使用 postproduction_request，无额外 MCP listener。相对路由均为认证 JSON。
+- POST /api/boards/{board}/nodes/{node}/branch：{revision,sibling?:false}，只创建待生成节点，返回节点；原图不支持 sibling。
+- POST /api/boards/{board}/generate：{revision,node,stage:"whole"|"detail"}，更新指定白板/已解锁节点，原图拒绝；容量和活动作业在执行前检查。
+- POST /api/boards/{board}/nodes/{node}/control：{revision,action,...}。action 为 unlock、cancel（撤销草稿）、deleteDraft、restore、archive（summary 必填）、expand（+3）、autoPrune（enabled）、deleteBackup/checkout（version）。返回新工程。
+- POST /api/boards/{board}/describe：{node,message,archive:true}，现有文本助手生成摘要并在快照 revision 未变化时归档。返回 job；通过 /api/jobs/{job} 查询。
+- PUT /api/board-preferences 新增 backupLimit:0..100，默认2。
+- 节点新增 original/locked/pending/dirty/inputChanged、input/inputNotes/versionId、baseline/versions/backupLimit/autoPrune。客户端常规 PUT 不允许伪造这些字段；内容编辑受锁和忙状态约束。
+- POST /api/boards/{board}/export 支持 version 以导出只读备份；pending 不允许导出。GET 二进制下载仍由浏览器处理。
+
+
+## v0.22 编辑历史与理解框布局
+
+继续经原厂 Platform 的 postproduction_request 调用，无新 MCP listener。
+- POST /api/boards/{id}/history：{revision,direction:"undo"|"redo"}，返回工程及 historyState:{undo,redo} 数量；活动任务/待复核期间拒绝回放。
+- POST /api/boards/{id}/layout：{revision,action:"arrange"}；或 action:"move",node,x,y；或 action:"toggle",node（该子分支）。所有操作记录为单次可撤销编辑。
+- nodes/{id}/control 新增 action:"delete"（级联软删除）与 restoreDeleted。删除不回收被引用的像素文件。普通布局保存不能伪造 deleted/版本/来源字段。
+- view.collapsed 为列表节点折叠；view.canvasCollapsed 为画布子分支折叠，两者独立。布局边界为 pose+frame，参考素材随主体移动。
+- board-preferences 新增 listWheel:"navigate"（默认翻图）|"scroll"（平滑多图连续浏览）。
+
+
+v0.22 白板补丁：board-preferences 增加 autoLocate:boolean（默认true）；POST /api/boards/{id}/layout 的 action:"reveal",node 会展开该节点的画布祖先路径并整理，保留列表折叠状态。白板显示不修改任何资产/输入数据。
+
+### v0.22 输入模板和默认值补充
+
+`PUT /api/board-preferences` 支持布尔 `confirmDelete`，默认 true。原始节点配置可编辑，`original` 像素仍禁止 publish/generate 更新；branch 从原图复制当前参数和描述，仅在生图成功后清空未被再次编辑的原模板描述，从已生成图继承参数但清空新节点描述。`control` 的 `followBackupDefault` 恢复节点容量跟随系统，不删除备份。
+
+### 标注编辑兼容性
+
+标注二次编辑继续走 `PUT /api/boards/{id}` 的 `nodes[].annotations`，保留 id 和 pressure。移动／缩放直接写回 points、x、y、size，未新增仅前端使用的变换字段；worker 与导出读取相同几何。删除为移除该条 annotation，可走现有 history 撤销。内容锁定与 busy 约束不变。
+
+### 空间上下文与父级底图
+
+`PUT /api/boards/{id}` 新增 `marks` 数组（与节点 annotations 相同的标注结构，但坐标是画布世界坐标）；`closed:boolean` 表示新闭合区域，旧未设置字段的区域保留线刷语义。marks 参与持久历史、工程包和范围签名。Reference 节点现无固定 parent，所有空间相交参考都可参与，旧引用节点在读取时解除 parentId 与错误的 inputChanged 标记，ID／位置／像素保留。
+
+`GET /api/boards/{id}/nodes/{node}/context` 只读返回 frame、实际纳入的 annotations、references 的 id／clip／relativePose，便于原厂 Platform 经 postproduction_request 检查，不调用模型。
+
+`POST /api/boards/{id}/nodes/{node}/control` 支持 `action:applyParent`。仅空闲 pending 节点可用，填入其 pinned input 的 asset／preview／尺寸，设置 draftBaseApplied，保持 pending/unlocked，不创建 AI receipt 或备份。生成成功后才完成既有发布流程。
+
+整图 snapshot 冻结空间坐标和 contextSignature；生成期间共享资源改变会保留待更新状态。输入2为完整考虑框示意，输入1和遮罩仍按目标图裁切，输入4的编号参考板与空间示意中的 REF 编号一致。高清细化遇到未经整图确认的上下文会拒绝并提示先更新整图。共享参考不再被图节点 cancel/checkout 操作删除。
+
+### 考虑边界与参考图框控制
+
+`PUT /api/boards/{id}` 的 frame-only 修改允许内容 locked 节点，busy 仍拒绝。params/annotations 内容锁保持；与合法布局移动严格相符的旧标注坐标随动不算内容编辑。
+
+节点 control 新增 `lock`（生成节点手动锁回，不丢弃草稿；原始输入拒绝内容锁定）和 `convertToInput`（活跃 reference 转为原始 image 输入，保留 ID/asset/preview，无 AI receipt，Undo 可逆）。reference 删除不会重新排列其他主体，保持当前主图选择。
+
+`PUT /api/board-preferences` 新增布尔 `referenceAutoLocate`，默认 false；与原 autoLocate（左侧主体列表）分别控制。画布资源选择在客户端独立保存，selectedId 继续指向主体，保持同一个参考图框。左侧列表过滤参考资源只是显示规则，没有删除存量资源。
+
+
+## PhotoCraft 单份编辑参考层（2026-11-08）
+
+继续通过原厂 Platform 的 `postproduction_request` 访问本机鉴权 Web，不新增 MCP 端口。以下均为 JSON 调用；请求轮询仍使用 `postproduction_status`：
+
+- `POST /api/boards/{board}/nodes/{node}/edit-reference/session`，body `{revision}`：返回 `{session,name,path}`，path 为独立 PSD 编辑副本；主体/资源均可，拒绝空白草稿、删除/归档/忙碌/备份查看目标。
+- `POST /api/boards/{board}/edit-reference/{session}/apply-file`，body `{path:"绝对路径.psd"}`：只读复制并检查文件读期间未变化，经原有隔离 raster worker 验证，替换当前单份参考层，返回画板。来源/已有参考改变时返回 409；只成功应用一次。
+- `POST /api/boards/{board}/nodes/{node}/edit-reference/control`，body `{revision,action:"toggle"|"remove"}`：停启用或删除当前层；不操作原图/生成 backups。
+
+浏览器另外使用鉴权 `GET .../edit-reference/{session}/input`、二进制 `POST .../{session}/apply` 和 `DELETE .../{session}` 取消清理。二进制不走 JSON-only Platform。PhotoCraft 官方 Web 版没有原生桌面 TCP/MCP 控制服务，嵌入适配使用其浏览器文件拖入与 PSD Save/download 边界，不声称将编辑器全部命令暴露为 MCP。
+
+节点 `editReference` 保存 project/asset/preview 哈希、尺寸、sourceAsset、enabled、updated。它是当前槽位，排除于画板 undo 快照；Undo/Redo 保留当前槽位，versions/pixel_snapshot 不含此层。任务 snapshot 的 references 固定实际编辑合成图及用途 `edited-target`；sourceAsset 不匹配时不参与。单个导出的原图/结果依旧只导出该图真实像素，参考层不伪装为生成结果。
+
+
+显示开关补充：同一 edit-reference/control JSON 路由支持 `{revision,action:"visibility",visible:true|false}`。仅设置当前槽位 `editReference.visible`（缺省 true），允许锁定／忙碌目标，不改 enabled、contextSignature、dirty、versions 或 undo。替换参考层沿用当前 visible。旧的 toggle 仍专门控制是否参与 AI 生成。

@@ -416,3 +416,167 @@ Office B channel 1cee488700ad42f59492743cc4a2a3fe，加载任务 3430613e9d46440
 原默认 Python 3.14 venv 缺少新版图像依赖；保留为 %LOCALAPPDATA%/RhinoSceneFlow/chatkit-runtime-before019-20261104，默认路径创建独立 CPython 3.11 venv 并安装两个固定 requirements，pip check 通过。ChatKit SDK 协议（fixture agent，不调用模型）、raster 保护/alpha/排除/融合 pixel oracle、fresh image 来源与 Windows 原子 JSON 竞争检查通过。证据 artifacts/postproduction-raster/73a0e23925ff4f51af98e12979a50ff6/verified.json、artifacts/postproduction-provenance/83ca4d2853e94f69859632b0a77c8382/verified.json。
 
 原厂 MCP postproduction_request /api/status 实测服务 0.19.0、codexAvailable/generationAvailable=true，Web PID 59236；本机 Codex ChatGPT 登录有效。这一轮未消耗生图额度，不把接口能力检查称为新的真实生图测试。当前本机空文档上 Native New/Open 空白夹具/New 通过，同一 PID、八工具重绑健康；10054 后按文档与 PID 重连确认，不当作崩溃。最终空白未命名文档 Modified=false，B 窗口显示且 AI 素材页打开。证据 artifacts/rhino-B/home019/{native-ready,new,open,ready}.json，postproduction019/bridge-verified.json，提交/运行环境日志 artifacts/home019。没有使用系统鼠标、没有部署正式 Rhino、没有修改原材质/植物库、没有制作离线 ZIP。
+
+
+## 2026-11-07 · v0.19.1 对比线拖动
+
+对比模式新增可聚焦的 DOM slider 中线，Pointer Capture 支持左右拖动、画布外夹紧、取消/丢失捕获释放；箭头 1%、Shift+箭头 10%、Home/End，保留顶部 range。按画布实际矩形而非整个黑色视口计算位置，ResizeObserver 跟随布局尺寸。非对比模式/无结果时隐藏并禁用；不触发分块点击。结果摘要显示复用、无可修改像素、待确认数量。本次没有修改生图提示词/蒙版/融合算法，也没有加入“变化强度”参数。
+
+node scripts/Test-PostProductionCompare.cjs 通过：双向移动/捕获/范围夹紧、键盘、留白和缩放位置、选择不变、无结果隐藏。此为事件/几何测试 harness，不是浏览器实际手势。CUA 本机浏览器 host 和 native pipe 均不可用，未绕过工具做 UI 自动化，未使用系统鼠标。浏览器实际拖拽视觉验收仍待用户操作。
+
+家里 B 管理任务 56d5136797a64b2cbb01fd3870ce7e10 Succeeded，部署 20261107-191419-0f6483f5b5bd4cbd97464a42d8690d94，PID 105960，原厂 Platform 22801。构建零警告/错误，原生 describe 与 postproduction_request /api/status 确认 0.19.1，文档对象/Modified 不变；服务 HTML/JS/CSS 与修改源码逐字节相同。测试前 B 未运行，无替换/关闭用户文档。证据 artifacts/compare0191/interaction-verified.json 与 artifacts/rhino-B/compare0191/verified.json。未消耗生图额度，不宣称新的图像质量测试。
+
+
+## 2026-11-07 · v0.20.0 Studio 双视图与两阶段渲染
+
+新首页为本机 React/Konva/perfect-freehand Studio，旧页面保留 /legacy。稳定图片 ID、独立画布 pose/frame、列表与画布双向定位、右侧参数/标注/历史、缩略图与离屏裁剪、小地图、手绘压感点/箭头/文字/Label、修改/保护区域、最多四参考图的编号参考板。提交冻结输入；源 PSD 仅在源节点提供图层用途和硬像素保护，生成子节点不贴回原粗模型像素。whole 使用现有实际 image-only runner，detail 直接复用已确认整图，不再生成额外风格图。任务检查/接受/重试、整图中断恢复、描述助手（真实文本、禁工具）、自动保存和工程包、三格式导出、中英文设置及原厂 MCP JSON save/export 均接入。实现/边界见 Studio.md。
+
+完整 Build.ps1 两次通过，零编译警告/错误，Core/UV/植物/PSD/跨进程库检查保持通过；artifacts/boards020-{full,final}-build.log。新 HTTP/文件/worker 验证最终 artifacts/boards020/b3788163214147a2b165f6f8ac857957/verified.json：布局与身份分离、409、防无效 overlap、分层 PSD 像素锁定/结构用途区别、精确 alpha/只读像素、四参考合板、工程包往返与路径穿越拒绝、PNG/JPEG/WebP、JSON 保存导出和语言。queued/waiting cancellation 与冻结快照见 board-invariants/4a2318a226864092bccc2a1df1f483e5/verified.json；测试明确阻塞图像队列，不消费模型。旧 raster/provenance 回归见 postproduction-raster/16168a3cc76c4383b459b92108d5af10 与 postproduction-provenance/8188d3000db64fc2bd489d76669129c6。
+
+真实图像测试目录 artifacts/boards020/d5517c8376e8414db53492f648345fe6：一次整图、三次高清尝试，共四个图片执行请求及四份新 PNG 线程/哈希收据（不当作账户计费统计），另一次真实描述回复。源为明确标注的二维粗略体块夹具，不冒称在 Rhino 建立三维模型。整图补充木饰面、窗框与屋面细节。第一高清输入空白过大导致放大，保留失败；改为实际上下文紧凑补边。初次 Canny 边缘也被错误当作硬保护条带，出现重影，已分离诊断边缘与 alpha 硬保护。最终候选仍触发 P90 人工复核，独立查看后显式接受并合并至 1024×768；不是几何一致性证明。中间 Windows 长临时文件名超过路径限制的融合失败，通过不重复目标 basename 的 UUID 临时文件修复；恢复仅重融合，无额外图片请求。原失败证据和中间输出保留，示例不使用旧重影结果。
+
+前端 web/postproduction/test-dom.cjs 通过，零控制台错误：列表/画布、双向定位、位置不变、小地图、直接中线 pointer/keyboard 事件、语言与预设持久化。此为 jsdom + 模拟 raster context 的组件测试，非真实浏览器视觉/手写屏测试。CUA browser host/native pipe 均不可用，未绕过工具发送鼠标或用其他 GUI 自动化。实际笔压设备、拖拽手感和视觉布局仍需用户实测。
+
+仅家里 B 0d327c4c84f644f089b73834ffd93cfe，管理 19540 / 原厂 Platform 22801。最终任务 21985b95984e44ca9b1b3372ff6d5073 Succeeded，部署 20261107-202624-27ed07c75a214794b4f6b9bc30695272，PID 9940。16 个 Web 资源与源码逐字节一致。八原生工具 error=null；原厂 MCP GET boards / POST save / POST export 通过，PNG 与样例哈希一致，无文件对话框。之前 PID 94604 原生 New/Open/恢复空文档通过，HTTP10054 按同 PID/文档重查；最终部署 RHP 哈希与其一致。最终 PID 9940 八页健康、0 对象、Modified=false。105960、111664、94604 的 exit.json 均 NormalExit/code0；未强杀 Rhino。旧 0.19.1 Web 无项目/活动作业，正常 shutdown 后启动新服务。
+
+持久 Web PID 112316 / port 14602 / version 0.20.0，API 和资源核对通过。测试示例以新画板 13b1c78c8c134e85ace7f2d02dec5a02 导入，三图分别是粗略二维示意、实际 AI 整图和检查后高清；初始界面中文，可在设置切换。工程包和图片 artifacts/examples/Studio-v020。没有覆盖原库/模型或更新正式 Rhino，没有制作新离线 ZIP。原生和发布证据 artifacts/rhino-B/boards020、artifacts/boards020-B；旧 PID94604 的原始验收保留在 verified-pid94604。临时 QA 服务已正常停止，生产 Web 和 B 保持运行。
+
+
+## 2026-11-07 · v0.21.0 可追溯节点工作流
+
+列表树/折叠和画布连线共享稳定 parentId；原文件后缀保留。创建子级/同级只建立待生成白板，空描述/标注/参考，继承所选配置（原图用默认）。原始输入只读，更新写回同一节点，新结果成功后锁定；撤销回到 baseline。输入快照固定版本，父图更新只使直接子级变紫；草稿黄，两种状态同时保留。生图期间内容禁止编辑，布局不影响生成状态。归档为有效祖先遍历加 AI 意图说明，可逆；不自动恢复像素。默认2备份/+3独立扩容/成功后自动清理/手动删除/配置签出及只读预览导出；引用字节不物理删除。读旧板时稳定迁移，保存时落盘。输入检查可定位原始来源链。描述助手原先使用 reply、实际返回 text 的字段不一致在真实归档测试中暴露，已统一并成功复测。首次失败日志保留。
+
+Build.ps1 全验证通过，零警告/错误，artifacts/workflow021-build.log；后续最终管理构建也零警告/错误。HTTP/PSD/像素/四参考板/包往返/格式/权限回归 artifacts/boards020/b8e16093e83144da8c67cf2a062ddd6c。状态/备份/归档/取消/包测试 artifacts/workflow021/3ef8dce3952b4c3fb84cbdb6735d92fd；queued/waiting cancellation artifacts/board-invariants/81313476bf8e40f79052caee3f5fbce0。组件测试 artifacts/workflow021-http/0ef0d14ed33f4ccab41e313bd18f4576/dom-verified.json：反复选图、列表/画布、锁定、草稿自动保存/撤销、同级白板、树折叠，零 console errors。该测试使用 jsdom/模拟 canvas，不是实际浏览器视觉和设备手势验收；黑屏修复针对选择加载顺序、预览重挂载及画布自动定位，仍需用户视觉复测。
+
+独立合成建筑夹具实际请求1次 image-only 生成，来源新图收据 newImage=true，267379像素改变；没有修改用户案例。artifacts/boards020/8b4b2f66bb054139af29591e05254527/verified.json。归档执行两次实际禁工具文本任务，第一次模型已返回文本但字段不匹配失败；修复后 archive-verified.json 证明 AI摘要、后代变紫、解除归档均通过，未再调用图片模型。
+
+仅家里 B 0d327c4c84f644f089b73834ffd93cfe，管理19540/原厂Platform22801。最终任务669d8889963446e3a687d80537c06881 Succeeded；deployment 20261107-220123-eda2bc0f718f44c9a9f41e7c7a41d88f，PID121792，describe=0.21.0，8工具error=null。真实 New/Open/New 后同PID，原生空白未命名文档0对象/Modified=false，10054按新文档重连检查，不认定崩溃。Web PID21864/port4962/version0.21.0；16资源与最终源码逐字节匹配。原山地案例9916447c152344a3a7b654d6eefa133a仍2节点，asset/preview/尺寸均与更新前备份一致；已打开列表原图。证据 artifacts/rhino-B/workflow021；更新前完整画板资产在 artifacts/workflow021-before-update。未改正式Rhino、未用鼠标、未创建新离线ZIP；临时测试服务已正常shutdown。
+
+
+## 2026-11-07 · 待生成白板重影修复
+
+用户截图复现的原因：Compare 对所有带父级的节点默认启用 compare，白板也画了父级底图；pendingBoard 又放了 opacity .25 的嵌套 img，而原 CSS 仅约束 .comparison>img，嵌套图保持固有大小、居中后与底图错位。源预览 hash 与 input.preview 相同，输入文件没有重影。修复为 pending 只画一张正常比例输入图，明确 absolute/inset/100%/object-fit；禁用结果对比和混合、移除中央文字遮挡，画布白板也不再淡化输入。pending→completed 后才恢复对比。
+
+web/postproduction/test-workflow-dom.cjs 扩展并通过：唯一 img、无底图/结果 canvas/对比线、CSS 填框、相同节点白板转结果及原有列表/锁定/保存回归，零 console errors。证据 artifacts/workflow021-http/efedb9e45359401d89af53d88331759b/dom-verified.json；这是 jsdom 组件/CSS 断言，不是浏览器实际截图。未消费生图额度。
+
+管理 MCP B build 1c0f7b93e830406ca89a16eff8803129 Succeeded，零警告/错误，新 payload 20261107-222310-f5b590228a41417bae98bbb29c47240c。仅把已核对的 JS/CSS/许可证静态文件热更新到当前 B 原生 .rhp 所在目录；原文件已备份 artifacts/preview021-before。Rhino PID121792、Web PID21864 均未重启；实际 HTTP 返回与源文件逐字节相同，案例 board JSON 前后一致。证据 artifacts/rhino-B/workflow021/preview-hotfix-verified.json。刷新页面即可载入，正式 Rhino 未改动。
+
+
+## 2026-11-07 · v0.22.0 理解框布局、历史与鼠标交互
+
+主体按理解框占位，分层子树布局、新建整齐放置、移动与调整frame避让、附件跟随。前后端同算法；拖动暂态布局/端口实时跟随，松开才提交。每条子分支−/+端口在理解框边缘；画布/列表独立折叠，折叠整理。单击不缩放，显式定位。删除为级联软删除；持久Undo/Redo原子存于board.json，Ctrl+Z/Ctrl+R，版本发布为历史边界，源像素不覆写。右键捕获平移/取消/原地菜单，滚轮预览滚动与可选上一张下一张设置。
+
+完整 Build.ps1 通过，零警告/错误：artifacts/layout022-build.log。HTTP/worker/PSD/保护像素/包/导出回归 artifacts/boards020/4052183d9ab14e3f932283f51212850e；取消/冻结输入 board-invariants/d6f60ae4f21742ffa4eac78aaf3869f4。布局/持久历史/删除/框避让/新建单步undo：artifacts/layout022/b09470a9515242449727ee803cae1363/{verified,js-verified}.json，80节点Python/JS精确一致、12次拖动样本无框重叠。组件事件 artifacts/workflow021-http/fbb5dc4d1fec4d33bcb6e09522ddbfbf/layout-dom-verified.json：真实Konva fire驱动拖动/Transform，松开前连线更新、仅松开落盘、无变换放大反馈、独立折叠、CtrlZ/CtrlR删除/框调整、右键只改相机/菜单保留、滚轮设置等，零console错误。这是jsdom/模拟canvas，不是浏览器视觉/手写设备验收；本轮0模型请求。
+
+B 19540管理任务9c38e006f8ce432188d36ccd9afde2ed成功，部署20261107-224457-7be1ee6a18c24e10a91d41b260a7e3c5，PID113512。追加右键/滚轮后管理build 9447d61f025744cbae92ebbeb48967f5成功，最终源payload 20261107-224754-9dac3b6dd7094cbca6174af64e529493；RHP哈希与活动实例相同，启动Web前同步17资源到当前B payload。原厂Platform22801确认describe0.22、八工具error=null；原生New/Open/New同PID、0对象/Modified=false，10054按新文档重连验证。Web113816/9320/version0.22；实际HTTP JS/CSS与源码一致。
+
+原山地案例6节点，通过原厂MCP实际执行arrange→undo→redo，框无重叠，所有像素/预览/配置/标注/父级/输入/版本/来源不变。已在画布概览打开；只调整布局和相机。更新前完整画板在artifacts/layout022-before；验收与MCP往返在artifacts/rhino-B/layout022/verified.json及bridge-*.json。旧0.21 Web正常shutdown；临时组件服务已关闭。未使用系统鼠标，未改正式Rhino，未生成新离线ZIP。
+
+
+## 2026-11-07 · 列表默认翻图与“平滑”连续浏览
+
+根据用户澄清，默认滚轮切换上一张/下一张，预览工具栏增加“平滑”开关。开启时沿列表当前顺序把图片纵向排列成连续页面；原生滚动，不以固定间隔强制切图。图片按宽高比占位，IntersectionObserver仅加载可见区域及400px预取，预览使用单层像素Canvas，无父图叠加。滚动不更换编辑对象；点击卡片选中，从侧栏选择则定位卡片；“单图对比”关闭平滑并进入所选图的对比。参考/白板仍显示各自身份，备份查看保持单独预览。设置与工具栏共享持久选项。旧scroll含义为滚动单张图，增加listWheelVersion=2一次迁移到默认navigate，此后保留用户选择。
+
+test-smooth-dom.cjs通过：默认前后翻图、开关/持久化、纵向卡片顺序、单层预览、滚动不改编辑目标、卡片选中不跳动、侧栏定位、返回对比、像素/参数/来源不变；零console错误。证据 artifacts/workflow021-http/03b410221db64121a1dfd42e41a95862/smooth-verified.json。更新后的完整画布/历史/右键事件回归 artifacts/workflow021-http/ce4bdbd2b84140f4bd063847742ef50a/layout-dom-verified.json也通过。以上为jsdom/模拟绘图，不是浏览器视觉验收。0模型请求。
+
+管理B build aa11dad7437c42ee9de72e3b9a1ad3bb成功，零警告/错误，payload20261107-230948-8731f08e115249eab9e11fd5c25a8ea5。确认RHP与活动B哈希一致后仅同步Web模块/资源，不重启Rhino113512；旧服务shutdown初次立即Ensure复用了退出中的旧服务，保留连接拒绝证据，重试启动后确认新Web115892/7446、版本0.22、listWheelVersion2/default navigate、HTTP JS/CSS与源码一致。山地案例节点数据前后一致，只切为列表原图供试用。验收 artifacts/rhino-B/smooth022/verified.json。临时服务关闭；正式Rhino不变，没有ZIP。
+
+
+## 2026-11-07 · 白板显示、侧栏定位与折叠样式修正
+
+待生成结果改为白色：单图和平滑卡片是左白/右固定输入，通用WipeHandle拖动/键盘控制裁切；画布不加载/绘制源CanvasImage，缩略图同样白色，输入检查仍显示真实输入。所有底层资产、模型输入和参数不变。侧栏新增默认开启autoLocate，控制侧栏对画布/连续列表的定位；画布普通点击仍不缩放。隐藏祖先通过layout reveal展开，仅修改画布折叠状态。
+
+找到实际折叠UI失效原因：通用.resource>button把按钮设为opacity0/absolute/right-bottom，树按钮与定位按钮重叠。新增.resource>.treeToggle明确static/opacity1、叶子占位，测试真实CSS级联，不仅测试点击函数。移除搜索时忽略collapsed的逻辑。
+
+组件/样式/Konva regression artifacts/workflow021-http/0783e285418749d28829b72088e2d1a8/blank-focus-verified.json：左右裁切/拖动、纯白Rect与0个Image、白缩略图、自动定位开关/展开隐藏路径、画布点击不缩放、可见static折叠按钮真正隐藏子项、画布/列表独立、平滑白板对比、输入不变；零console错误。旧工作流组件测试更新为新规范并通过，证据workflow021-http/6b1d413ded3640d6ac06689f83f1a04a/dom-verified.json。布局/前后端80节点parity回归layout022/7c6b59322989474ea47089dfbc15a346通过。以上是jsdom/模拟绘图，非实际浏览器视觉验收；0模型调用。
+
+B管理build 1b9b266bfa9d4d99b330b15739c38293成功，零警告/错误；payload20261107-231943-c3752f26704e4de4a98fa1ab651c9d4c。与活动B的RHP哈希一致，仅同步Web并等待旧服务退出后重启Web，Rhino113512未重启，8工具健康/0对象/Modified=false。Web120528/8647，实际HTTP JS/CSS与源一致，autoLocate默认true。案例6节点数据前后完全一致，仅切换列表并选中已有白板0f5fe4b8b51648018795353119d5652d展示。artifacts/rhino-B/blank022/{before,verified,browser}.json保留证据。无正式Rhino修改，无ZIP，临时服务已关闭。
+
+
+## 2026-11-07 · 切图淡入与平滑模式结果对比
+
+根因：Compare按node/backup key反复挂载，available先重置900×600再由ResizeObserver测实际尺寸；draftNotice和工具栏换行也改变可用高度。修复为按board挂载、测量初值0且保留，固定工具栏40px、白板提示改行内。decodedPreview原子等待结果/父级输入解码，旧帧保留到新帧就绪；过期请求忽略。仅opacity140ms过渡，旧帧独立尺寸居中，170ms释放；Canvas在layout effect绘制。新旧图不同宽高比各自fit，不对旧图套新比例。快速切换不回放迟到图片。
+
+平滑FeedImage此前仅pending渲染wipe，已生成图片且blend100时连父图都未加载。现在有input的可见卡片均加载固定输入，左结果/右输入互补裁切，共用WipeHandle；pending仍左白，根图不伪造父图。保持懒加载、卡片选择及参数不变。
+
+test-preview-transition-dom.cjs最终证据 workflow021-http/80ff6f5bcba44e2f854646a806174fcc/preview-transition-verified.json：1400×900 viewport只测量一次，延迟加载期间旧图尺寸保持、迟到结果忽略、140ms淡入/旧帧清理、已生成卡片wipe拖动与裁切、源根无伪造对比、节点数据不变。白板/定位/折叠回归 workflow021-http/87ee5ea459004ddb97ab5eae36bef9e5/blank-focus-verified.json；流程组件 workflow021-http/67e3acb43b764042aeccb68e2a6ccfe9/dom-verified.json通过，均零console错误。均为jsdom/模拟canvas，不是浏览器动画视觉验收。没有调用模型。
+
+B管理build4f2939b8663547d0a1e8f120d8ab6a11成功，零警告/错误；payload20261107-233341-ef6042389c6a4a64a578f67dc4bd6f2a。只原子热更新活动B的JS/CSS/许可文件，旧资源已备份；Rhino113512与Web120528/8647均不重启。实际HTTP资源与源码匹配，案例JSON前后一致。证据 artifacts/rhino-B/fade022/verified.json。刷新现有页面载入，不需重生成图片。正式Rhino未改，0图像/文本模型请求，无ZIP。
+
+## 2026-11-07 · 输入模板、删除提示与恢复默认
+
+最终构建 6e8357548d804852ae044b9d129e48db 成功，零警告／错误。工作流测试 `artifacts/workflow021/e36cd57f6ced439fb390fd355da20882/verified.json`、布局 `artifacts/layout022/3a39ba6333be4f0fbdc93ed48a18265b/verified.json`、取消／快照 `artifacts/board-invariants/d659c96c07314751946068a5fcca8fa2/verified.json` 通过。组件 `artifacts/workflow021-http/6e79001829644f389d6fd1352230ed9c/input-defaults-verified.json` 验证原图模板、描述继承、参数逐项／整体复位、删除不再提示／取消／撤销；连续重置暴露的旧闭包覆盖问题已修复。工作流组件最终 `artifacts/workflow021-http/43ad38fca60a4b308ea9d1c35889603d/dom-verified.json` 通过，零 console errors。组件使用 jsdom／模拟 Canvas，不是实际浏览器视觉验收；没有调用生图模型。
+
+B 仅更新 Web 资源和 Python worker，无需重启 Rhino。真实案例全部节点逐字段校验，只有原图 locked 改为 false，其像素和既有描述／参数／版本等保留。资源与源码完全一致，见 `artifacts/rhino-B/defaults022/verified.json`。原图只读的旧记录指像素保护，现行配置可编辑规则以本节为准。
+
+2026-11-07 补充：原始输入始终不锁定。描述清空时机改为成功发布结果；创建草稿、失败、取消不清空，任务期间新写的描述不被旧任务覆盖。工作流回归 `artifacts/workflow021/06b7e64f8430464897aaf835411918b4` 通过；独立合成像素验证清空时机与并发新描述保护，无模型调用。B 两个 Python 模块同步后优雅重启 Web，未重启 Rhino。
+
+## 2026-11-07 · 画布九工具
+
+`web/postproduction/test-tools-browser.cjs` 使用独立 fixture 和真实无界面 Edge，通过浏览器原生鼠标／笔事件和命中检测验证九工具、选图不缩放、图上开始平移、锁定提示、解锁后 Transformer、正确笔画归属、文字／Label 保存、笔压／单点、pointercancel 丢弃、原生拖动与理解框缩放。证据 `artifacts/workflow021-http/16c668f9a12449fabe22a46e4fd38f4f/tools-browser-verified.json` 和截图。初次探针确认原图绘画可用，主要修正静默锁定和旧选图绑定等问题；未宣称每个工具此前都失效。保留前期测试失败（离屏点击、压力浮点精度和合成指针捕获）；最终改为原生 CDP 笔事件，无 page errors。布局组件回归 `artifacts/workflow021-http/cc1edf73b1154230b6b6a8d51987c361/layout-dom-verified.json` 通过。没有使用系统鼠标或生图模型。
+
+管理构建 `aedc6c1484cd4eed8af92a5d1563b52b` 零警告／错误。B 静态资源精确核对，原生哈希相同，画板所有字段未改；真实 B 页面用 headless Edge 验证九按钮激活，无脚本错误，未在用户图片绘画，见 `artifacts/rhino-B/tools022`。仅模拟笔事件，尚非实体手绘屏设备验收。
+
+## 2026-11-07 · 标注二次编辑与笔刷大小
+
+新增 `web/postproduction/test-annotation-edit-browser.cjs`，真实 headless Edge 中验证六类已有标注的命中选择、独立拖动、角点缩放、压力与 id 保留、修改原文字、画前／画后笔刷大小、Delete 仅删标注、Undo／Redo、空白取消选择和刷新持久化；原始图片 asset 与 pose 未变，零 page errors／模型调用。最终证据 `artifacts/workflow021-http/2ed041281bdf40f58b698b5dd68595c2/annotation-edit-browser-verified.json`，并人工查看该目录下总图与 selected 截图。前期 anchor 测试点选到了控制柄外缘、以及工具切换后的异步 hit canvas 未绘制完成，保留失败记录；最终在真实控制柄中心命中并等待绘制帧。控制行改为固定高度，避免选中时画布跳动。鼠标事件冒泡已隔离，未使用系统鼠标。
+
+九工具 native hit regression `artifacts/workflow021-http/bbf0f7b823d94fdca0118fcc63467f07/tools-browser-verified.json`、Python／JS 80节点布局一致性回归通过。测试工具使用临时安装的 `artifacts/browser-harness` playwright-core 和系统 Edge，未增加产品运行依赖。原九工具测试现从图片空白处拖动整图，因为命中已有标注会编辑该标注。
+
+管理构建 `921ebe89bd824d139c95b9b9017477a2` 成功，零编译警告／错误。B 资源精确一致、原生哈希一致、真实画板更新前后完全相同；真实 B 浏览器重新加载九工具无 page errors，见 `artifacts/rhino-B/annotation022`。实体手绘屏尚未在本机做设备验收。
+
+## 2026-11-07 · 文字原位编辑
+
+`web/postproduction/test-inline-text-browser.cjs` 使用真实无界面 Edge 验证无 modal、双击原位编辑、隐藏旧文字防重影、中文多行、composition键不提交、缩放对齐、点击外部提交、Esc 取消并恢复选择柄、新建文字／Label、取消不产生空标注、同一 id、刷新持久化与原图像素身份／pose 不变。最终证据 `artifacts/workflow021-http/dc22aaa383d44fc1b0516cfa245fd362/inline-text-browser-verified.json`，已查看 editing 截图，无 page errors／模型调用。composition 使用合成键事件检查分支，未宣称实体输入法／手绘屏全面验收。初次新建测试暴露 pointerdown 默认焦点导致原位框立即 blur，现已 preventDefault 修复，保留失败记录。
+
+标注编辑回归 `artifacts/workflow021-http/35dad762b7a24938864aa8236a6d46a5/annotation-edit-browser-verified.json`、九工具回归 `artifacts/workflow021-http/3e1b2fc3c4094c1381b4b8ab826fe0c7/tools-browser-verified.json` 通过；旧测试改为原位 textarea 完成编辑。管理构建 `1ea197453a9a41938aa5453ac1ff8957` 成功，零编译警告／错误。B 静态更新、真实画板完全保留与浏览器无错误证据 `artifacts/rhino-B/inline022`；未在用户案例写测试文字，未用系统鼠标。
+
+## 2026-11-07 · 空间考虑框、闭合遮罩与父级底图
+
+`Test-CanvasContext.py` 最终 `artifacts/canvas-context/65e062d628e24841a625826537710ee5/verified.json`：框内纳入／框外排除、扩框吸纳、参考不属于计算主体、主图移动带随资源／框外不动、applyParent 保留草稿／不造生成／Undo/Redo、闭合修改区内部像素与保护优先、空间图／箭头及参考坐标、工程包资源往返。检查了 raster/markup.png，箭头与旁边文字／参考保持位置关系。纯合成图，无图像模型调用。
+
+真实 Edge 最终 `artifacts/workflow021-http/1b9eeabc318a499db4b7cf9eaa40b43c/spatial-canvas-browser-verified.json`：T/Label 可见区别、浅 Hatch、框外自由笔迹／文字、Clipboard PNG 为 detached resource、没有资源框／隐式扩框、扩框吸纳、跟随移动、父图填入草稿，零 page errors。查看了前次一致场景 `1c3f50a1e927465582ad853953b1341c/hatch-resources-browser.png`。没有用系统鼠标，没有在真实案例加测试资源。最初 fixture 的文字实际延伸进框，断言已按文字完整 bounds 修正；另保留测试读取未设置 dash 的失败记录。
+
+既有回归：工作流 `artifacts/workflow021/22be98aa237141c5a6b8659e3addbfdd`、布局／持久 Undo `artifacts/layout022/20e485c1c43f438f86ef9d54938da5c4`、取消／快照 `artifacts/board-invariants/c2a9f5654c1e4667aafa7a72df4eae7f`、PSD/raster/只读像素/工程包 `artifacts/boards020/2c0520534278443dba77f9c36ca0849e` 均通过，80节点 JS/Python 布局一致性通过。旧浏览器用例中“新绘画存到选中节点 annotations”这一断言由新的空间用例取代；既有节点标注的兼容读取仍保留。没有实际调用模型检验本次语义生成质量，不能把上下文传递正确表述为模型必然理解正确。
+
+管理构建 `5ab97fca3c634bb9a5516560600692f4` 零警告／错误。B 仅优雅重启 Web，原生 PID113512 不变；新 Web PID86356。真实案例比较仅允许 marks 默认值与旧 reference.parentId/inputChanged 的迁移，其余字段完全一致；静态文件及 context API 精确验证，真实 B 页面九工具加载无错误，见 `artifacts/rhino-B/spatial022`。
+
+## 2026-11-07 · 标注删除目标修复
+
+诊断：顶部删除一直调用图片 requestDelete，右键捕获只找 image-node；因此键盘已有标注分支，但顶部／右键未跟随标注选择。真实案例只读检查确认截图文字是原始图的旧 annotations，原图未锁定。修复统一 deleteAnnotation，按 nodeId/id 固定目标，优先命中标注／Transformer；同时覆盖独立 canvas mark、无主体、侧栏行和晚到的编辑框 blur。
+
+真实 headless Edge `artifacts/workflow021-http/edc71474c37748b48a72518de2b074ea/annotation-delete-browser-verified.json` 验证图片上方旧文字、独立文字、顶部／键盘／右键／选框柄／侧栏／× 删除、Undo、编辑中删除并刷新不复活、无主体删除、图片与像素身份保留；零 page errors，无图像模型调用。所有删除都发生于合成隔离测试，没有删除用户截图中的原文字。
+
+管理构建 `9738fc7868e242f09a44fac5c6bce428` 零警告／错误。B 仅静态更新，原生 RHP 哈希、Rhino 与 Web PID 保持不变；真实画板所有字段原样保留。B 浏览器加载九工具无错误，证据 `artifacts/rhino-B/delete022`。
+
+## 2026-11-07 · 边界免解锁、参考图缩略图框与资源转换
+
+`artifacts/reference-gallery/840336ddb592416caf39bd0bce478678/verified.json`：锁定状态下 frame 可改、params 仍拒绝、重新锁定保留描述与参数、原始输入不锁、参考删除保持主体布局和 anchor、资源转换保留 ID/asset 并可 Undo、独立自动定位偏好及类型验证。
+
+真实 Edge 最终 `artifacts/workflow021-http/d6b2a5b59e924bd98526ed37cdc01a28/reference-gallery-browser-verified.json`：从列表直接进入边界编辑、原生控制柄缩放锁定节点而锁不变、左侧不显示参考、缩略图在禁用内容区域外、双向选择且主图设置保留、默认不缩放／可开关并持久化、锁定主图中的参考可删除并不重排主体、Undo、显式转换后才入列表、转换撤销和手动重新锁定。零 page errors、无模型调用。查看了同等场景 `f7ebdd74a5d1457f905a661d4930a775/reference-gallery-browser.png`。初次测试用 isDisabled 检查 fieldset 的假阴性保留；改为 DOM disabled 属性直接断言。
+
+原工作流 `artifacts/workflow021/216c0a64677c4208af83cb59bde4732f`、空间／mask／工程包 `artifacts/canvas-context/6767c9c80ea04daca722dbfff0ecf7bb`、布局历史 `artifacts/layout022/dea9b6c8c2444c18a4578305f8d57f83` 以及 80 节点 JS/Python 一致性通过。
+
+管理构建 `75261a3b9c83495e9cf231af9b123d97` 和列表边界入口最终构建 `e67ff4a007074dab978c7faa25d426e2` 均零警告／错误。B Web 后台优雅重启一次至 PID103296，Rhino PID113512 未重启；最后入口修正仅静态更新。真实画板更新前后逐字段一致，资源文件逐字节匹配，B 浏览器加载无错误，证据 `artifacts/rhino-B/gallery022`。所有移动、转换和删除测试均为隔离测试资产，未修改真实案例。
+
+
+## 2026-11-08 · PhotoCraft 单份编辑参考层
+
+集成官方 PhotoCraft 0.21.0 Web/Wasm；发行 ZIP SHA256 `3cf893112507ac192c921e0223a3bd5404a24b3dcf94e7a37d43f5eba2032286`，15 个上游文件逐字节不变，增加独立宿主适配器与补充许可证。厂商发行包 app/snippets 相对路径由静态路由别名补齐，未改写原版 JS/Wasm。构建包含完整 vendor 目录，非运行时下载占位。
+
+`web/postproduction/test-photocraft-browser.cjs`：真实 headless Edge + 官方 Wasm，原生画笔两次修改、保存/返回、再次载入原编辑 PSD、单槽替换、取消不应用、刷新恢复缩略图、参考层/原图 wipe 对比；证据 `artifacts/workflow021-http/e347df3ac2b04a00856a02c2cb6fa73f/photocraft-browser-verified.json`。参考图修改像素分别 1864 / 3728，原始 asset、versionId、versions、节点数量均不变。测试没有使用系统鼠标。
+
+`Test-PhotoCraftReference.py` 最新证据 `artifacts/photocraft-reference/fab65f6d2b1b4b8cafccadb33cf113c1/verified.json`：精确项目往返、并发旧会话 409、重复提交 409、异常 PSD 尺寸 400、取消清理、JSON apply-file 只读输入、单槽排除于画板 undo、工程包往返、原图变化停用参考、原始/备份保持、raster base 像素与干净输入完全相等且编号参考板实际生成。Undo 保留当前槽位，并重新保留未被更新的参考指引的 dirty 状态。
+
+回归通过：BoardWorkflow `f9062db5cfb7438c845f72d0bcf6fccb`、BoardLayout `dc30af9ef1e4436ebeafde6e66d0c74d`、CanvasContext `96f728a0a57d443185120c27ecd979d1`、ReferenceGallery `42ea33704c24484eb2ef6877871d9704`、BoardInvariants `39f28e1dd88a4326864e96b5feed9d6b`、PostProductionBoards `3af85db7c084424cab131e5bc81f38e9`，及真实 Edge 的参考图库/锁定/框编辑回归。全部无图像模型调用。本次验证的是实际编辑往返与生成输入准备，不声称 AI 已遵循这些新增标注生成新图；高级 PhotoCraft 功能的 PSD 无损往返没有全覆盖。
+
+B 最终构建 `5abd54a2d16f4a9585c6ccf94faeca18` 零警告零错误；Web 资源与 source/built/active/package 全量一致。真实案例只打开 PhotoCraft 后取消，逐字段数据保持（8 节点含已删除节点）；实际涂画/应用在隔离 fixture 完成。证据 `artifacts/rhino-B/photocraft022`。
+
+
+## 2026-11-08 · 编辑参考层显示开关
+
+`test-reference-visibility-browser.cjs` 在真实 headless Edge 中验证列表／平滑列表／画布和小眼睛，证据 `artifacts/workflow021-http/2ae703077e634684a123cd624897d856/reference-visibility-verified.json`。实际截图像素判定结果区红色叠加、输入区保持原始绿色、透明部分保留结果绿色；保留 wipe 值、刷新后仍隐藏、AI 参考启用独立、Konva 叠加层 listening=false 且不阻挡选择。context、dirty、versions、历史数量不变；实际导出的 PNG 中心仍为原结果像素，未烘入参考层。
+
+真实官方 PhotoCraft 再编辑/替换保留隐藏状态通过：`artifacts/workflow021-http/ba96c31489b64c5590554fa542e2077b/photocraft-browser-verified.json`；配套输入／工程包／会话保护回归 `artifacts/photocraft-reference/16cffa4e763d4967afb17df8efbb52a0/verified.json`，隐藏的参考仍实际进入生成准备的 reference-sheet。BoardWorkflow `dbdf584f68c5413c999ed92fd60787d9`、ReferenceGallery `b9caf212fd5f48d59e95857f10a1a88d`、CanvasContext `74bb753706e74def8a54d76fb48be0f7` 通过。全部无图像模型调用。
+
+B 上用户已经编辑的原始图参考层（不是新造的测试层）默认显示，源码／构建／活动部署一致；读取并显示后真实案例逐字段未变。最终证据 `artifacts/rhino-B/reference-visibility022`，构建 `0a16f7477666468f8076f5d6af22d041` 零警告零错误。

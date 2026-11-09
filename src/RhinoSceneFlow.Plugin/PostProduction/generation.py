@@ -23,6 +23,7 @@ class Generate(BaseModel):
     styleRunId:str|None=None
     edgeGuard:int=Field(default=1,ge=0,le=3)
     colorMatch:bool=True
+    anchor:bool=False
 
 
 def signature(snapshot):
@@ -88,13 +89,13 @@ class Engine:
         if not self.api['codex'] or not Path(self.api['codex']).is_file():raise ValueError('未找到本机 Codex。')
         snapshot=self.api['plan_for'](ident)
         if not snapshot['prompt'].strip():raise ValueError('请先填写或采用一份整体处理描述。')
-        snapshot.update(tileSize=project['settings']['size'],edgeGuard=body.edgeGuard)
+        snapshot.update(tileSize=project['settings']['size'],edgeGuard=body.edgeGuard,approvedAnchor=body.anchor)
         selected=snapshot['tiles'] if body.mode=='all' else [t for t in snapshot['tiles'] if t['id']==body.tileId]
         if not selected:raise ValueError('请点击预览中的一个分块。')
         run=uuid.uuid4().hex;folder=self.api['project_dir'](ident)/'runs'/run;folder.mkdir(parents=True)
         state=dict(id=run,project=ident,created=time.time(),status='queued',stage='准备处理',mode=body.mode,
                    revision=snapshot['revision'],signature=signature(snapshot),colorMatch=body.colorMatch,
-                   tiles=[dict(t,status='pending',attempt=0) for t in selected],style=None,output=None)
+                   tiles=[dict(t,status='pending',attempt=0) for t in selected],style=None,output=None,anchor=body.anchor)
         # Reuse only a reference made for the same immutable PSD/prompt/layer roles.
         if body.styleRunId:
             previous=self.state(ident,body.styleRunId)
@@ -194,6 +195,8 @@ VISUAL BRIEF:\n'''+prompt
                 if not any(t['status']!='skipped' for t in state['tiles']):
                     raise ValueError('选中的分块没有可修改像素，请选择包含可修改物体的分块。')
                 snapshot=read_json(folder/'snapshot.json')
+                if state.get('anchor') and not state['style']:
+                    shutil.copyfile(folder/'global-source.png',folder/'style.png');state['style']=dict(approvedSource=True);self.save(folder,state)
                 if not state['style']:
                     stage('正在生成统一的整图风格参考（实际生图）')
                     generated,receipt=await self.image(job,folder/'style-job',

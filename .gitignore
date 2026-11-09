@@ -7,3 +7,5 @@ artifacts/
 *.psd
 *.psb
 **/__pycache__/
+
+**/node_modules/

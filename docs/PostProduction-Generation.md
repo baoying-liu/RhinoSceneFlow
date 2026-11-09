@@ -56,3 +56,8 @@ HTTP：GET `/api/projects/{id}/runs[/{run}]`；POST `.../generate`、`.../runs/{
 - `Verify-PostProductionImages.py`：Pillow 独立解码真实 PNG，验证原始只读像素/alpha、新图片收据和前后对比。
 
 本次真实示例完整 PNG 与前后对比在 `artifacts/examples/PostProduction-v019`，证据留在忽略目录。未生成新的离线 ZIP，离线分发须补齐与嵌入式 Python 匹配的全部科学计算/libvips/OpenCV wheels 后另行验证。
+
+
+### v0.19.1 左右对比
+
+选“左右对比”后，直接拖动图中金色中线（左侧 AI 结果，右侧处理底图），也可使用上方滑块。中线可用 Tab 聚焦，左右箭头每次 1%，Shift 每次 10%，Home/End 到两端；无已合并结果时不显示中线。结果摘要新增复用旧图块/空白跳过/待确认数量。连续强度控制尚未实现：当前采用固定保守结构提示词，Codex 生图未锁定图像模型或传原生 strength 参数，不能把合成 opacity 当作模型重绘强度。

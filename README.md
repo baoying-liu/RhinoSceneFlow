@@ -1,5 +1,11 @@
 # RhinoSceneFlow
 
+v0.22.0：[理解框画布与编辑历史](docs/Studio.md)，自动避让布局、实时分支连线、独立折叠、可撤销删除、Ctrl+Z／Ctrl+R、右键平移和列表滚轮。
+
+v0.21.0：[可追溯图像工作流](docs/Studio.md)，原图只读、待生成白板、子级／同级、锁定更新、黄色草稿／紫色输入变化、可逆归档说明与备份容量管理。
+
+v0.20.0：[AI 渲染工作台](docs/Studio.md)，列表／画布共用项目、标注与参考图、先整图再高清、工程包和中英文设置。命令仍为 `RhinoSceneFlowPostProduction`。
+
 v0.19.0：[AI 后期真实生成](docs/PostProduction-Generation.md)，命令 `RhinoSceneFlowPostProduction`。支持单块测试、共享风格、批量修改、像素蒙版约束、融合和完整 PNG；可取消/继续、重试和对比结果。
 
 v0.18.0 第一阶段：[AI 后期 Web 工作台](docs/PostProduction.md)，命令 `RhinoSceneFlowPostProduction`。支持 PSD 导入、图层与分块规划、GPT 描述助手；实际生图和融合尚未接入。

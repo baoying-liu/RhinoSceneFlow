@@ -37,7 +37,7 @@ public static class McpApi
                 case "selection_material_update":
                     response=SelectionProperties.Modify(Document(r),r.GetProperty("objects").EnumerateArray().Select(v=>Guid.Parse(v.GetString()!)).ToArray(),r.TryGetProperty("scope",out var ps)?ps.GetString()!:"material",r.TryGetProperty("name",out var pn)?pn.GetString():null,r.TryGetProperty("roughness",out var pr)?pr.GetDouble():null,r.TryGetProperty("metallic",out var pm)?pm.GetDouble():null,r.TryGetProperty("widthMeters",out var pw)?pw.GetDouble():null,r.TryGetProperty("heightMeters",out var ph)?ph.GetDouble():null);break;
                 case "describe":
-                    response = new { name = "RhinoSceneFlow", version = "0.19.0", transport = "Rhino-MCP-Platform.run_python",materialLibrary=MaterialApi.Contract,plants=PlantApi.Operations,
+                    response = new { name = "RhinoSceneFlow", version = "0.22.0", transport = "Rhino-MCP-Platform.run_python",materialLibrary=MaterialApi.Contract,plants=PlantApi.Operations,
                         entryPoint = "RhinoSceneFlow.Plugin.McpApi.Execute(string)",
                         operations = new object[] {
                             new {name="postproduction_start",required=new[]{"document"},parameters="path?: absolute PSD/PSB; browser?:false(default); starts/reuses authenticated local Web workbench; file snapshot and current-document metadata only",output="Launch job id; poll postproduction_status. Completed launch is not completed PSD parsing."},

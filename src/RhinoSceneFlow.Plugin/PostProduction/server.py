@@ -21,7 +21,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from project import check_psd, write_json, read_json, tiles, MAX_BYTES
 
 HERE = Path(__file__).resolve().parent
-VERSION = '0.19.0'
+VERSION = '0.22.0'
 parser = argparse.ArgumentParser()
 parser.add_argument('--data', required=True)
 parser.add_argument('--codex', default='')
@@ -35,6 +35,7 @@ TOKEN = os.environ.get('SCENEFLOW_POST_TOKEN') or secrets.token_urlsafe(32)
 app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
 jobs = {}
 processes = {}
+chat_tasks = {}
 gate = asyncio.Semaphore(1)
 chat_gate = asyncio.Semaphore(1)
 
@@ -47,14 +48,15 @@ async def authenticate(request: Request, call_next):
     origin = request.headers.get('origin')
     if origin and origin != 'http://' + expected:
         return JSONResponse({'detail': 'Cross-origin request rejected'}, status_code=403)
-    public = request.url.path in ('/', '/app.js', '/style.css')
+    editor = request.url.path.startswith('/editor/photocraft/')
+    public = editor or request.url.path in ('/', '/legacy', '/app.js', '/style.css', '/board.js', '/board.css', '/photocraft-bridge.js')
     if not public and not secrets.compare_digest(request.headers.get('authorization', ''), 'Bearer '+TOKEN):
         return JSONResponse({'detail': '请从 Rhino 工具重新打开工作台。'}, status_code=401)
     response = await call_next(request)
     response.headers['Cache-Control'] = 'no-store'
     response.headers['Referrer-Policy'] = 'no-referrer'
     response.headers['X-Content-Type-Options'] = 'nosniff'
-    response.headers['Content-Security-Policy'] = "default-src 'self'; img-src 'self' blob:; style-src 'self'; script-src 'self'; connect-src 'self'; frame-ancestors 'none'"
+    response.headers['Content-Security-Policy'] = ("default-src 'self'; img-src 'self' blob: data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'; connect-src 'self' blob:; worker-src 'self' blob:; frame-ancestors 'self'" if editor else "default-src 'self'; img-src 'self' blob:; style-src 'self'; script-src 'self'; connect-src 'self'; frame-src 'self'; frame-ancestors 'none'")
     return response
 
 
@@ -174,7 +176,20 @@ async def create_project(source, name, context=None):
 
 @app.get('/')
 async def index():
+    return FileResponse(HERE/'board.html')
+
+
+@app.get('/legacy')
+async def legacy():
     return FileResponse(HERE/'index.html')
+
+
+@app.get('/board.js')
+async def board_javascript():return FileResponse(HERE/'board.js',media_type='text/javascript')
+
+
+@app.get('/board.css')
+async def board_style():return FileResponse(HERE/'board.css',media_type='text/css')
 
 
 @app.get('/app.js')
@@ -199,7 +214,8 @@ async def projects():
     for folder in PROJECTS.iterdir():
         try:
             state = read_project(folder.name)
-            result.append({k: state.get(k) for k in ('id', 'name', 'created', 'status')})
+            entry={k: state.get(k) for k in ('id', 'name', 'created', 'status')}
+            entry['internal']=(state.get('context') or {}).get('source')=='SceneFlow Studio internal';result.append(entry)
         except (ValueError, HTTPException, OSError):
             continue
     return sorted(result, key=lambda p: p['created'], reverse=True)
@@ -318,7 +334,8 @@ async def start_chat(ident: str, body: Chat):
     update(ident, messages=state['messages']+[message])
     snapshot = plan_for(ident)
     history = state['messages'][-12:]+[message]
-    asyncio.create_task(chat(job, snapshot, history, body.includePreview))
+    task=asyncio.create_task(chat(job, snapshot, history, body.includePreview));chat_tasks[job['id']]=task
+    task.add_done_callback(lambda _:chat_tasks.pop(job['id'],None))
     return job
 
 
@@ -388,10 +405,13 @@ async def cancel(ident: str):
     if job['status'] in ('queued', 'running'):
         job.update(status='cancelled', stage='已取消')
         process = processes.get(ident)
-        if process and process.returncode is None and job['kind']!='generation':
+        if process and process.returncode is None and job['kind'] not in ('generation','board','chat'):
             process.kill()
         if job['kind']=='generation':
             generation.cancel(ident)
+        if job['kind']=='board':
+            boards.cancel(ident)
+        if job['kind']=='chat' and ident in chat_tasks:chat_tasks[ident].cancel()
         if job['kind'] == 'import':
             update(job['project'], status='cancelled')
     return job
@@ -408,6 +428,15 @@ async def shutdown():
 from generation import register as register_generation
 generation=register_generation(app,dict(project_dir=project_dir,read_project=read_project,update=update,
     new_job=new_job,plan_for=plan_for,run_process=run_process,gate=gate,codex=args.codex))
+
+from board_api import register as register_boards
+def cancel_chat_job(id):
+    if id in jobs:jobs[id].update(status='cancelled',stage='Cancelled')
+    if id in chat_tasks:chat_tasks[id].cancel()
+boards=register_boards(app,ROOT,dict(project_dir=project_dir,read_project=read_project,update=update,
+    create_project=create_project,new_job=new_job,run_process=run_process,gate=gate,codex=args.codex,jobs=jobs,start_chat=start_chat,cancel_chat=cancel_chat_job),generation)
+from edit_reference import register as register_edit_reference
+register_edit_reference(app,boards)
 
 if __name__ == '__main__':
     # Own one service per user/project root. A second launcher must not overwrite its token/port.
