@@ -31,7 +31,7 @@ internal static class PlantApi
         "plant_place"=>new{objects=PlantService.Place(Doc(r),Id(r),Read<double[][]>(r,"points").Select(p=>p.Length==3?new Point3d(p[0],p[1],p[2]):throw new ArgumentException("points: [[x,y,z]] document units")).ToArray(),Int(r,"seed",42),Number(r,"minScale",1),Number(r,"maxScale",1),Mirror(r))},
         "plant_scatter"=>PlantService.Scatter(Doc(r),Id(r),Id(r,"surfaceId"),Int(r,"count",20),Number(r,"spacingMeters",1),Int(r,"seed",42),Number(r,"minScale",.85),Number(r,"maxScale",1.15),Mirror(r)),
         "plant_settings"=>Settings(r),
-        "plant_instances"=>new{objects=PlantService.Drawables(Doc(r),Doc(r).Views.ActiveView.ActiveViewport).Select(o=>new{id=o.Billboard.Id,owner=o.Object.Id,manual=o.Manual,position=o.Billboard.Anchor,scaleWidth=o.Billboard.Width}).ToArray()},
+        "plant_instances"=>new{objects=PlantService.Drawables(Doc(r),Doc(r).Views.ActiveView.ActiveViewport).Select(o=>new{id=o.Billboard.Id,owner=o.Object.Id,manual=o.Manual,position=o.Billboard.GroundAnchor,displayPosition=o.Billboard.Anchor,heightMeters=o.Billboard.TreeHeight*RhinoMath.UnitScale(Doc(r).ModelUnitSystem,UnitSystem.Meters),orientation=o.Billboard.IsPlan?"plan":"elevation",scaleWidth=o.Billboard.Width}).ToArray()},
         "plant_organize"=>CatalogService.Organize(true),
         "plant_ui_settings"=>Preferences(r),
         "plant_localize_names"=>new{job=CatalogService.LocalizePlants()},

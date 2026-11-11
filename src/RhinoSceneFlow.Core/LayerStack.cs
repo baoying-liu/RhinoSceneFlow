@@ -16,7 +16,7 @@ public interface IPsdImage
     {for(int x=0;x<row.Length;x++)row[x]=CompositeChannel(channel,x,y);}
 }
 
-public sealed record PsdRecord(LayerBounds Bounds,string Name,string Blend="norm",byte Opacity=255,int Section=0);
+public sealed record PsdRecord(LayerBounds Bounds,string Name,string Blend="norm",byte Opacity=255,int Section=0,bool Visible=true);
 public interface IPsdHierarchy { IReadOnlyList<PsdRecord> Records(CancellationToken cancellation=default); }
 
 /// <summary>Independent image passes, top to bottom. Keeps each pass's pixel layers

@@ -1,4 +1,4 @@
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using System.Net;
 using System.Net.Sockets;
 using System.Text.Json;
@@ -22,15 +22,20 @@ public sealed class MaterialChatJob
     public CatalogMatch[] PlantMatches{get;internal set;}=[];
     public CatalogMatch[] Matches{get;internal set;}=[];
     public string? ImagePath{get;internal set;}
+    public Guid? SeasonalJob{get;internal set;}
 }
 public static class MaterialChat
 {
     private static readonly Dictionary<Guid,MaterialChatJob> jobs=[];
     private static readonly Dictionary<Guid,CancellationTokenSource> workers=[];
     private static bool stopping;
-    internal static bool Busy=>workers.Count>0;
-    public static MaterialChatJob Get(Guid id)=>jobs.TryGetValue(id,out var job)?job:throw new ArgumentException("对话任务不存在。");
-    public static object Cancel(Guid id){if(workers.TryGetValue(id,out var cancel))cancel.Cancel();return Get(id);}
+    internal static bool Busy=>workers.Count>0||SeasonalGeneration.Busy;
+    public static MaterialChatJob Get(Guid id)
+    {
+        if(!jobs.TryGetValue(id,out var job))throw new ArgumentException("对话任务不存在。");
+        if(job.SeasonalJob is Guid seasonal){var j=SeasonalGeneration.Status(seasonal);job.Status=j.Status;job.Stage="夏季原图已入库 · "+j.Stage;job.Error=j.Error;}return job;
+    }
+    public static object Cancel(Guid id){if(workers.TryGetValue(id,out var cancel))cancel.Cancel();var job=Get(id);if(job.SeasonalJob is Guid s)SeasonalGeneration.Cancel(s);return Get(id);}
     internal static void StopAll(){stopping=true;foreach(var worker in workers.Values)worker.Cancel();}
     private static void Ui(Action action){if(!stopping)RhinoApp.InvokeOnUiThread(new Action(()=>{if(!stopping)action();}));}
     public static MaterialChatJob Start(string conversation,string[] references,double widthMeters=1,double heightMeters=1,bool reuseSimilar=true)
@@ -81,7 +86,7 @@ public static class MaterialChat
                     try
                     {
                         cancel.Token.ThrowIfCancellationRequested();if(MaterialService.Library.Root!=library.Root)throw new InvalidOperationException("材质库已切换。");if(label!=null)CatalogService.SetLabel(asset,label);job.Reply=result.Reply;
-                        if(result.ImagePath!=null){var imported=MaterialService.Import(asset,new(){{"baseColor",result.ImagePath}});job.Material=imported.Id;job.ImagePath=MaterialService.Library.MapPath(imported,"baseColor");}
+                        if(result.ImagePath!=null){var imported=MaterialService.Import(asset,new(){{"baseColor",result.ImagePath}});job.Material=imported.Id;job.ImagePath=MaterialService.Library.MapPath(imported,"baseColor");if(PluginPreferences.Load().GenerateFourSeasons)job.SeasonalJob=SeasonalGeneration.Start(imported.Id,false,true).Id;}
                         if(labelError!=null)job.Reply+="\n图片已保存，但自动分类未完成，可用材质库的 AI 整理重试。";
                         job.Status="completed";job.Stage=job.Material.HasValue?(labelError==null?"新材质已生成并入库":"图片已入库，自动分类失败，可重试整理"):"回复完成";
                     }
@@ -188,11 +193,15 @@ internal sealed class MaterialChatView : Panel,IDisposable
     internal readonly Microsoft.Web.WebView2.Wpf.WebView2 Browser=new();
     private readonly MaterialChatHost host;
     private readonly Label error=new(){Wrap=WrapMode.Word};
+    private readonly UITimer themeTimer=new(){Interval=1};
+    private string? appliedTheme;
+    internal string? Theme{get;private set;}
     private bool closed,started,stopped;
     internal string State{get;private set;}="尚未启动";
     internal MaterialChatView(uint doc,Func<(double,double)> size,Action<Guid> startedJob,Func<bool>? reuse=null)
     {
         host=new(doc,size,startedJob,reuse);Content=new NativeControlHost(Browser);
+        SetBackground();themeTimer.Elapsed+=async(_,_)=>await UpdateTheme();
     }
     internal async Task StartAsync()
     {
@@ -206,16 +215,38 @@ internal sealed class MaterialChatView : Panel,IDisposable
             Browser.CoreWebView2.NewWindowRequested+=(_,e)=>e.Handled=true;
             Browser.CoreWebView2.NavigationStarting+=(_,e)=>{if(!e.Uri.StartsWith(host.Url.Split('?')[0],StringComparison.Ordinal)&&e.Uri!="about:blank")e.Cancel=true;};
             Browser.CoreWebView2.Settings.AreDevToolsEnabled=false;Browser.CoreWebView2.Settings.AreDefaultContextMenusEnabled=false;
-            Browser.Source=new Uri(host.Url);State="ready";
+            Browser.CoreWebView2.NavigationCompleted+=async(_,_)=>{appliedTheme=null;await UpdateTheme();};
+            var palette=Palette();SetBackground();
+            Browser.Source=new Uri(host.Url+"&scheme="+palette.colorScheme+"&background="+Uri.EscapeDataString(palette.background)+"&foreground="+Uri.EscapeDataString(palette.foreground)+"&inputBackground="+Uri.EscapeDataString(palette.inputBackground));State="ready";themeTimer.Start();
         }
         catch(Exception e){if(!closed&&!stopped){State=e.Message;error.Text="ChatKit 无法启动："+e.Message+"\n请检查本机 ChatKit 运行环境与网络连接。";Content=error;host.Dispose();}}
     }
-    internal void Stop(){stopped=true;host.Dispose();}
+    private sealed record ChatPalette(string colorScheme,string background,string foreground,string inputBackground);
+    private static ChatPalette Palette()
+    {
+        var background=Rhino.ApplicationSettings.AppearanceSettings.GetPaintColor(Rhino.ApplicationSettings.PaintColor.PanelBackground);
+        bool dark=(background.R*.2126+background.G*.7152+background.B*.0722)<140;
+        var foreground=Rhino.ApplicationSettings.AppearanceSettings.GetPaintColor(Rhino.ApplicationSettings.PaintColor.TextEnabled);
+        // Custom Rhino themes can retain a toolbar text colour with low panel contrast.
+        if(Math.Abs((foreground.R*.2126+foreground.G*.7152+foreground.B*.0722)-(background.R*.2126+background.G*.7152+background.B*.0722))<100)foreground=dark?System.Drawing.Color.FromArgb(238,238,238):System.Drawing.Color.FromArgb(32,32,32);
+        var input=Rhino.ApplicationSettings.AppearanceSettings.GetPaintColor(Rhino.ApplicationSettings.PaintColor.EditBoxBackground);
+        var preference=PluginPreferences.Load().Theme;if(preference!="rhino"){dark=preference=="dark";background=dark?System.Drawing.Color.FromArgb(29,35,32):System.Drawing.Color.FromArgb(241,243,241);foreground=dark?System.Drawing.Color.FromArgb(235,239,235):System.Drawing.Color.FromArgb(30,36,30);input=dark?System.Drawing.Color.FromArgb(40,48,43):System.Drawing.Color.White;}
+        return new(dark?"dark":"light",$"#{background.R:X2}{background.G:X2}{background.B:X2}",$"#{foreground.R:X2}{foreground.G:X2}{foreground.B:X2}",$"#{input.R:X2}{input.G:X2}{input.B:X2}");
+    }
+    private void SetBackground(){var p=Palette();Browser.DefaultBackgroundColor=System.Drawing.ColorTranslator.FromHtml(p.background);Theme=p.colorScheme;}
+    private async Task UpdateTheme()
+    {
+        if(closed||stopped||Browser.CoreWebView2==null)return;
+        var p=Palette();string json=JsonSerializer.Serialize(p);if(json==appliedTheme)return;
+        try{SetBackground();string result=await Browser.ExecuteScriptAsync("typeof window.sceneFlowSetTheme==='function'?(window.sceneFlowSetTheme("+json+"),true):false");if(!closed&&!stopped&&result=="true")appliedTheme=json;}
+        catch(InvalidOperationException){}catch(System.Runtime.InteropServices.COMException){}
+    }
+    internal void Stop(){stopped=true;themeTimer.Stop();host.Dispose();}
     protected override void Dispose(bool disposing)
     {
         if(disposing)
         {
-            if(closed)return;closed=true;host.Dispose();var content=Content;Content=null;
+            if(closed)return;closed=true;themeTimer.Stop();themeTimer.Dispose();host.Dispose();var content=Content;Content=null;
             content?.Dispose();Browser.Dispose();
         }
         base.Dispose(disposing);

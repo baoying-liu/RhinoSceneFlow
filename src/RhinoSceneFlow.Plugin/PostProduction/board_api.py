@@ -138,7 +138,9 @@ class BoardApi:
             prepared=read_json(folder/'prepared.json') if stage=='whole' else {}
             job.update(status='completed',stage='Input preview ready')
             actual_input=self.prepared_input(s,folder) if stage=='whole' else s['inputVersion']
-            return dict(node=node,revision=s['revision'],stage=stage,input={**actual_input,'name':s['inputName']},scope=prepared.get('scope'),sourceAdjusted=prepared.get('sourceAdjusted',False),notes=s['inputNotes'],images=images,
+            ratio=s['node']['params']['outputSize']/max(actual_input['width'],actual_input['height']) if stage=='detail' else 1
+            output=dict(width=max(1,round(actual_input['width']*ratio)),height=max(1,round(actual_input['height']*ratio)))
+            return dict(output=output,node=node,revision=s['revision'],stage=stage,input={**actual_input,'name':s['inputName']},scope=prepared.get('scope'),sourceAdjusted=prepared.get('sourceAdjusted',False),notes=s['inputNotes'],images=images,
                 annotations=s['node']['annotations'] if stage=='whole' else [],references=[dict(id=r['node']['id'],name=r['node']['name'],clip=r['clip'],editingReference=r.get('editingReference',False)) for r in s['references']] if stage=='whole' else [],
                 editablePixels=prepared.get('editablePixels'),totalPixels=prepared.get('totalPixels'),ready=stage=='detail' or bool(s['node']['params']['prompt'].strip() or s['node']['annotations'] or s['references']),stale=self.store.read(id)['revision']!=s['revision'])
         except BaseException:

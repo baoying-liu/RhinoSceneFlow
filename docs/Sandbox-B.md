@@ -1,5 +1,11 @@
 # 沙盒 B：v0.2 自动化验收
 
+## 2026-11-09 · 家里 B 完整更新到 0.22.4
+
+本机 B ID `0d327c4c84f644f089b73834ffd93cfe`，管理 MCP 19540。通过已安装启动器的 `--start-mcp` 入口启动管理服务，再执行 build_test `87027f3741a5461489400878d15fb02b`；成功，0 warnings / 0 errors。部署目录 `20261110-041020-8ead82416d264ad281f62ff051d92687` 使用 UTC 命名，本地日期仍为 11 月 9 日。
+
+最终 B Rhino PID116984，原厂 Platform22801，原生与 Web 均为 0.22.4。46 个部署 Web 文件（含 PhotoCraft）与同步源码逐字节一致，完整安装了最终前端修正；家里不依赖公司临时 Web 快照。原有两份画板文件哈希不变，B 文档为空、Modified=false。原厂 MCP 已打开 Web 工作台；独立 headless Edge 实际加载新图层面板，版本页脚正确、无页面错误。证据 `artifacts/rhino-B/home0224/{job,status,verified,browser-verified}.json` 和 `web-updated.png`。未使用系统鼠标、未调用生图、未制作新 ZIP、未更新正式 Rhino。
+
 ## 2026-10-31 v0.16.4 植物来源失败恢复
 
 家里 B 最终任务 `1b61618c571442c699e5619e3d93c331` Succeeded，部署 `20261031-042010-c1715b5f387047098bf9bc54e2d12b3d`，PID 33868 / Platform 22801。用户的 Tamarindus indica 请求旧日志仅返回 Kew 与 USDA PDF：真实 Kew HTTP 403，PDF 不能作为 HTML 核实；可用 NParks 出现在搜索事件里却不在白名单。修复支持 NParks / IFAS / MBG 域名，并从实际搜索事件收集备选 URL、逐页读取核实，不采纳搜索摘要作为已核实证据。
@@ -486,3 +492,36 @@ Windows ??/??? PhotoCraft 13 ???????? CRLF????? SHA/SRI???? LF ???????? SHA ????
 输入前检经原厂 postproduction_request POST /api/boards/.../nodes/.../preflight 实测通过：1200×900，938636 可改 / 1080000 总像素，空描述无标注时 ready=false，未触发生图。直接 HTTP/真实 headless Edge 也验证了实际案例首屏描述、mask、画布和已有像素/版本不变。16 个活动代码/静态/RUI 文件与源码逐字节一致，公共 board.js/css 一致；构建包静态资源同步。证据 artifacts/rhino-B/taskflow0221/{native,verified,bridge}.json 与 artifacts/ui-audit-20261109/{task-label-state,release-case-verified}.json。
 
 测试阶段保留了前几次构建/部署记录。先前 115716 的 UnknownExit 已在工具栏审计中审核并保留，未改称通过；本节最终成功任务独立记录。没有制作新离线 ZIP，没有实际 AI 生图/高清画质测试。完整操作说明见 Task-Workflow-0221.md。
+
+## 2026-11-10 · 家里 B · 0.22.5 Rhino → Web 审计
+
+最终管理任务 904cfa8ee45948df8cea7f7e1d9df19c 成功，PID 50132，原厂 Platform 22801，部署 20261111-042652-96a23b44e0ff456fbdc908e011c3decf。describe、Web 及实际中文页脚均为 0.22.5，46 个 PostProduction 文件与源码逐字节相同。八个原生工具 error=null；独立 Hillside 副本已打开，原模型保留。
+
+修复旧任务配置恢复后锁定保存冲突、AI 分组开关恢复与 pending 状态、参考区域删除后误收起、输入编辑时整板 Ctrl+R、窄侧栏 PSD 尺寸布局及页脚版本来源。生成前检查新增实际输出尺寸。真实无界面 Edge 最终十条交互流程通过；普通与特殊层 PhotoCraft 真实编辑 roundtrip 通过。
+
+实际链路：600×450 PSD（材质贴图、阴影、植物、Arctic）约 8.55 秒导出，独立解析 13 层；原厂 MCP 后期交接成功。独立 Web 审计画板完成一次真实整图生图，53.76 秒，1254×1254 原生图片回填为 600×450，PNG 和完整 sflowboard 已保存。receipt/hash 证明是新图；48,807 只读像素与全部 alpha 精确保持。未重复跑 4K。原来两份 board.json 校验值不变、Web 偏好已恢复。未发送系统键鼠输入；仅用只读窗口检查区分 SDK 保存失败与挂起。
+
+证据 artifacts/ux-audit-20261110/{release-verified,browser-verified,handoff,real-task,real-pixel-oracle,original-boards-unchanged}.json。完整发现、首次失败、测试方式局限及下一轮设计项见 UX-Audit-2026-11-10.md。新建/打开时原厂连接有短暂重置，已保留为延迟绑定观察，不伪称为崩溃；SDK 直接覆盖正在打开的副本失败未计为正常保存通过。
+# 2026-11-10 · 家里 B · 0.22.6
+
+管理任务 8f19067556ab4bcfa41daefa4dd6a340 成功，PID 55020，部署 20261111-044502-310eccf60849405f8ddb2c6fbc9ece0c。原厂 Platform 验证原生与 Web 均为 0.22.6；Hillside-UX-Audit.3dm 已恢复，70 个对象，Modified=false。原生后期工具已打开并通过管理 MCP 显示 B 窗口；未发送系统鼠标事件。画板切换、窄侧栏布局及不同工具独立图标的验证见 Validation.md；用户已打开的网页需刷新加载新版静态文件。
+
+## 2026-11-11 · 家里 B · 0.22.7 主题与八工具 UI
+
+最终管理任务 0c34bf1bbd134a10aa76f1e83d46860c 成功，PID 25112，原厂 Platform 22801；插件部署 20261111-050434-f1248faaa38e43568ab24ad51692022b。实际原生版本 0.22.7、ChatKit ready=true，源码／部署／构建包匹配。旧测试 PID 26164 的退出由管理器确认为 NormalExit。
+
+当前 Hillside-UX-Audit.3dm 已恢复并保持 70 对象、Modified=false，AI 素材工具已打开，B 窗口通过管理 MCP 显示。连续新建两次再打开案例，八工具重绑定且同 PID。主题、布局、按钮及无界面浏览器验证详见 Validation.md 和 artifacts/theme-ui-0227，未发送系统键鼠、未调用模型，也未改正式 Rhino。
+
+## 2026-11-11 · v0.22.8 六通道导出与 Named Views
+
+当前 B PID 19060，实例 2f293bc2170742139b65baba79b9c045；插件部署 20261111-060933-04e3afd785e0432e862e829346404434。原厂 Platform 路径 describe=0.22.8，正常 MCP 六通道导出及全八工具 new/new/open 通过，原案例 artifacts/ux-audit-20261110/Hillside-UX-Audit.3dm 已恢复，70 物件／未修改，PSD 页已选中。最终包 RHP 与加载部署 SHA256 均为 97F4B02015F4A88CFAF48C1C25CE93091E83EC8482EE4B12CB85C1FC75590903；最终原生编译采用管理器隔离构建，非之前 source/bin 中的旧布局二进制。
+
+默认植物／阴影／材质贴图／Rhino Arctic／隐藏深度／隐藏材质颜色。新增颜色来源、material/object/all 分层、两级独立折叠与眼睛、当前视口建 Named View、双击同步改名及 Undo。真实示例 artifacts/export-0228/supported-final/01 Hillside Axon.psd，600×450，20 像素层。完整证据与两条额外探针的未确认退出见 Validation.md；这些异常不算测试成功，不声称原生所有退出已修复。未使用用户鼠标，未修改正式 Rhino、Platform 或新增 MCP 服务。
+
+## 2026-11-11 · v0.22.9 季节与植物平面
+
+最终 B PID 56416，实例 be7c46457ca0420899f0c2069cca666c，插件部署 20261111-073929-b5c761f04c2d480cb7f2e3c5ff386a02；describe=0.22.9。原案例 Hillside-UX-Audit.3dm 已打开，70 对象、未修改；原素材库／偏好恢复，案例预览切为 Rendered，设置区收起。包与实际加载 RHP SHA256：73593AFE9FFCE463B75C57B9DC4AC82825E8C16F3FAFC9178614D1754141ECE4。
+
+已测试眼睛、设置、单素材八槽／复用、实际一张植物平面 AI 生图、夏冬材质／随机缓存、按视角判断季节合并以及全八工具 New/New/Open。季节试验库为隔离复制，未将合成冬季／圆形平面 fixture 写入正式库。真实 AI 图只在该隔离素材目录和生成执行器记录中，旧库不会自动批量生成。详细证据、测试误差与局限见 Validation.md、Seasons.md；全程原厂 MCP，没有新增 MCP 监听，也没有控制用户鼠标。
+
+0.22.9 后续：已给原库案例河桦 Betula nigra 补齐真实夏季平面图；原先恢复的旧记录只有立面，导致高俯视继续回退。B PID 56416 当前 15 株已显示 plan，地面位置、树高、相机方向保持，文档未修改。无需重启。该实际素材补齐发生在恢复测试库之后，原库现在有此季节图片更新；早先“原库未加入季节图片”的测试结束记录只描述当时状态。

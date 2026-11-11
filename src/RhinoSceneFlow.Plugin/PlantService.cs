@@ -30,10 +30,37 @@ public static class PlantService
     internal static readonly Dictionary<uint,Guid> Selected=[];
     private static readonly Dictionary<string,(DateTime Stamp,long Length,RgbaTexture Image)> images=[];
     private static PlantConduit? conduit;
+    private static readonly Dictionary<(string Root,Guid Id),(DateTime Next,DateTime Stamp,MaterialAsset Asset)> seasonalAssets=[];
+    internal static string? SeasonOverride;
+    internal static string CurrentSeason=>SeasonOverride??PluginPreferences.Load().Season;
+    internal static void RefreshSeasons(){seasonalAssets.Clear();foreach(var doc in RhinoDoc.OpenDocuments())doc.Views.Redraw();}
+    internal static (PlantBillboard Billboard,string Path) Seasonal(PlantBillboard plant,string path,Guid assetId,CameraProjection camera,BillboardSettings? settings=null,MaterialLibrary? library=null,string? displaySeason=null)
+    {
+        library??=Library;settings??=Settings;displaySeason??=CurrentSeason;var key=(library.Root,assetId);var now=DateTime.UtcNow;
+        if(!seasonalAssets.TryGetValue(key,out var cached)||cached.Next<=now)
+        {
+            try{var stamp=File.GetLastWriteTimeUtc(Path.Combine(library.AssetDirectory(assetId),"asset.json"));var found=cached.Asset!=null&&cached.Stamp==stamp?cached.Asset:library.Get(assetId);seasonalAssets[key]=cached=(now.AddSeconds(1),stamp,found);}
+            catch(FileNotFoundException){return(plant,path);}catch(DirectoryNotFoundException){return(plant,path);}
+        }
+        var asset=cached.Asset;bool plan=settings.Mode=="plan"||settings.Mode=="auto"&&PlantBillboard.Elevation(camera,plant.Anchor)>=settings.PlanAngle;
+        string season=Seasons.Effective(asset,displaySeason);bool hasPlan=plan&&(Seasons.Has(asset,season,true)||Seasons.Has(asset,"summer",true));
+        string slot=Seasons.Slot(asset,displaySeason,hasPlan);string selected=library.MapPath(asset,slot);var image=Image(selected,asset.Sha256[slot]);
+        if(!hasPlan)
+        {
+            var v=asset.Seasonal.Variants.GetValueOrDefault(Seasons.Has(asset,season)?season:"summer");
+            return(plant with{Image=image,Width=v?.ElevationWidthMeters is double width?width*plant.Width/asset.WidthMeters:plant.Width,AnchorU=v?.AnchorU??plant.AnchorU},selected);
+        }
+        double scale=plant.Width/asset.WidthMeters;double crown=asset.Seasonal.Variants[Seasons.Has(asset,season,true)?season:"summer"].CrownWidthMeters*scale;
+        return(plant with{Image=image,BaseAnchor=plant.Anchor,PhysicalHeight=plant.Height,Anchor=plant.Anchor+new Vec3(0,0,plant.Height*settings.PlanHeightRatio),Width=crown,Height=crown*image.Height/image.Width,AnchorU=.5,AnchorV=.5,IsPlan=true},selected);
+    }
     internal static bool Suppress;
     public static BillboardSettings Settings
     {
-        get=>JsonSerializer.Deserialize<BillboardSettings>(SceneFlowPlugin.Instance.Settings.GetString("PlantBillboards","{}"),MaterialLibrary.Json)!;
+        get
+        {
+            string json=SceneFlowPlugin.Instance.Settings.GetString("PlantBillboards","{}");var value=JsonSerializer.Deserialize<BillboardSettings>(json,MaterialLibrary.Json)!;
+            if(!json.Contains("planAngle",StringComparison.OrdinalIgnoreCase)){value.PlanAngle=Math.Clamp(value.Angle+value.Transition+1,75,90);value.Transition=Math.Min(value.Transition,value.PlanAngle-value.Angle-.1);}value.Validate();return value;
+        }
         set{value.Validate();SceneFlowPlugin.Instance.Settings.SetString("PlantBillboards",JsonSerializer.Serialize(value,MaterialLibrary.Json));SceneFlowPlugin.Instance.SaveSettings();foreach(var d in RhinoDoc.OpenDocuments())d.Views.Redraw();}
     }
     internal static void Start(){conduit=new(){Enabled=true};PlantGroups.Start();PlantEditing.Start();RhinoDoc.CloseDocument+=Closed;}
@@ -119,25 +146,31 @@ public static class PlantService
     }
     internal static IEnumerable<(RhinoObject Object,PlantBillboard Billboard,bool Manual,string Path)> Drawables(RhinoDoc doc,RhinoViewport viewport)
     {
-        foreach(var obj in Visible(doc,viewport))
-            if(PlantGroups.IsGroup(obj)){foreach(var entry in PlantGroups.Drawables(doc,obj))yield return entry;}
-            else yield return(obj,Billboard(doc,obj),false,Read(obj)!.Image);
+        var settings=Settings;var library=Library;string season=CurrentSeason;foreach(var obj in Visible(doc,viewport))foreach(var entry in DrawablesFor(doc,obj,viewport,settings,library,season))yield return entry;
+    }
+    private static IEnumerable<(RhinoObject Object,PlantBillboard Billboard,bool Manual,string Path)> DrawablesFor(RhinoDoc doc,RhinoObject obj,RhinoViewport viewport,BillboardSettings settings,MaterialLibrary library,string season)
+    {
+        var camera=Camera(viewport);
+        if(PlantGroups.IsGroup(obj)){foreach(var entry in PlantGroups.Drawables(doc,obj)){var resolved=Seasonal(entry.Billboard,entry.Path,entry.Billboard.AssetId,camera,settings,library,season);yield return(entry.Object,resolved.Billboard,entry.Manual,resolved.Path);}}
+        else {var item=Read(obj)!;var resolved=Seasonal(Billboard(doc,obj),item.Image,item.Asset,camera,settings,library,season);yield return(obj,resolved.Billboard with{AssetId=item.Asset},false,resolved.Path);}
     }
     internal static IEnumerable<(RhinoObject Object,PlantBillboard Billboard,bool Manual,string Path)> NativeDrawables(RhinoDoc doc,RhinoViewport viewport)
     {
+        var settings=Settings;var library=Library;string season=CurrentSeason;
         foreach(var obj in Visible(doc,viewport))
         {
             (RhinoObject Object,PlantBillboard Billboard,bool Manual,string Path)[] entries;
-            try{entries=PlantGroups.IsGroup(obj)?PlantGroups.Drawables(doc,obj).ToArray():[(obj,Billboard(doc,obj),false,Read(obj)!.Image)];}
+            try{entries=DrawablesFor(doc,obj,viewport,settings,library,season).ToArray();}
             catch(Exception ex){System.Diagnostics.Debug.WriteLine("SceneFlow plant display: "+ex.Message);continue;}
             foreach(var entry in entries)yield return entry;
         }
     }
-    internal static PlantBillboard[] Snapshot(RhinoDoc doc,RhinoViewport viewport)
+    internal static PlantBillboard[] Snapshot(RhinoDoc doc,RhinoViewport viewport,RhinoViewport? visibility=null)
     {
-        foreach(var obj in Visible(doc,viewport).Where(PlantGroups.IsGroup))PlantGroups.RequireReady(doc,obj);
+        foreach(var obj in Visible(doc,visibility??viewport).Where(PlantGroups.IsGroup))PlantGroups.RequireReady(doc,obj);
         var result=new List<PlantBillboard>();var used=new HashSet<RgbaTexture>();long bytes=0;
-        foreach(var entry in Drawables(doc,viewport))
+        var settings=Settings;var library=Library;string season=CurrentSeason;
+        foreach(var entry in Visible(doc,visibility??viewport).SelectMany(o=>DrawablesFor(doc,o,viewport,settings,library,season)))
         {
             if(PlantGroups.IsGroup(entry.Object)&&PlantGroups.IsBusy(doc,entry.Object.Id))throw new InvalidOperationException("种植布局正在更新，请计算完成后再导出。");
             var item=entry.Billboard;if(used.Add(item.Image))bytes+=item.Image.Pixels.LongLength;

@@ -49,7 +49,7 @@ public static class PsdWriter
             w.U16(4);
             foreach (short channel in new short[] { 0, 1, 2, -1 })
             { w.I16(channel); w.U32(checked((uint)((long)layer.Width * layer.Height + 2))); }
-            w.Ascii("8BIM"); w.Ascii(record.Blend); w.Byte(record.Opacity); w.Byte(0); w.Byte(8); w.Byte(0);
+            w.Ascii("8BIM"); w.Ascii(record.Blend); w.Byte(record.Opacity); w.Byte(0); w.Byte(record.Visible?(byte)8:(byte)10); w.Byte(0);
             long extra = w.BeginLength();
             w.U32(0); w.U32(0); // No separate masks or blending ranges.
             string name = record.Name;

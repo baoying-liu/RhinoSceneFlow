@@ -1,8 +1,22 @@
 # 原厂 Rhino-MCP-Platform 接入
 
+当前工作区为 v0.22.9：八个原生停靠工具 `materials | library | uv | planting | export | plantsList | properties | post`。下面带版本的章节记录功能引入时间；旧版页面数量不代表当前状态。所有调用仍经原厂 Platform。
+
+## v0.22.8 视图、通道与显示状态
+
+- `workbench_create_view {document,name?}`：从当前视口建立真实 Named View，未指定名字时自动编号，返回 viewId。
+- `workbench_rename_view {document,viewId,name}`：原位改名，拒绝空名／重名，工作台与原生 Named Views 同步。创建、改名均可撤销；撤销创建后重做的原生 ID 会改变，对应配置随身份迁移。
+- `workbench_expand {document,expanded,scope:"view"|"layers",viewId?}`：view 控制尺寸和 PSD 设置区；layers 控制内部图层；两个作用域独立。
+- `configure_view` 图层新增 `kind:"depth"|"color"`；`visible` 默认 true，独立于 `enabled`；`expanded` 默认 false。`colorSource:"material"|"layer"` 控制平涂颜色来源。`textureGrouping:"material"|"object"|"all"` 同时适用于 texture 和 color，all 为一个像素层。旧 kind:material 仍是旧图层 RGB 通道。
+- 新视图默认：plants、shadow、texture、原生 Arctic、depth、color；depth/color 的 visible=false。`sizeExpanded` 与 `layerSettingsExpanded` 默认 false。预览显示模式不改变导出通道。
+
+Depth 为独立线性相机轴向深度，背景不参与范围计算，植物按透明轮廓命中，当前 PSD 为 8 位。颜色位图的平均 RGB 用于 material 等效单色。`export_workbench` 保持原入口与批量报告，不增加 MCP 服务。详见 [工作台](Workbench.md)。
+
+Web 生成前检查 `/api/boards/{id}/nodes/{node}/preflight` 新增 `output:{width,height}`：整图沿用实际输入像素，高清按该任务的 `outputSize` 及输入比例计算；这是工作台回填尺寸，不是生图模型的原生输出尺寸。
+
 ## v0.17 Plants List 与选择属性
 
-`material_workspace_open` 新增 `page:plantsList|properties`；工作区现在有七个页面，前五个页面的 GUID 与顺序保持。所有文档请求带 `apiVersion:1,document:<当前运行序列>`，继续通过原厂 Platform 的 `run_python` 调用 `McpApi.Execute`。
+`material_workspace_open` 新增 `page:plantsList|properties`；当时增加至七个页面；当前加上 post 共八页，旧 GUID 与顺序保持。所有文档请求带 `apiVersion:1,document:<当前运行序列>`，继续通过原厂 Platform 的 `run_python` 调用 `McpApi.Execute`。
 
 | operation | 参数与行为 |
 | --- | --- |
@@ -26,9 +40,9 @@
 
 | operation | 参数与返回 |
 | --- | --- |
-| `material_workspace_open` | `page:materials\|library\|uv\|planting\|export`，默认 materials；返回五个原生 panelId、dockBars、工具状态；v0.13.2 工具的 `error` 字段记录文档重建错误，正常为 null |
-| `material_workspace_status` | 只读；材质状态包含 selected、job、lastJob、scope、reuseSimilar、shelf |
-| `material_workspace_group` | 显式将四个工具组合进材质面板所在原生容器 |
+| `material_workspace_open` | `page:materials\|library\|uv\|planting\|export\|plantsList\|properties\|post`，默认 materials；当前返回八个原生 panelId、dockBars、工具状态；v0.13.2 工具的 `error` 字段记录文档重建错误，正常为 null |
+| `material_workspace_status` | 只读；材质状态包含 selected、job、lastJob、scope、reuseSimilar、shelf；0.22.7 增加只读 chatTheme（light / dark）；0.22.6 的 tools.post.details 另含 fileCount、selectedPath、canImport、busy，便于检查后期导入入口 |
+| `material_workspace_group` | 显式将八个工具组合进材质面板所在原生容器 |
 | `material_shelf_open` | `visible?:bool`，默认 true 打开独立材质库工具；false 切换 AI 工具 |
 | `material_tool_select` | `assetId`，`page?:materials\|library`，默认 materials；同步两个工具的待应用材质 |
 | `material_tool_settings` | `page?:materials\|library`、`scope?:object\|layer`、`reuseSimilar?:bool`；应用范围在两个工具间同步 |
@@ -378,3 +392,15 @@ v0.22 白板补丁：board-preferences 增加 autoLocate:boolean（默认true）
 
 
 显示开关补充：同一 edit-reference/control JSON 路由支持 `{revision,action:"visibility",visible:true|false}`。仅设置当前槽位 `editReference.visible`（缺省 true），允许锁定／忙碌目标，不改 enabled、contextSignature、dirty、versions 或 undo。替换参考层沿用当前 visible。旧的 toggle 仍专门控制是否参与 AI 生成。
+
+
+## v0.22.9 季节和统一设置
+
+- `plugin_settings`：可读／保存 settings（language:auto|zh|en，theme:rhino|light|dark，season:spring|summer|autumn|winter，climate，generateFourSeasons）。默认 auto/rhino/summer/false。`plugin_settings_open` 显式打开原生设置窗口。
+- `seasonal_asset {assetId,plant?:false,seasonal?}`：读取单个父素材及内部变体，或更新跟随／固定季节元数据。默认 followSeason=true，fixedSeason=summer。不要用此接口伪造图片引用；先通过生成／导入把图像与 SHA 放入库。
+- `seasonal_start {assetId,plant?:false,fourSeasons?:true}`：只补缺少槽位，并准备随机材质缓存；false 为夏季（植物含平面）。返回 job.id，通过 `seasonal_status/seasonal_cancel {jobId}` 查询／取消。版本齐全不调用模型；成功提交的槽位不因后续取消而回滚。
+- `configure_view` 增加 previewSeason、followPreviewSeason（默认true）、exportSeasons（默认summer）、seasonExpanded。新视图默认 Rendered。`workbench_activate {document,viewId}` 激活视图、模式和预览季节，不打开细节页。
+- `export_workbench` 按有效季节内容拆分／合并文件；同一个 viewId 可以返回多个 files。名称带季节后缀，collision 行为不变，调用方不能假定一视图永远一文件。
+- `plant_instances` 保留地面 position，新增 displayPosition、heightMeters、orientation，避免把抬升后的平面显示位置／矩形尺寸当成种植位置／树高。
+
+MCP 继续使用原厂 Platform。数据和交互详见 [季节素材](Seasons.md)。

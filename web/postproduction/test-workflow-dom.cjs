@@ -39,7 +39,7 @@ async function api(p,o){const r=await fetch(base+'/api'+p,{...o,headers:{Authori
  const preset=[...w.document.querySelectorAll('.inspector select')].find(el=>[...el.options].some(o=>o.value==='concept'));
  select(preset,'concept');await until(()=>w.document.querySelector('.resource.draft'),'yellow draft');await wait(1400);
  let b=await api('/boards/'+record.board),n=b.nodes.find(n=>n.id===record.child);assert(n.dirty);assert.equal(n.params.freedom,55);
- button('Discard changes').click();await until(()=>w.document.querySelector('.contentFields').disabled,'rollback locked');
+ button('Restore task settings').click();await until(()=>w.document.querySelector('.contentFields').disabled,'rollback locked');
  b=await api('/boards/'+record.board);n=b.nodes.find(n=>n.id===record.child);assert(!n.dirty);assert.equal(n.params.freedom,15);
  button('Create sibling').click();await until(()=>w.document.querySelector('.pendingBoard'),'pending sibling board');
  b=await api('/boards/'+record.board);n=b.nodes.find(n=>n.id===b.selectedId);assert(n.pending);assert.equal(n.params.prompt,'');assert.equal(n.parentId,record.original);

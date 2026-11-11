@@ -128,29 +128,62 @@ public static class PostProduction
 internal sealed class PostProductionTool:Panel
 {
     private readonly RhinoDoc doc;
-    private readonly Label status=new(){Wrap=WrapMode.Word};
+    private readonly Label status=new(){Text="就绪",Wrap=WrapMode.Word};
+    private readonly Label directoryLabel=new(){Wrap=WrapMode.Character};
+    private readonly Label empty=new(){Text="此文件夹中还没有 PSD。请先从“PSD · 视图导出”工具导出。",Wrap=WrapMode.Word};
     private readonly DropDown files=new();
+    private readonly Button openWeb,send,browse,refresh;
+    private readonly Button export=new(){Text="前往 PSD 导出"};
     private readonly UITimer timer=new(){Interval=.4};
     private Guid? active;
     internal PostProductionTool(RhinoDoc doc)
     {
-        this.doc=doc;var layout=Ui.Layout();layout.AddRow(ToolUi.Heading("AI 后期 · Web 工作台"));
-        layout.AddRow(new Label{Text="在列表与画布之间切换：先整图探索、标注修改，再高清细化。图片、版本与工程自动保存在本机，显示语言可在网页设置中调整。",Wrap=WrapMode.Word});
-        layout.AddRow(Ui.Button("打开 Web 工作台",()=>Start(null)));
-        layout.AddRow(new Label{Text="当前导出文件夹中的 PSD"});layout.AddRow(files);
-        layout.AddRow(Ui.Button("刷新文件列表",Refresh),Ui.Button("发送所选 PSD",()=>{if(files.SelectedKey is {} path)Start(path);else status.Text="请先选择一个 PSD。";}));
-        layout.AddRow(Ui.Button("选择其他 PSD…",()=>{using var dialog=new OpenFileDialog();dialog.Filters.Add(new FileFilter("Photoshop 文件",".psd",".psb"));if(dialog.ShowDialog(this)==DialogResult.Ok)Start(dialog.FileName);}));
-        layout.AddRow(status);layout.AddRow(new Label{Text="在网页中先测试分块，再批量生成并融合为完整 PNG。失败图块可以继续处理。",Wrap=WrapMode.Word});layout.Add(null,true,true);Content=layout;
-        timer.Elapsed+=(_,_)=>{if(active is {} id){var job=PostProduction.Get(id);status.Text=job.Stage;if(job.Status!="running"){active=null;timer.Stop();}}};Refresh();
+        this.doc=doc;
+        openWeb=Ui.Button("打开 AI 渲染工作台",()=>Start(null));
+        send=Ui.Button("导入所选文件到工作台",()=>{if(files.SelectedKey is {} path)Start(path);});
+        browse=Ui.Button("从本机选择 PSD / PSB…",()=>{using var dialog=new OpenFileDialog();dialog.Filters.Add(new FileFilter("Photoshop 文件",".psd",".psb"));if(dialog.ShowDialog(this)==DialogResult.Ok)Start(dialog.FileName);});
+        refresh=Ui.Button("↻",Refresh,32);refresh.ToolTip="刷新导出文件列表";
+        export.Click+=(_,_)=>SceneFlowWorkspace.Open("export");
+        files.SelectedValueChanged+=(_,_)=>UpdateActions();
+        var resume=Ui.Layout();resume.AddRow(openWeb);resume.AddRow(new Label{Text="继续上次的画板，或在网页中新建项目。",Wrap=WrapMode.Word});
+        var picker=new TableLayout{Spacing=new(6,0),Rows={new TableRow(new TableCell(files,true),refresh)}};
+        var import=Ui.Layout();import.AddRow(new Label{Text="选择已导出的文件"});import.AddRow(picker);import.AddRow(empty);import.AddRow(export);import.AddRow(send);import.AddRow(browse);
+        import.AddRow(new Expander{Header="当前导出文件夹",Expanded=false,Content=directoryLabel});
+        var layout=Ui.Layout();layout.AddRow(ToolUi.Heading("AI 渲染工作台"));
+        layout.AddRow(ToolUi.Section("继续后期项目",resume));
+        layout.AddRow(ToolUi.Section("导入 PSD",import));
+        layout.AddRow(status);
+        layout.AddRow(new Expander{Header="使用说明",Expanded=false,Content=new Label{Text="在网页中先做整图探索与标注修改，再对满意的结果进行高清细化。图片、版本和画板自动保存在本机；原始 PSD 保留，最终导出 PNG。显示语言可在网页设置中调整。",Wrap=WrapMode.Word}});
+        layout.Add(null,true,true);Content=layout;
+        timer.Elapsed+=(_,_)=>{if(active is {} id){var job=PostProduction.Get(id);status.Text=job.Stage;if(job.Status!="running"){active=null;timer.Stop();UpdateActions();}}};Refresh();
     }
-    internal void Start(string? path){try{var job=PostProduction.Start(doc,path,true);active=job.Id;status.Text=job.Stage;timer.Start();}catch(Exception e){status.Text=e.Message;}}
+    private void UpdateActions()
+    {
+        bool idle=!active.HasValue,hasFiles=files.Items.Count>0;
+        openWeb.Enabled=browse.Enabled=refresh.Enabled=idle;
+        files.Enabled=idle&&hasFiles;send.Enabled=idle&&files.SelectedKey!=null;
+        empty.Visible=export.Visible=!hasFiles;send.Visible=hasFiles;
+    }
+    internal void Start(string? path)
+    {
+        if(active.HasValue)return;
+        try{var job=PostProduction.Start(doc,path,true);active=job.Id;status.Text=job.Stage;UpdateActions();timer.Start();}
+        catch(Exception e){status.Text=e.Message;UpdateActions();}
+    }
     private void Refresh()
     {
-        files.Items.Clear();string directory=SceneFlowPlugin.Instance.ExportDirectory;
-        try{if(Directory.Exists(directory))foreach(var path in Directory.EnumerateFiles(directory,"*.psd").OrderByDescending(File.GetLastWriteTimeUtc).Take(50))files.Items.Add(new ListItem{Key=path,Text=Path.GetFileName(path)});if(files.Items.Count>0)files.SelectedIndex=0;status.Text=directory;}
+        var selected=files.SelectedKey;files.Items.Clear();string directory=SceneFlowPlugin.Instance.ExportDirectory;directoryLabel.Text=directory;
+        try
+        {
+            if(Directory.Exists(directory))foreach(var path in Directory.EnumerateFiles(directory).Where(p=>Path.GetExtension(p).Equals(".psd",StringComparison.OrdinalIgnoreCase)||Path.GetExtension(p).Equals(".psb",StringComparison.OrdinalIgnoreCase)).OrderByDescending(File.GetLastWriteTimeUtc).Take(50))files.Items.Add(new ListItem{Key=path,Text=Path.GetFileName(path)});
+            if(files.Items.Any(i=>i.Key==selected))files.SelectedKey=selected;
+            else if(files.Items.Count>0)files.SelectedIndex=0;
+            status.Text=files.Items.Count>0?$"找到 {files.Items.Count} 个文件 · 选择后导入":"尚无导出文件，可从本机选择 PSD / PSB。";
+        }
         catch(IOException e){status.Text=e.Message;}
+        UpdateActions();
     }
-    public object State()=>new{document=doc.RuntimeSerialNumber,activeJob=active,stage=status.Text};
+    public object State()=>new{document=doc.RuntimeSerialNumber,activeJob=active,stage=status.Text,fileCount=files.Items.Count,selectedPath=files.SelectedKey,canImport=send.Enabled,busy=active.HasValue};
     protected override void Dispose(bool disposing){if(disposing){timer.Stop();timer.Dispose();}base.Dispose(disposing);}
 }
 

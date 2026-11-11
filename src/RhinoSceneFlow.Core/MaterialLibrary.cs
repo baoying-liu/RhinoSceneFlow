@@ -22,6 +22,7 @@ public sealed class MaterialAsset
     public string Prompt { get; set; } = "";
     public TextureRandomization Randomization { get; set; } = new();
     public PlantIdentity? Plant { get; set; }
+    public SeasonalAppearance Seasonal {get;set;}=new();
     public DateTime CreatedUtc { get; set; } = DateTime.UtcNow;
     public Dictionary<string,string> Maps { get; set; } = [];
     public Dictionary<string,string> Sha256 { get; set; } = [];
@@ -34,7 +35,8 @@ public sealed class MaterialAsset
         if(!double.IsFinite(WidthMeters)||!double.IsFinite(HeightMeters)||WidthMeters<=0||HeightMeters<=0||WidthMeters>1e5||HeightMeters>1e5)throw new ArgumentException("Texture physical size must be finite and positive (meters).");
         if(!double.IsFinite(Roughness)||!double.IsFinite(Metallic)||Roughness<0||Roughness>1||Metallic<0||Metallic>1)throw new ArgumentException("Roughness/metallic must be in 0..1.");
         if(RecommendedMapping is not ("auto" or "plane" or "box" or "cylinder"))throw new ArgumentException("Unknown mapping mode.");
-        if(Maps is null||Sha256 is null||!Maps.ContainsKey("baseColor")||Maps.Keys.Any(k=>!MaterialLibrary.Slots.Contains(k)))throw new ArgumentException("A baseColor map is required; supported maps: baseColor, roughness, normal, metallic.");
+        if(Maps is null||Sha256 is null||!Maps.ContainsKey("baseColor")||Maps.Keys.Any(k=>!MaterialLibrary.ValidSlot(k)))throw new ArgumentException("A baseColor and supported map slots are required.");
+        Seasonal??=new();Seasonal.Validate(this);
         if(Maps.Values.Any(v=>string.IsNullOrWhiteSpace(v)||Path.IsPathRooted(v)||v.Contains(':')||v.Split('/','\\').Any(p=>p is ".." or ".")))throw new ArgumentException("Material map paths must stay relative to the asset.");
     }
 }
@@ -43,6 +45,7 @@ public sealed class MaterialAsset
 public sealed class MaterialLibrary
 {
     public static readonly string[] Slots=["baseColor","roughness","normal","metallic"];
+    public static bool ValidSlot(string slot)=>Slots.Contains(slot)||Seasons.All.Any(s=>slot==s+"_elevation"||slot==s+"_plan");
     public static readonly JsonSerializerOptions Json=new(){PropertyNamingPolicy=JsonNamingPolicy.CamelCase,PropertyNameCaseInsensitive=true,WriteIndented=true};
     public string Root { get; }
     public MaterialLibrary(string root){if(!Path.IsPathFullyQualified(root))throw new ArgumentException("Library path must be absolute.");Root=Path.TrimEndingDirectorySeparator(Path.GetFullPath(root));}
@@ -104,10 +107,11 @@ public sealed class MaterialLibrary
     }
     public MaterialAsset Import(MaterialAsset descriptor,IReadOnlyDictionary<string,string> files)
     {
-        if(!files.ContainsKey("baseColor")||files.Keys.Any(k=>!Slots.Contains(k)))throw new ArgumentException("Select baseColor and supported optional maps.");
+        if(!files.ContainsKey("baseColor")||files.Keys.Any(k=>!ValidSlot(k)))throw new ArgumentException("Select baseColor and supported optional maps.");
         var a=Clone(descriptor);a.Id=Guid.NewGuid();a.Revision=1;a.CatalogRevision=1;a.CreatedUtc=DateTime.UtcNow;a.Maps=[];a.Sha256=[];
         foreach(var (slot,path) in files)
         {if(!Path.IsPathFullyQualified(path)||!File.Exists(path))throw new FileNotFoundException("Image not found.",path);string ext=Path.GetExtension(path).ToLowerInvariant();if(ext is not (".png" or ".jpg" or ".jpeg"))throw new ArgumentException("Use PNG or JPEG images.");if(new FileInfo(path).Length>256L*1024*1024)throw new ArgumentException("Individual map limit: 256 MiB.");a.Maps[slot]=a.Id.ToString("N")+"_"+slot+ext;}
+        if(!a.Seasonal.Variants.ContainsKey("summer"))a.Seasonal.Variants["summer"]=new(){Elevation="baseColor",CrownWidthMeters=a.WidthMeters};
         a.Validate();Directory.CreateDirectory(Path.Combine(Root,"assets"));string target=AssetDirectory(a.Id),staging=target+".staging";Directory.CreateDirectory(staging);
         try
         {
@@ -121,6 +125,29 @@ public sealed class MaterialLibrary
         var old=Get(descriptor.Id);if(descriptor.Revision!=old.Revision||descriptor.CatalogRevision!=old.CatalogRevision)throw new InvalidOperationException("材质已被其他操作更新，请刷新并重新选择后再保存。");
         var a=Clone(descriptor);a.Maps=old.Maps;a.Sha256=old.Sha256;a.Source=old.Source;a.Prompt=old.Prompt;a.CreatedUtc=old.CreatedUtc;a.Revision=old.Revision+1;a.CatalogRevision=old.CatalogRevision+1;a.Validate();Verify(a);
         AtomicWrite(Path.Combine(AssetDirectory(a.Id),"asset.json"),JsonSerializer.Serialize(a,Json));return a;
+    });
+    public MaterialAsset AddSeason(Guid id,int revision,string season,bool plan,string? imagePath,string? reuseSlot=null,double crownWidthMeters=3,double? elevationWidthMeters=null,double? anchorU=null)=>Locked(()=>
+    {
+        Seasons.Validate(season);var a=Get(id);if(a.Revision!=revision)throw new InvalidOperationException("素材已变化，请刷新后重试。");
+        string slot=reuseSlot??season+(plan?"_plan":"_elevation");string? copied=null;
+        try
+        {
+            if(imagePath!=null)
+            {
+                if(!Path.IsPathFullyQualified(imagePath)||!File.Exists(imagePath)||new FileInfo(imagePath).Length>256L*1024*1024)throw new ArgumentException("Invalid seasonal image.");
+                string ext=Path.GetExtension(imagePath).ToLowerInvariant();if(ext is not (".png" or ".jpg" or ".jpeg"))throw new ArgumentException("Seasonal image must be PNG/JPEG.");
+                string name=Guid.NewGuid().ToString("N")+"_"+slot+ext;copied=Path.Combine(AssetDirectory(id),name);File.Copy(imagePath,copied);a.Maps[slot]=name;a.Sha256[slot]=Hash(copied);
+            }
+            else if(!a.Maps.ContainsKey(slot))throw new ArgumentException("Reusable seasonal slot is missing.");
+            if(!a.Seasonal.Variants.TryGetValue(season,out var variant))a.Seasonal.Variants[season]=variant=new();
+            if(plan){variant.Plan=slot;variant.CrownWidthMeters=crownWidthMeters;}else
+            {
+                var geometry=a.Seasonal.Variants.Values.FirstOrDefault(v=>v.Elevation==slot&&v.ElevationWidthMeters.HasValue);
+                variant.Elevation=slot;variant.ElevationWidthMeters=elevationWidthMeters??geometry?.ElevationWidthMeters;variant.AnchorU=anchorU??geometry?.AnchorU;
+            }
+            a.Revision++;a.Validate();Verify(a);AtomicWrite(Path.Combine(AssetDirectory(id),"asset.json"),JsonSerializer.Serialize(a,Json));return a;
+        }
+        catch{if(copied!=null&&File.Exists(copied))File.Delete(copied);throw;}
     });
     public MaterialAsset UpdateLabels(Guid id,string name,string category,string[] tags,int? expectedCatalogRevision=null)=>Locked(()=>
     {
@@ -140,7 +167,7 @@ public sealed class MaterialLibrary
         string temp=Directory.CreateTempSubdirectory("SceneFlow-material-").FullName;
         try
         {
-            using var zip=ZipFile.OpenRead(path);if(zip.Entries.Count>6||zip.Entries.Sum(e=>e.Length)>1024L*1024*1024)throw new InvalidDataException("Invalid/oversized material package.");
+            using var zip=ZipFile.OpenRead(path);if(zip.Entries.Count>16||zip.Entries.Sum(e=>e.Length)>1024L*1024*1024)throw new InvalidDataException("Invalid/oversized material package.");
             var names=new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             foreach(var entry in zip.Entries)
             {if(entry.Name!=entry.FullName||entry.FullName.Contains('\\')||entry.FullName.Contains(':')||!names.Add(entry.FullName))throw new InvalidDataException("Invalid package path.");entry.ExtractToFile(Path.Combine(temp,entry.Name));}

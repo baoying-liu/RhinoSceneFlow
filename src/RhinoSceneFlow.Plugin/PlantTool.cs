@@ -1,4 +1,4 @@
-using Eto.Forms;
+﻿using Eto.Forms;
 using Eto.Drawing;
 using Rhino;
 using Rhino.Geometry;
@@ -28,21 +28,23 @@ public sealed class PlantTool:Panel
     internal static void StopDocument(uint serial){foreach(var t in tools.Where(t=>t.document==serial).ToArray())t.Stop();}
     internal static void PresentationChanged(){foreach(var t in tools.Where(t=>!t.stopped).ToArray())t.Guard(t.RefreshPresentation);}
     private readonly bool propertiesOnly;
+    private readonly SeasonalAssetPanel seasonal=new(true);
     public PlantTool(RhinoDoc doc,bool propertiesOnly=false)
     {
         document=doc.RuntimeSerialNumber;this.propertiesOnly=propertiesOnly;tools.Add(this);
         foreach(var (key,text) in new[]{("auto","跟随 Rhino"),("zh","中文"),("en","English")})language.Items.Add(new ListItem{Key=key,Text=text});
         foreach(var picker in new[]{libraryView,compositionView})foreach(var (key,text) in new[]{("tiles","小方块"),("list","列表")})picker.Items.Add(new ListItem{Key=key,Text=text});
         var library=Ui.Layout();library.AddRow(Ui.Button("在 AI 对话中生成植物",()=>SceneFlowWorkspace.Open("materials")));library.AddRow(query);library.AddRow(ToolUi.Row(new Label{Text="显示方式"},libraryView,null));library.AddRow(list);
-        library.AddRow(ToolUi.Row(Ui.Button("添加到植物组合 ↓",()=>Guard(AddSelected)),Ui.Button("刷新",()=>Guard(Refresh)),null));library.AddRow(Ui.Button("AI 整理植物库",()=>Guard(()=>{catalogJob=CatalogService.Organize(true).Id;})));
-        var composition=Ui.Layout();composition.AddRow(ToolUi.Row(new Label{Text="计算列表 · 拖入植物"},null,compositionView));composition.AddRow(palette);composition.AddRow(ToolUi.Row(new Label{Text="比重"},weight,new Label{Text="间距 m"},spacing,null));composition.AddRow(Ui.Button("移出此植物",()=>Guard(RemoveSelected)));
+        library.AddRow(ToolUi.Pair(Ui.Button("加入组合 ↓",()=>Guard(AddSelected)),Ui.Button("刷新植物库",()=>Guard(Refresh))));library.AddRow(seasonal);
+        var management=Ui.Layout();management.AddRow(Ui.Button("AI 整理分类与标签",()=>Guard(()=>{catalogJob=CatalogService.Organize(true).Id;})));management.AddRow(Ui.Button("界面与名称语言设置",PluginPreferences.Show));library.AddRow(new Expander{Header="植物库管理",Content=management});
+        var composition=Ui.Layout();composition.AddRow(ToolUi.Row(ToolUi.Note("拖入或双击库中植物"),null,compositionView));composition.AddRow(palette);composition.AddRow(ToolUi.Row(new Label{Text="数量比重"},weight,null));composition.AddRow(ToolUi.Row(new Label{Text="植物间距 m"},spacing,null));composition.AddRow(Ui.Button("从组合中移除所选类型",()=>Guard(RemoveSelected)));
         var general=Ui.Layout();general.AddRow(ToolUi.Row(new Label{Text="密度 株/m²"},density,null));general.AddRow(ignoreSpacing);general.AddRow(ToolUi.Row(new Label{Text="Layout Seed"},layoutSeed,null));general.AddRow(ToolUi.Row(new Label{Text="大小 Seed"},sizeSeed,null));general.AddRow(minimum);general.AddRow(maximum);general.AddRow(mirror);general.AddRow(ToolUi.Row(new Label{Text="Mirror Seed"},mirrorSeed,null));
         var edge=Ui.Layout();edge.AddRow(ToolUi.Row(new Label{Text="边缘距离 m"},edgeDistance,null));edge.AddRow(ToolUi.Row(new Label{Text="强度 0–1"},edgeStrength,null));edge.AddRow(ToolUi.Row(edgeDensity,edgeSize,null));edge.AddRow(new Label{Text="衰减曲线：边界 0% → 内部 100%",Wrap=WrapMode.Word});edge.AddRow(new PlantCurvePreview(curve));edge.AddRow(ToolUi.Row(curve.Cast<Control?>().ToArray()));edge.AddRow(new Label{Text="手工植物保留位置，只参与大小衰减。",Wrap=WrapMode.Word});
         foreach(var (key,text) in new[]{("auto","自动朝向"),("z","只绕 Z 轴"),("free","完全朝向相机")})facing.Items.Add(new ListItem{Key=key,Text=text});facing.SelectedKey=PlantService.Settings.Mode;angle.Value=PlantService.Settings.Angle;
-        var global=Ui.Layout();global.AddRow(facing);global.AddRow(ToolUi.Row(new Label{Text="切换角度 °"},angle,null));global.AddRow(Ui.Button("保存全局朝向",()=>Guard(()=>PlantService.Settings=new(){Mode=facing.SelectedKey??"auto",Angle=angle.Value})));
-        libraryExpander.Content=library;var body=Ui.Layout();if(!propertiesOnly)body.AddRow(libraryExpander);body.AddRow(composition);body.AddRow(new Expander{Header="布局与随机",Content=general,Expanded=true});body.AddRow(new Expander{Header="边缘衰减",Content=edge});body.AddRow(new Expander{Header="全局相机朝向",Content=global});
-        var root=Ui.Layout();root.AddRow(ToolUi.Row(ToolUi.Heading("种植组合"),null,language));root.AddRow(context);if(propertiesOnly)root.AddRow(name);else root.AddRow(ToolUi.Row(name,Ui.Button("新组合",NewDraft),null));root.Add(new Scrollable{Content=body,ExpandContentWidth=true},true,true);
-        root.AddRow(Ui.Button("选择曲面并生成 / 重新关联",()=>Guard(Scatter)));root.AddRow(Ui.Button("连续点种 · Esc 结束",()=>Guard(PlacePoint)));root.AddRow(status);Content=root;
+        var global=Ui.Layout();global.AddRow(Ui.Button("打开全局植物显示设置",PluginPreferences.Show));
+        libraryExpander.Content=library;var body=Ui.Layout();if(!propertiesOnly)body.AddRow(libraryExpander);body.AddRow(ToolUi.Section("待种植植物",composition));body.AddRow(new Expander{Header="密度、大小与随机",Content=general,Expanded=false});body.AddRow(new Expander{Header="边缘衰减",Content=edge});body.AddRow(new Expander{Header="全局相机朝向",Content=global});
+        var root=Ui.Layout();root.AddRow(ToolUi.Heading(propertiesOnly?"组合参数":"植物库与种植"));root.AddRow(context);root.AddRow(new Label{Text="组合名称"});if(propertiesOnly)root.AddRow(name);else root.AddRow(new TableLayout{Spacing=new(6,0),Rows={new TableRow(new TableCell(name,true),Ui.Button("新建",NewDraft))}});root.Add(new Scrollable{Content=body,ExpandContentWidth=true},true,true);
+        var placement=Ui.Layout();placement.AddRow(Ui.Button("在曲面上生成 / 重新关联",()=>Guard(Scatter)));placement.AddRow(Ui.Button("连续点种 · Esc 结束",()=>Guard(PlacePoint)));root.AddRow(ToolUi.Section("放置植物",placement));root.AddRow(status);Content=root;
         query.TextChanged+=(_,_)=>RefreshList();list.SelectionChanged+=id=>{if(!binding)Guard(()=>Select(id));};list.Activated+=id=>Guard(()=>{Select(id);AddSelected();});
         palette.SelectionChanged+=_=>PaletteFields();spacing.ValueChanged+=(_,_)=>PaletteChanged();weight.ValueChanged+=(_,_)=>PaletteChanged();
         foreach(var n in new[]{density,layoutSeed,sizeSeed,mirrorSeed,edgeDistance,edgeStrength}.Concat(curve))n.ValueChanged+=(_,_)=>Changed();foreach(var c in new[]{mirror,ignoreSpacing,edgeDensity,edgeSize})c.CheckedChanged+=(_,_)=>Changed();minimum.Changed+=Changed;maximum.Changed+=Changed;name.TextChanged+=(_,_)=>Changed();
@@ -52,6 +54,7 @@ public sealed class PlantTool:Panel
     }
     public void Select(Guid id)
     {
+        seasonal.Bind(id);
         var a=PlantService.Library.Get(id);if(a.Plant==null)throw new ArgumentException("不是植物素材。");selected=id;PlantService.Selected[document]=id;libraryExpander.Expanded=true;
         binding=true;try{list.SelectedKey=id.ToString();}finally{binding=false;}
     }

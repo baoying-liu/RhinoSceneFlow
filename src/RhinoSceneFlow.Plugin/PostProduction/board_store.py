@@ -80,13 +80,17 @@ class Store:
     def fingerprint(self,b):
         n=[{k:v for k,v in n.items() if k not in ('busy','inputChanged')} for n in b['nodes']]
         return json.dumps(dict(name=b['name'],nodes=n,marks=b.get('marks',[]),collapsed=b['view'].get('collapsed',[]),canvasCollapsed=b['view'].get('canvasCollapsed',[])),sort_keys=True)
-    def commit(self,value,record=True,before=None,barrier=False):
+    def commit(self,value,record=True,before=None,barrier=False,restored=None):
         if len(json.dumps(value,ensure_ascii=False).encode('utf-8'))>12_000_000:raise ValueError('Board metadata exceeds 12 MB; create another board')
         old=before if before is not None else self.read(value['id']);h=self.edit_history(value['id'])
         if value.get('marks',[])==old.get('marks',[]):value['marks']=context.follow_marks(old['nodes'],value['nodes'],value.get('marks',[]))
         previous={n['id']:n for n in old['nodes']}
         for n in value['nodes']:
             if n['kind']=='image' and n['id'] in previous and context.signature(old,previous[n['id']])!=context.signature(value,n):n['dirty']=True
+            if n['id']==restored:
+                # A restoration changes context too. Compare against the saved task,
+                # not the just-discarded draft; shared canvas edits may still remain.
+                n['dirty']=bool(n['pending'] or context.signature(value,n)!=n['baseline'].get('contextSignature'))
         if barrier:h=dict(undo=[],redo=[])
         elif record and self.fingerprint(old)!=self.fingerprint(value):
             def clean(v):
@@ -353,7 +357,18 @@ class Store:
         return {k:copy.deepcopy(n.get(k)) for k in ('id','versionId','asset','preview','width','height','source','stage')}
     def configuration(self,b,n):
         return dict(contextSignature=context.signature(b,n),params=copy.deepcopy(n['params']),annotations=copy.deepcopy(n['annotations']),frame=copy.deepcopy(n['frame']),
+                    participation={k:n.get('guideControls',{}).get(k,True) for k in ('enabled','specialEnabled')},
                     references=[copy.deepcopy(r['node']) for r in context.collected(b,n)[1]])
+    def restore_configuration(self,n,c):
+        eyes={a['id']:a.get('visible',True) for a in n['annotations']}
+        # Baselines/backups from older versions may lack newly added defaults.
+        # Return the same canonical schema as read(), including while locked.
+        n.update(params=params(copy.deepcopy(c['params'])),annotations=annotations(copy.deepcopy(c['annotations'])),frame=copy.deepcopy(c['frame']))
+        # Eyes are presentation preferences; do not reset them with AI settings.
+        for a in n['annotations']:
+            if a['id'] in eyes:a['visible']=eyes[a['id']]
+        controls=n.setdefault('guideControls',{})
+        for key in ('enabled','specialEnabled'):controls[key]=c.get('participation',{}).get(key,True)
     def effective(self,b,n):
         parent=next((r for r in b['nodes'] if r['id']==n.get('parentId')),None);skipped=[]
         while parent and parent.get('archived'):
@@ -435,7 +450,8 @@ class Store:
             n['locked']=False
         elif action=='cancel':
             n.pop('checkout',None)
-            c=n['baseline'];n.update(params=copy.deepcopy(c['params']),annotations=copy.deepcopy(c['annotations']),frame=copy.deepcopy(c['frame']),dirty=n['pending'],locked=not n['pending'] and not n['original'])
+            self.restore_configuration(n,n['baseline'])
+            n.update(dirty=n['pending'],locked=not n['pending'] and not n['original'])
         elif action=='archive':
             if n['original'] or n['pending']:raise ValueError('Only completed generated images can be archived')
             summary=body.get('summary','').strip()
@@ -451,13 +467,14 @@ class Store:
         elif action=='checkout':
             if n['original']:raise ValueError('Original input is read-only')
             v=next(v for v in n['versions'] if v['versionId']==body['version'])
-            n.update(params=copy.deepcopy(v['configuration']['params']),annotations=copy.deepcopy(v['configuration']['annotations']),frame=copy.deepcopy(v['configuration']['frame']),dirty=True,locked=False,checkout=v['versionId'])
+            self.restore_configuration(n,v['configuration'])
+            n.update(dirty=True,locked=False,checkout=v['versionId'])
         elif action=='deleteDraft':
             if not n['pending']:raise ValueError('Only a pending draft can be deleted')
             b['nodes']=[r for r in b['nodes'] if r['id']!=node and r.get('parentId')!=node];b['selectedId']=n.get('parentId')
         else:raise ValueError('Unknown node action')
         if action=='deleteBackup' and len(n['versions'])<=self.preference()['backupLimit']:n['backupLimit']=None
-        self.statuses(b);return self.commit(b)
+        self.statuses(b);return self.commit(b,restored=node if action=='cancel' else None)
     def publish(self,id,node,image,preview,width,height,stage,source,snapshot):
         b=self.read(id);n=next(r for r in b['nodes'] if r['id']==node)
         if n['original']:raise ValueError('Create a child result; original input pixels cannot be replaced')

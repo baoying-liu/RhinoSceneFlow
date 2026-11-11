@@ -29,9 +29,11 @@ async def raster(job,operation,folder):{'prepare':prepare,'detail':detail}[opera
 api.raster=raster
 async def checks():
  before=copy.deepcopy(s.read(bid));plan=await api.preflight(bid,child['id'],dict(revision=before['revision'],stage='whole'))
+ assert plan['output']==dict(width=96,height=72)
  assert plan['input']['id']==c['id'] and plan['ready'] and plan['images'].keys()=={'input','context','mask'}
  assert s.read(bid)==before,'Input checking must not edit board/history/pixels'
- hp=await api.preflight(bid,hd['id'],dict(revision=before['revision'],stage='detail'));assert hp['ready'] and hp['references']==[] and hp['annotations']==[] and hp['images']=={}
+ hp=await api.preflight(bid,hd['id'],dict(revision=before['revision'],stage='detail'));assert hp['output']==dict(width=2048,height=1536)
+ assert hp['ready'] and hp['references']==[] and hp['annotations']==[] and hp['images']=={}
  try:await api.preflight(bid,child['id'],dict(revision=before['revision']-1))
  except HTTPException as e:assert e.status_code==409
  else:raise AssertionError('Stale preflight must reject')

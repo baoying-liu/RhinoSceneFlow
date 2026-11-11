@@ -1,5 +1,9 @@
 # v0.2.1 验收清单
 
+## 2026-11-09 · 家里 B 0.22.4 安装核对
+
+管理构建/加载任务 `87027f3741a5461489400878d15fb02b` 成功，0 warnings / 0 errors。原厂 Platform 按本机 B 的监视记录校验 PID116984 / port22801，实际程序集及 Web 服务版本均为 0.22.4；46 个 Web 部署文件与源码哈希一致。原有两份画板的 board.json 哈希保留，文档 Objects=0、Modified=false。实际 headless Edge 渲染“编辑与标注”面板与 0.22.4 页脚，无 JavaScript 页面错误；通过原厂 MCP 打开工作台。此轮为安装及页面冒烟验证，没有重新声称执行所有编辑/生成回归，没有模型调用。证据 `artifacts/rhino-B/home0224`。
+
 ## 2026-10-31 v0.16.4 植物来源与实际生成
 
 复现用户失败的两个旧 botany 日志：`a3939124ba7c4354a7db3c812a115f8a` / `65b3c21355a74b68b7d9eb17ef0c392c`（共享库 chat-jobs）。原程序只核对回答中挑出的来源，Kew 403 / PDF 无法读取时直接结束，遗漏搜索到的 NParks。现核实最多 12 个支持域名页面、4 并发、6 MB 上限，记录状态/超时/不支持 PDF/身份不符/重定向。精确科学名+科名仍必须出现在同一真实物种页；标题或显式科学名字段防止相关物种提及误过。
@@ -597,3 +601,60 @@ scripts/Build.ps1 完整通过，零编译警告/错误，Core/UV/随机贴图/�
 参考层实际像素/锁定/左右对比/刷新/平滑/画布/选择/导出回归：artifacts/workflow021-http/57c61b1ce8964abfbaec8123f2ec4dcf/reference-visibility-verified.json。原位文字（中文、多行、composition 分支、zoom、blur/Esc、刷新、像素不变）：artifacts/workflow021-http/3e14cb44dcb045088e74f30a198e3c84/inline-text-browser-verified.json。旧测试把新文字仍断言成 per-node annotations，首次失败证据保留 1c700bc888e24763b9c88ed8ed1336df；实际文字已正确写入 world-space board.marks。断言已改为恰好一份 world mark、正确世界坐标，原两份 legacy marks 不变，未改产品去迎合旧断言。
 
 最终 Hillside 页面实测 artifacts/ui-audit-20261109/release-case-verified.json 与 release-case-{list,mask,canvas}.png；原厂桥预检 artifacts/rhino-B/taskflow0221/bridge.json。全部为输入/界面/保护语义验证，零新增模型调用。测试中九个自有 idle fixture 服务已正常 shutdown，未结束用户服务/进程来清理测试。
+
+## 2026-11-10 · 0.22.5 UI／恢复与跨工具验证
+
+scripts/Build.ps1 全构建及 Core 验证通过；新增 Test-TaskRestore 覆盖 AI 分组恢复、显示不变、共享内容继续 pending、旧 baseline／backup 的默认字段，Test-TaskInputs 验证整图及高清预检的准确输出尺寸。BoardWorkflow、CanvasContext、ReferenceGallery、BoardInvariants、GuideGates、RasterStability 均通过。
+
+无界面真实 Edge 最终十条流程通过（artifacts/ux-audit-20261110/browser-verified.json）：tools、annotation-edit、inline-text、spatial-canvas、annotation-delete、reference-gallery、edit-scope、task-flow、task-restoration、reference-visibility；page errors 检查通过，认证 favicon 的 401 单独记录。首次旧定位器／旧 world-mark schema／不独立 fixture 的失败保留；按当前产品契约更新脚本后重跑，不将首次失败掩盖。PhotoCraft 普通编辑两次及特殊图层实际浏览器 roundtrip、独立像素和过期会话验证通过。
+
+B 原生：八面板、实时材质选择／队列冻结／空选择／图层范围、真实尺度 UV 与失效、Plants List 双向选择、12 次隔离进入／15 株拾取／空白双击退出、单株移动缩放镜像取消通过。600×450 真实多通道 PSD 经 psd-tools 检查；两个完整 New/Open 周期最终八工具重绑定、同 PID。只读布局捕获不算 HWND WebView 或视口完整视觉 QA，558 ms 的单株测试调用不算帧率基准。
+
+真实 AI：独立案例 1 次整图调用，53.76 秒；新 PNG receipt SHA 校验，48,807 个只读像素与 alpha 精确保持；输出 600×450。另存工程 ZIP 及资产包含校验通过。未重新运行原生植物／材质 AI 新生成、真实手绘屏硬件、万株植物性能、真实 4K 或全部错误场景；不宣称全插件所有组合无 Bug。详细矩阵和待办见 UX-Audit-2026-11-10.md。
+# 2026-11-10 · 0.22.6 画板切换与原生后期面板
+
+修复异步保存后重新读取 select 事件目标值导致无法切板；在事件发生时固定目标，保存失败保留当前画板与编辑内容。真实 headless Edge / HTTP 回归覆盖空板往返、有待保存描述、延迟加载、保存失败及重试、刷新恢复，零模型调用。证据：artifacts/workflow021-http/3b158413816545f09a7d3431a6b3cbcb/board-switch-verified.json。
+
+完整 Build.ps1 通过。B 原生 0.22.6 实测刷新保留 PSD 选择、无文件时禁用导入及显示导出入口；360/520/820 宽度只读 WPF 布局捕获，9 个嵌入图标互不相同。实际本机 Web 服务空板与案例往返通过，全部五个 board.json SHA 与偏好保持不变。证据 artifacts/board-switch-0226/{native-panel-verified,live-verified}.json。既有自定义 RUI 不自动覆盖；新包图标已更新，已注册原生侧栏使用新图标。
+
+## 2026-11-11 · 0.22.7 原生工具 UI 与 ChatKit 主题
+
+完整 Build.ps1 通过（零编译警告／错误，Core 验证全过），最终 B 部署、构建包与源码 ChatKit HTML / 插件二进制一致。ChatKit 使用官方主题配置，原生读取 Rhino PanelBackground / EditBoxBackground 与文字色，每秒仅在颜色变化时更新；更新不重建 WebView，不重载对话。独立浏览器没有 Rhino 宿主时跟随 prefers-color-scheme。修复初始 DOM 命名属性早于 SDK 就绪、setOptions 需要完整配置两项真实组件问题，不能只验证自有 CSS 背景。
+
+真实 headless Edge + 官方 ChatKit：深浅色往返、系统媒体主题变化、composer 草稿及 iframe 身份保留、初始短欢迎语、地址清除认证 query，通过且 page errors 为空。原生 WebView2 SDK 截图及状态确认 ready=true/error=null，面板底色 #19382B，输入面 #244638，与当前 Rhino 颜色相同。无模型调用。证据 artifacts/theme-ui-0227/{chat-browser-verified,chat-native,release-verified}.json。
+
+八页均在 360/600 宽度做只读 WPF 布局捕获：标题／主次操作／折叠设置、材质查询、种植组合、属性、PSD 图层与后期入口；这些捕获不包含 WebView HWND，聊天另用真实 SDK CapturePreviewAsync 和浏览器截图验证。原生属性页普通物件的材质范围、Plants List 编辑／定位按钮和隔离编辑退出按钮通过。先前直接在 MCP 命令内调用 Refresh 的断言受到 InCommand 门控影响；改为真实 UI ticks 后验证，未绕过产品门控。
+
+所有工具打开后 new → new → open，PID 25112 不变、八工具重绑定、案例恢复 70 对象且 Modified=false。原厂 HTTP 在文档切换时重置及短暂“文档已关闭”保留为延迟绑定观察，未重复发起 mutation；只读状态继续轮询。管理器确认先前 PID 26164 为 NormalExit。证据 native-layouts.json、native-actions-verified.json、lifecycle-verified.json、instances.json。未测试每种自定义系统配色、高对比度辅助模式或真实手绘硬件，未将这轮 UI 检查称为完整生图质量验证。
+
+## 2026-11-11 · 0.22.8 PSD 通道与 Named View 工作台
+
+完整 Build.ps1/Core 验证通过，新增 ExportChannelsValidation 覆盖隐藏图层／隐藏分组子层标志、兼容合成、三种分层等价、代表色、相机轴向深度、植物透明孔、跨块归一化和取消。最终原生布局改动由沙盒 build_test 编译，零警告／错误。
+
+原厂 MCP 的正常入口最终在 B PID 19060 完成 600×450 六通道 PSD，20 个像素层，报告导出 9357 ms，端到端调用 9.812 秒。psd-tools 独立解码确认顶到底：植物、Shadow、材质、Arctic、深度图、材质颜色；后两项隐藏且保留数据，深度 256 灰阶覆盖 0–255。九个实际分层变体：材质代表色 8 材质／60 物件／1 全合并，图层色 11 颜色／60 物件／1 全合并，贴图 8 材质／60 物件／1 全合并；每组不同分层的兼容合成像素完全一致。证据 artifacts/export-0228/{supported-final-report,supported-final-psd-verified,variants-verified}.json。
+
+原生创建、原位改名、外部改名同步、重名空名拒绝、尺寸与图层深复制、两级折叠隔离通过。自定义 Undo 实测创建和改名往返，重做新建的 SDK ID 改变后仍保留尺寸与后续改名记录。证据 names-fold-verified.json、undo-verified.json、ui-actions-verified.json。
+
+所有八工具实际打开后 new → new → open，PID 19060 不变，八工具无错误重绑定，70 对象／Modified=false；最终原始 Hillside-UX-Audit.3dm 已恢复、PSD 页选中。首次生命周期脚本只分组打开但未逐页实例化，因只有两个实际工具未满足八工具断言；补齐真实逐页打开后通过，未将首次失败算成产品崩溃。最终额外打开原案例后的短暂“文档已关闭”也保留，随后只读确认并打开成功。证据 lifecycle-verified.json、final-case.json。
+
+两条额外测试路径发生未确认退出：早期 ZBufferCapture 探针，以及末期直接构造未挂到 Rhino 容器的离屏 ExportPanel。没有用户关闭操作；管理器缺少完整退出码／转储，不能断言具体原生根因。产品深度不使用 ZBufferCapture，停止未挂载面板／WPF live-root 截图探针，恢复 B 后正常 MCP 导出和文档生命周期均通过。保留 offscreen-probe-exit.json 等证据，不宣称全部原生异常已根治。布局捕获受宿主裁剪影响，不作为所有 DPI／主题的完整视觉 QA；没有新增 4K/8K 深度性能测试。
+
+## 2026-11-11 · 0.22.9 季节素材与预览交互
+
+完整 Build.ps1（production-build.log）零警告／错误，全部既有 Core 回归及 SeasonalValidation 通过：一素材多季节引用、缺失／固定季节、复用图像尺寸及锚点、过期提交拒绝、ZIP 往返、水平平面与角度校验。正式实现和限制见 Seasons.md。
+
+最终 B PID 56416、原厂 MCP 实测：18 个真实位图眼睛按钮、隐藏／显示往返、原生设置 Dialog 打开／关闭；默认新视图 Rendered。15 株切换平面，地面锚点不变、displayPosition 按实际树高抬升、heightMeters 不变、orientation=plan；夏冬材质在 Rhino 实际切换一项，原有纹理重复矩阵和全部对象 Geometry.DataCRC 不变，切回夏季恢复。透明裁片规范化独立验证宽度 8 m、基部锚点 .5。证据 final-check-{ui,native,final}.json。
+
+600×450 默认六通道输出两个 PSD（春夏秋合并／冬季单独），每个 20 像素层，depth/color 隐藏标志及数据经 psd-tools 解码确认；只导植物的正俯视使用同一平面图，四季合成一个文件。季节随机缓存准备后，植物／材质／阴影／深度／颜色通道的夏季像素与先前一致。Rhino 自带 Arctic 捕获跨进程出现像素变化（最终 104266 像素），因此不宣称整个兼容合成跨实例逐像素一致。原先对全合成的断言因此失败，拆分通道后才确认自有通道的稳定性。证据 release-psd-report.json、release-psd-verified.json、top-release-verified.json。
+
+真实模型调用：已有已核实 Tamarindus indica 立面作为参考，生成 1 张新透明平面 PNG，实际图片和 fresh-path 校验留存。AI 判断无霜正常供水气候下不需要温带落叶／雪景，四季八槽共用原立面及新平面两张文件；继续补齐已完整素材没有新模型调用。冬季比较图使用明确的合成测试图片，不冒充真实冬季生成结果。未验证所有物种的季节准确性、所有八张不同图的连续生成质量或 4K／8K 四季性能。
+
+最终 new → new → open 同 PID、八工具无错误重绑定，原案例恢复 70 对象／Modified=false；切库前填充旧缓存再切回原库，15 株继续显示且回到无平面旧素材的 elevation，验证缓存按 Root+ID 隔离。复制案例和原 3dm SHA 相等，原素材库及偏好已恢复，临时季节图片只在 artifacts/seasons-0229/library。证据 lifecycle-verified.json、restored.json。
+
+保留测试修正：首个 fixture GUID 拼写／内部方法不可直接调用、关闭 Dialog 时枚举集合被修改、重名输出自动 001 导致严格文件名断言失败、布局尚忙时导出被正确拒绝、Open 后原厂连接短暂重置。均未将失败算作通过；最终分步骤等待 UI ticks、只读确认再继续，不盲目重发变更。一次同时启动管理器编译和 Build.ps1 造成中间 ref DLL 冲突，已串行重跑通过。没有新增未确认 Rhino 退出，未使用用户鼠标或离屏构造面板探针。
+
+## 2026-11-11 · 0.22.9 案例缺少平面素材的收尾修正
+
+用户实际视口为平行投影、俯视 85.806°、auto 模式、planAngle=75°，但原素材库 Betula nigra seasonal.variants 为空，15 株均走缺图立面回退。上轮隔离测试成功不能代表恢复原库后的案例已具备平面图；这是示例准备遗漏，并非阈值未触发。
+
+通过原厂 MCP seasonal_start（fourSeasons=false）给原库该父素材补齐夏季平面；复用既有立面，不新增父素材、不调整模型布局。真实 AI PNG 完成并经透明裁片规范化入库。最终同 PID 56416，15/15 orientation=plan，地面 position、heightMeters、相机方向逐项与调用前相同，Modified=false。原生当前视口 CaptureToBitmap 目视确认树冠平面。证据 artifacts/plan-followup-0229/{inspection,job,status,before,verified}.json 与 current-plan-view.png。本次更新的是该正式素材记录的季节图片，无代码升级、无 Rhino 重启、未使用鼠标。

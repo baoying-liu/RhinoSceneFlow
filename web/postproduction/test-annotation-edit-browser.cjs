@@ -12,7 +12,7 @@ const browser=await chromium.launch({executablePath:'C:/Program Files (x86)/Micr
 try{const page=await browser.newPage({viewport:{width:1760,height:1080}}),errors=[];page.setDefaultTimeout(8000);page.on('pageerror',e=>errors.push(e.message));await page.goto(base+'/#token=workflow-fixture-token');await page.locator('.contentFields').waitFor();if(!await page.locator('.canvasHost').count())await page.locator('.modeSwitch button').nth(1).click();await page.getByRole('button',{name:'Fit selected',exact:true}).click();await wait(1000);
 async function pos(x,y){return page.evaluate(({id,x,y})=>{const s=Konva.stages[0],g=s.findOne('.image-node-'+id),r=s.container().getBoundingClientRect(),p=g.getAbsolutePosition();return{x:r.x+p.x+x*s.scaleX(),y:r.y+p.y+y*s.scaleY(),scale:s.scaleX()}},{id:record.original,x,y})}
 async function clickAt(x,y){const p=await pos(x,y);await page.mouse.click(p.x,p.y);await wait(100)}
-async function read(){return(await api('/boards/'+record.board)).nodes.find(n=>n.id===record.original)}
+async function read(){const b=await api('/boards/'+record.board),n=b.nodes.find(n=>n.id===record.original);return {...n,annotations:[...n.annotations,...b.marks]}}
 const pickPoints=[[130,80],[130,175],[130,260],[130,340],[320,90],[320,190]];
 for(let i=0;i<marks.length;i++){await clickAt(...pickPoints[i]);assert(await page.locator('.selectedAnnotation').count(),marks[i].kind+' selected');const target=await page.evaluate(()=>Konva.stages[0].findOne('.annotation-transformer')?.nodes()[0]?.name());assert.equal(target,'annotation-'+marks[i].id)}
 // Move only the mark, preserving image pose and exact pressure. Native mouse hit testing.

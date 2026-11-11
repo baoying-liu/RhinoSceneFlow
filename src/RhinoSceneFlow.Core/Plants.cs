@@ -26,14 +26,24 @@ public sealed class BillboardSettings
     public string Mode {get;set;}="auto";
     public double Angle {get;set;}=60;
     public double Transition {get;set;}=5;
-    public void Validate(){if(Mode is not ("auto" or "z" or "free")||!double.IsFinite(Angle)||Angle<10||Angle>85||!double.IsFinite(Transition)||Transition<1||Transition>15)throw new ArgumentException("朝向模式或切换角度无效。");}
+    public double PlanAngle{get;set;}=75;
+    public double PlanHeightRatio{get;set;}=.65;
+    public void Validate(){if(Mode is not ("auto" or "z" or "free" or "plan")||!double.IsFinite(Angle)||Angle<10||Angle>85||!double.IsFinite(Transition)||Transition<1||Transition>15||!double.IsFinite(PlanAngle)||PlanAngle<=Angle+Transition||PlanAngle>90||!double.IsFinite(PlanHeightRatio)||PlanHeightRatio<0||PlanHeightRatio>2)throw new ArgumentException("朝向角度需满足：自由朝向角度＋缓冲 < 平面切换角度 ≤ 90°；抬升比例 0–2。");}
 }
 public sealed record PlantBillboard(string Id,string Species,string Name,Vec3 Anchor,double Width,double Height,double AnchorU,double AnchorV,bool Mirror,RgbaTexture Image)
 {
+    public bool IsPlan{get;init;}
+    public Guid AssetId{get;init;}
+    public double PhysicalHeight{get;init;}
+    public Vec3? BaseAnchor{get;init;}
+    public double TreeHeight=>PhysicalHeight>0?PhysicalHeight:Height;
+    public Vec3 GroundAnchor=>BaseAnchor??Anchor;
+    public static double Elevation(CameraProjection camera,Vec3 anchor){var offset=camera.Origin-anchor;var back=camera.Parallel||offset.Length<1e-9?camera.Back:offset.Unit;return Math.Asin(Math.Clamp(Math.Abs(back.Z),0,1))*180/Math.PI;}
     public double PivotU=>Mirror?1-AnchorU:AnchorU;
     public (Vec3 Right,Vec3 Up) Axes(CameraProjection camera,BillboardSettings settings)
     {
         settings.Validate();var offset=camera.Origin-Anchor;var back=camera.Parallel||offset.Length<1e-9?camera.Back:offset.Unit;
+        if(IsPlan)return(new Vec3(1,0,0),new Vec3(0,1,0));
         var flat=new Vec3(back.X,back.Y,0);var right=flat.Length>1e-9?new Vec3(0,0,1).Cross(flat).Unit:camera.Right;
         var up=new Vec3(0,0,1);
         double elevation=Math.Asin(Math.Clamp(Math.Abs(back.Z),0,1))*180/Math.PI;

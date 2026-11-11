@@ -10,6 +10,8 @@ public sealed class PlantsListTool:Panel
     private readonly GridView list=new(){AllowMultipleSelection=true,Height=400};
     private readonly TextBox search=new(){PlaceholderText="搜索组合名称或图层"};
     private readonly Label status=new(){Wrap=WrapMode.Word};
+    private readonly Label empty=ToolUi.Note("当前模型还没有植物组合。到“植物库 · 种植”创建一个组合。");
+    private readonly Button edit,zoom,finish;
     private readonly UITimer timer=new(){Interval=.35};
     private bool binding,stopped,selectionQueued;private string stamp="",selection="";
     private sealed record Row(Guid Id,string Name,string Layer,string Count,string Status);
@@ -17,17 +19,18 @@ public sealed class PlantsListTool:Panel
     public PlantsListTool(RhinoDoc doc)
     {
         document=doc.RuntimeSerialNumber;
-        list.Columns.Add(new GridColumn{HeaderText="名称",DataCell=new TextBoxCell{Binding=Binding.Property<Row,string>(r=>r.Name)},Width=150});
-        list.Columns.Add(new GridColumn{HeaderText="图层",DataCell=new TextBoxCell{Binding=Binding.Property<Row,string>(r=>r.Layer)},Width=110});
-        list.Columns.Add(new GridColumn{HeaderText="株数",DataCell=new TextBoxCell{Binding=Binding.Property<Row,string>(r=>r.Count)},Width=50});
-        list.Columns.Add(new GridColumn{HeaderText="状态",DataCell=new TextBoxCell{Binding=Binding.Property<Row,string>(r=>r.Status)},Width=125});
+        list.Columns.Add(new GridColumn{HeaderText="名称",DataCell=new TextBoxCell{Binding=Binding.Property<Row,string>(r=>r.Name)},Width=120});
+        list.Columns.Add(new GridColumn{HeaderText="图层",DataCell=new TextBoxCell{Binding=Binding.Property<Row,string>(r=>r.Layer)},Width=80});
+        list.Columns.Add(new GridColumn{HeaderText="株数",DataCell=new TextBoxCell{Binding=Binding.Property<Row,string>(r=>r.Count)},Width=45});
+        list.Columns.Add(new GridColumn{HeaderText="状态",DataCell=new TextBoxCell{Binding=Binding.Property<Row,string>(r=>r.Status)},Width=90});
         var menu=new ContextMenu();
         void Item(string label,Action action){var item=new ButtonMenuItem{Text=label};item.Click+=(_,_)=>Guard(action);menu.Items.Add(item);}
         Item("编辑组合",Edit);Item("定位到组合",Zoom);Item("修改名字…",Rename);Item("修改所在图层…",ChangeLayer);
         Item("显示",()=>Manage(visible:true));Item("隐藏",()=>Manage(visible:false));Item("锁定",()=>Manage(locked:true));Item("解锁",()=>Manage(locked:false));list.ContextMenu=menu;
         list.SelectionChanged+=(_,_)=>SelectionChanged();list.CellDoubleClick+=(_,e)=>Guard(()=>EditRow(e.Row));search.TextChanged+=(_,_)=>{stamp="";Refresh();};
         list.MouseDown+=(_,e)=>{if(e.Buttons.HasFlag(MouseButtons.Alternate)){var cell=list.GetCellAt(e.Location);if(cell?.RowIndex is int row&&row>=0&&!list.SelectedRows.Contains(row))list.SelectedRows=[row];}};
-        var root=Ui.Layout();root.AddRow(ToolUi.Heading("Plants List"));root.AddRow(search);root.Add(list,true,true);root.AddRow(ToolUi.Row(Ui.Button("编辑组合",()=>Guard(Edit)),Ui.Button("结束单株编辑",PlantEditing.Exit),null));root.AddRow(status);Content=root;
+        edit=Ui.Button("编辑组合",()=>Guard(Edit));zoom=Ui.Button("定位到组合",()=>Guard(Zoom));finish=Ui.Button("完成并退出单株编辑",PlantEditing.Exit);
+        var root=Ui.Layout();root.AddRow(ToolUi.Heading("Plants List · 植物组合"));root.AddRow(search);root.AddRow(empty);root.Add(list,true,true);root.AddRow(ToolUi.Pair(edit,zoom));root.AddRow(finish);root.AddRow(ToolUi.Help("双击组合进入隔离编辑，单击植物调整。右键组合可重命名、修改图层、显示或锁定；列表与视口双向选择。"));root.AddRow(status);Content=root;
         timer.Elapsed+=(_,_)=>Guard(Refresh);timer.Start();RhinoDoc.CloseDocument+=Closed;Refresh();
     }
     private Guid[] Selected()=>list.SelectedItems.Cast<Row>().Select(r=>r.Id).ToArray();
@@ -57,6 +60,8 @@ public sealed class PlantsListTool:Panel
         {
             binding=true;try{var selected=chosen.Split(';').ToHashSet();if(next!=stamp)list.DataStore=rows;list.SelectedRows=rows.Select((r,i)=>(r,i)).Where(p=>selected.Contains(p.r.Id.ToString())).Select(p=>p.i).ToArray();stamp=next;selection=chosen;}finally{binding=false;}
         }
+        empty.Visible=rows.Length==0;empty.Text=string.IsNullOrWhiteSpace(search.Text)?"当前模型还没有植物组合。到“植物库 · 种植”创建一个组合。":"没有匹配的组合，试试其他名称或图层。";
+        edit.Enabled=Selected().Length==1;zoom.Enabled=Selected().Length>0;finish.Visible=PlantEditing.IsActive(document);
     }
     private void Edit(){var ids=Selected();if(ids.Length!=1)throw new ArgumentException("选择一个组合进入编辑。");PlantEditing.Enter(Doc,ids[0]);}
     private void EditRow(int index)

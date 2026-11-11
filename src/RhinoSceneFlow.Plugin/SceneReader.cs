@@ -12,6 +12,7 @@ internal sealed class SceneReader(RhinoDoc doc, RhinoViewport viewport, Cancella
     public SurfaceRefiner? Surfaces { get; } = captureSurfaces ? new(viewport.CameraLocation) : null;
     public void Dispose() => Surfaces?.Dispose();
     internal TextureSceneBuilder? TextureBuilder { get; init; }
+    internal IReadOnlyList<TextureSceneBuilder> ColorBuilders {get;init;}=[];
     public RhinoViewport? VisibilityViewport { get; init; }
     private readonly Dictionary<int, int> groupByColor = new();
     private readonly List<ColorGroup> groups = [];
@@ -54,7 +55,7 @@ internal sealed class SceneReader(RhinoDoc doc, RhinoViewport viewport, Cancella
         if (obj.IsHidden || !obj.Attributes.Visible || !LayerVisible(obj.Attributes.LayerIndex)) yield break;
         if (obj is InstanceObject instance)
         {
-            if(TextureBuilder!=null)throw new NotSupportedException("材质贴图通道暂不支持块实例，请先将需导出的块转换为普通对象。");
+            if(TextureBuilder!=null||ColorBuilders.Count>0)throw new NotSupportedException("材质通道暂不支持块实例，请先将需导出的块转换为普通对象。");
             foreach (var child in instance.InstanceDefinition.GetObjects())
                 foreach (var tri in Visit(child, transform * instance.InstanceXform, camera, nesting + 1)) yield return tri;
             yield break;
@@ -96,6 +97,7 @@ internal sealed class SceneReader(RhinoDoc doc, RhinoViewport viewport, Cancella
             unwrapped??=MaterialService.UnwrappedMesh(doc,obj);
             if(unwrapped!=null){if(owned)foreach(var old in meshes)old.Dispose();meshes=[unwrapped];owned=true;}
             TextureBuilder?.Add(obj,meshes);
+            foreach(var builder in ColorBuilders)builder.Add(obj,meshes);
             if (meshes.Length == 0) throw new InvalidOperationException($"对象 {obj.Id} 无法生成显示网格。");
             MeshObjects++;
             foreach (var mesh in meshes)

@@ -1,4 +1,4 @@
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using System.Drawing.Imaging;
 using System.Runtime.InteropServices;
 using Rhino;
@@ -13,6 +13,72 @@ public sealed record WorkbenchPlan(ViewExportRow View,string Path,bool Overwrite
 
 public static class WorkbenchService
 {
+    public static void Activate(RhinoDoc doc,ViewExportRow row)
+    {
+        NamedViewExportService.RequireActive(doc);using var view=Find(doc,row.Id);
+        SeasonalMaterials.ApplyLive(doc,row.PreviewSeason);
+        if(!doc.Views.ActiveView.ActiveViewport.SetViewProjection(view.Viewport,true))throw new InvalidOperationException("无法激活视图。");
+        doc.Views.ActiveView.ActiveViewport.DisplayMode=Modes().First(m=>m.Id==row.Mode);var p=PluginPreferences.Load();p.Season=row.PreviewSeason;PluginPreferences.Save(p);doc.Views.Redraw();
+    }
+    private static string SeasonalSignature(RhinoDoc doc,ViewExportRow row,string season)
+    {
+        var pieces=new List<string>();var materials=new HashSet<Guid>();
+        bool plants=row.Layers.Any(l=>l.Enabled&&(l.Kind is "plants" or "depth" or "display"||l.Kind=="shadow"&&row.PlantShadows));
+        bool textures=row.Layers.Any(l=>l.Enabled&&(l.Kind is "texture" or "display"||l.Kind=="color"&&l.ColorSource=="material"));
+        if(plants)
+        {
+            using var vp=new RhinoViewport();vp.Size=new(row.Width,row.Height);ApplyCamera(doc,row,vp,row.Width,row.Height);var camera=PlantService.Camera(vp);var settings=PlantService.Settings;
+            foreach(var obj in PlantService.Visible(doc,doc.Views.ActiveView.ActiveViewport))
+            {
+                PlantBillboard[] entries;
+                if(PlantGroups.IsGroup(obj)){PlantGroups.RequireReady(doc,obj);entries=PlantGroups.Drawables(doc,obj).Select(e=>e.Billboard).ToArray();}
+                else entries=[PlantService.Billboard(doc,obj) with{AssetId=PlantService.Read(obj)!.Asset}];
+                foreach(var p in entries)
+                {
+                    var asset=PlantService.Library.Get(p.AssetId);string effective=Seasons.Effective(asset,season);bool plan=(settings.Mode=="plan"||settings.Mode=="auto"&&PlantBillboard.Elevation(camera,p.Anchor)>=settings.PlanAngle)&&(Seasons.Has(asset,effective,true)||Seasons.Has(asset,"summer",true));
+                    pieces.Add(p.Id+":"+(plan?"plan:":"elevation:")+asset.Sha256[Seasons.Slot(asset,season,plan)]);
+                    if(plan)pieces.Add(asset.Seasonal.Variants[Seasons.Has(asset,effective,true)?effective:"summer"].CrownWidthMeters.ToString("R",System.Globalization.CultureInfo.InvariantCulture));
+                    else {var v=asset.Seasonal.Variants.GetValueOrDefault(Seasons.Has(asset,effective)?effective:"summer");pieces.Add($"{v?.ElevationWidthMeters:R}:{v?.AnchorU:R}");}
+                }
+            }
+        }
+        if(!textures)return string.Join("|",pieces);
+        foreach(var obj in doc.Objects.GetObjectList(new ObjectEnumeratorSettings{NormalObjects=true,LockedObjects=true,HiddenObjects=false}))
+        {
+            string? binding=obj.Attributes.MaterialSource==ObjectMaterialSource.MaterialFromLayer?doc.Layers[obj.Attributes.LayerIndex].GetUserString(MaterialService.BindingKey):obj.Attributes.GetUserString(MaterialService.BindingKey);
+            if(binding!=null)materials.Add(MaterialService.Deserialize<MaterialBinding>(binding).Asset);
+        }
+        void Add(MaterialLibrary library,Guid id,bool plant)
+        {
+            var a=library.Get(id);string slot=Seasons.Slot(a,season);pieces.Add(id+":"+a.Sha256[slot]);
+            if(plant){slot=Seasons.Slot(a,season,true);pieces.Add(id+":plan:"+a.Sha256[slot]);}
+        }
+        foreach(var id in materials.Order())Add(MaterialService.Library,id,false);
+        return string.Join("|",pieces);
+    }
+    private static string ViewName(RhinoDoc doc,string name,Guid? except=null)
+    {
+        name=name?.Trim()??"";if(name.Length==0||name.Length>200)throw new ArgumentException("视图名称需为 1–200 个字符。");
+        if(NamedViewExportService.List(doc).Any(v=>v.Id!=except&&v.Name.Equals(name,StringComparison.OrdinalIgnoreCase)))throw new ArgumentException("已存在同名的已命名视图，请换一个名称。");return name;
+    }
+    public static Guid CreateNamedView(RhinoDoc doc,string? name=null)
+    {
+        NamedViewExportService.RequireActive(doc);if(ExportPanelController.Find(doc.RuntimeSerialNumber)?.IsExporting==true)throw new InvalidOperationException("正在导出。");
+        if(name==null){var names=NamedViewExportService.List(doc).Select(v=>v.Name).ToHashSet(StringComparer.OrdinalIgnoreCase);int n=1;while(names.Contains($"视图 {n:000}"))n++;name=$"视图 {n:000}";}
+        name=ViewName(doc,name);uint undo=doc.BeginUndoRecord("创建已命名视图");
+        try{int index=doc.NamedViews.Add(name,doc.Views.ActiveView.ActiveViewport.Id);if(index<0)throw new InvalidOperationException("无法创建已命名视图。");doc.Modified=true;using var saved=doc.NamedViews[index];NamedViewUndo.Created(doc,saved.NamedViewId);ExportPanelController.Find(doc.RuntimeSerialNumber)?.RefreshNamedViews();return saved.NamedViewId;}
+        finally{if(undo!=0)doc.EndUndoRecord(undo);}
+    }
+    public static void RenameNamedView(RhinoDoc doc,Guid id,string name)
+    {
+        NamedViewExportService.RequireActive(doc);if(ExportPanelController.Find(doc.RuntimeSerialNumber)?.IsExporting==true)throw new InvalidOperationException("正在导出。");name=ViewName(doc,name,id);
+        for(int i=0;i<doc.NamedViews.Count;i++)
+        {
+            using var view=doc.NamedViews[i];if(view.NamedViewId!=id)continue;if(view.Name==name)return;
+            string old=view.Name;uint undo=doc.BeginUndoRecord("重命名已命名视图");try{if(!doc.NamedViews.Rename(i,name))throw new InvalidOperationException("Rhino 未能重命名视图。");NamedViewUndo.Renamed(doc,id,old,name);doc.Modified=true;}finally{if(undo!=0)doc.EndUndoRecord(undo);}return;
+        }
+        throw new ArgumentException("已命名视图已删除，请刷新。");
+    }
     public static ViewExportRow[] Settings(RhinoDoc doc)
     {
         NamedViewExportService.RequireActive(doc);
@@ -78,7 +144,7 @@ public static class WorkbenchService
             if((long)row.Width*row.Height*4*(row.Layers.Count(l=>l.Enabled)+1)>1_990_000_000)throw new ArgumentException("预计 PSD 超过 2 GB，请减少尺寸或图层。");
         }
         var reserved=new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        return rows.Select(row=>{var output=OutputNames.Reserve(Path.GetFullPath(directory),row.Name,reserved,collision);return new WorkbenchPlan(row,output.Path,output.Overwrite);}).ToArray();
+        return rows.SelectMany(row=>(row.FollowPreviewSeason?new[]{row.PreviewSeason}:row.ExportSeasons).GroupBy(s=>SeasonalSignature(doc,row,s)).Select(group=>{var copy=row.Copy();copy.PreviewSeason=group.First();string name=row.Name+"_"+string.Join("_",group.Select(Seasons.Name));var output=OutputNames.Reserve(Path.GetFullPath(directory),name,reserved,collision);return new WorkbenchPlan(copy,output.Path,output.Overwrite);})).ToArray();
     }
     public static System.Drawing.Bitmap Preview(RhinoDoc doc,ViewExportRow row,int longest=360)
     {
@@ -105,7 +171,7 @@ public static class WorkbenchService
         var prepared=new PreparedWorkbench(plan);
         try
         {
-            token.ThrowIfCancellationRequested();var row=plan.View;
+            token.ThrowIfCancellationRequested();var row=plan.View;using var sceneSeason=new SeasonalScope(row.PreviewSeason);
             using(var scope=new CaptureScope(doc,row,row.Width,row.Height))
             {
                 prepared.Light=scope.ToSun;
@@ -130,13 +196,14 @@ public static class WorkbenchService
                     finally{bitmap.UnlockBits(bits);}
                 }
             }
-            if(row.Layers.Any(l=>l.Enabled&&l.Kind is "material" or "shadow" or "texture" or "plants"))
+            if(row.Layers.Any(l=>l.Enabled&&l.Kind is "material" or "shadow" or "texture" or "plants" or "color" or "depth"))
             {
                 prepared.Viewport=new RhinoViewport();prepared.Viewport.Size=new(row.Width,row.Height);ApplyCamera(doc,row,prepared.Viewport,row.Width,row.Height);
                 if(row.Layers.Any(l=>l.Enabled&&l.Kind=="texture"))prepared.Textures=new(doc);
-                prepared.Reader=new(doc,prepared.Viewport,token,true,row.Layers.Any(l=>l.Enabled&&l.Kind=="shadow")){VisibilityViewport=doc.Views.ActiveView.ActiveViewport,TextureBuilder=prepared.Textures};
+                foreach(string source in row.Layers.Where(l=>l.Enabled&&l.Kind=="color").Select(l=>l.ColorSource).Distinct())prepared.ColorScenes.Add(source,source=="material"&&prepared.Textures!=null?prepared.Textures:new(doc,true,source=="layer"));
+                prepared.Reader=new(doc,prepared.Viewport,token,true,row.Layers.Any(l=>l.Enabled&&l.Kind=="shadow")){VisibilityViewport=doc.Views.ActiveView.ActiveViewport,TextureBuilder=prepared.Textures,ColorBuilders=prepared.ColorScenes.Values.Where(b=>b!=prepared.Textures).ToArray()};
                 prepared.Triangles=prepared.Reader.Read().ToArray();
-                if(row.Layers.Any(l=>l.Enabled&&(l.Kind=="plants"||l.Kind=="shadow"&&row.PlantShadows))){prepared.Plants=PlantService.Snapshot(doc,doc.Views.ActiveView.ActiveViewport);prepared.PlantSettings=PlantService.Settings;}
+                if(row.Layers.Any(l=>l.Enabled&&(l.Kind is "plants" or "depth"||l.Kind=="shadow"&&row.PlantShadows))){using var season=new SeasonalScope(row.PreviewSeason);prepared.Plants=PlantService.Snapshot(doc,prepared.Viewport,doc.Views.ActiveView.ActiveViewport);prepared.PlantSettings=PlantService.Settings;}
                 prepared.Shadow=new(prepared.Light,new(90,90,90),true,Math.Max(doc.ModelAbsoluteTolerance*.001,1e-7));
             }
             return prepared;
@@ -160,6 +227,8 @@ public static class WorkbenchService
 /// <summary>One existing model view is borrowed on the UI thread, always restored.</summary>
 internal sealed class CaptureScope : IDisposable
 {
+    private readonly SeasonalScope seasonal;
+    private SeasonalMaterials? materialSeason;
     private readonly RhinoDoc doc;
     private readonly RhinoView view;
     private readonly ViewportInfo saved;
@@ -170,10 +239,12 @@ internal sealed class CaptureScope : IDisposable
     public Vec3 ToSun{get;private set;}
     public CaptureScope(RhinoDoc doc,ViewExportRow row,int width,int height)
     {
+        seasonal=new(row.PreviewSeason);
         this.doc=doc;view=doc.Views.ActiveView;var vp=view.ActiveViewport;saved=new(vp);mode=vp.DisplayMode;name=vp.Name;
         modified=doc.Modified;redraw=doc.Views.RedrawEnabled;grid=vp.ConstructionGridVisible;axes=vp.ConstructionAxesVisible;worldAxes=vp.WorldAxesVisible;
         try
         {
+            materialSeason=new SeasonalMaterials(doc,row.PreviewSeason);
             doc.Views.RedrawEnabled=false;WorkbenchService.ApplyCamera(doc,row,vp,width,height);
             vp.ConstructionGridVisible=vp.ConstructionAxesVisible=vp.WorldAxesVisible=false;
             if(!row.Sun.UseDocument)
@@ -198,10 +269,18 @@ internal sealed class CaptureScope : IDisposable
     }
     public void Dispose()
     {
-        var vp=view.ActiveViewport;vp.SetViewProjection(saved,true);vp.DisplayMode=mode;vp.Name=name;
-        vp.ConstructionGridVisible=grid;vp.ConstructionAxesVisible=axes;vp.WorldAxesVisible=worldAxes;
-        if(render is not null){doc.RenderSettings=render;render.Dispose();render=null;}
-        doc.Modified=modified;doc.Views.RedrawEnabled=redraw;saved.Dispose();
+        try{materialSeason?.Dispose();}
+        finally
+        {
+            materialSeason=null;seasonal.Dispose();
+            try
+            {
+                var vp=view.ActiveViewport;vp.SetViewProjection(saved,true);vp.DisplayMode=mode;vp.Name=name;
+                vp.ConstructionGridVisible=grid;vp.ConstructionAxesVisible=axes;vp.WorldAxesVisible=worldAxes;
+                if(render is not null){doc.RenderSettings=render;render.Dispose();render=null;}
+            }
+            finally{doc.Modified=modified;doc.Views.RedrawEnabled=redraw;saved.Dispose();}
+        }
     }
 }
 
@@ -214,7 +293,9 @@ internal sealed class PreparedWorkbench(WorkbenchPlan plan) : IDisposable
     internal RhinoViewport? Viewport;
     internal SceneReader? Reader;
     internal TextureSceneBuilder? Textures;
+    internal readonly Dictionary<string,TextureSceneBuilder> ColorScenes=[];
     private readonly Dictionary<string,SparseRgbImage> texturePasses=[];
+    private readonly Dictionary<(string Source,string Grouping),SparseRgbImage> colorPasses=[];
     internal Triangle[] Triangles=[];
     internal ShadowSettings? Shadow;
     internal Vec3 Light;
@@ -225,6 +306,7 @@ internal sealed class PreparedWorkbench(WorkbenchPlan plan) : IDisposable
     public BatchFileResult Write(CancellationToken token)
     {
         var row=plan.View;int w=row.Width,h=row.Height;
+        using var depth=row.Layers.Any(l=>l.Enabled&&l.Kind=="depth")?new DepthPassBuilder(Staging,w,h):null;
         DiskPassImage? material=null,shadow=null;
         if(row.Layers.Any(l=>l.Enabled&&l.Kind=="material")){material=new(Staging,w,h,Reader!.Groups);staged.Add(material);}
         if(row.Layers.Any(l=>l.Enabled&&l.Kind=="shadow")){shadow=new(Staging,w,h,[new("Shadow",new(90,90,90))]);staged.Add(shadow);}
@@ -233,9 +315,14 @@ internal sealed class PreparedWorkbench(WorkbenchPlan plan) : IDisposable
             var empty=TexturedRasterizer.Render(1,1,Reader!.Camera,Textures.Surfaces,Textures.Objects,Array.Empty<TextureTriangle>());
             texturePasses.Add(grouping,new(Staging,w,h,empty.Grouped(grouping).Groups));
         }
+        foreach(var l in row.Layers.Where(l=>l.Enabled&&l.Kind=="color").DistinctBy(l=>(l.ColorSource,l.TextureGrouping)))
+        {
+            var scene=ColorScenes[l.ColorSource];var empty=TexturedRasterizer.Render(1,1,Reader!.Camera,scene.Surfaces,scene.Objects,Array.Empty<TextureTriangle>());
+            colorPasses.Add((l.ColorSource,l.TextureGrouping),new(Staging,w,h,empty.Grouped(l.TextureGrouping).Groups));
+        }
         foreach(string grouping in row.Layers.Where(l=>l.Enabled&&l.Kind=="plants").Select(l=>l.PlantGrouping).Distinct())plantPasses.Add(grouping,new(Staging,w,h,PlantRasterizer.Layout(Plants,grouping,Reader!.Camera).Groups));
-        var occluders=plantPasses.Count>0||shadow!=null&&row.PlantShadows&&Plants.Length>0?new PlantOccluders(Reader!.WorldTriangles,Reader.Camera.Origin,token):null;
-        if(material is not null||shadow is not null||texturePasses.Count>0||plantPasses.Count>0)
+        var occluders=depth!=null||plantPasses.Count>0||shadow!=null&&row.PlantShadows&&Plants.Length>0?new PlantOccluders(Reader!.WorldTriangles,Reader.Camera.Origin,token):null;
+        if(material is not null||shadow is not null||texturePasses.Count>0||plantPasses.Count>0||colorPasses.Count>0||depth!=null)
         {
             var camera=Reader!.Camera;var world=Reader.WorldTriangles;const int tileSize=1024;
             for(int top=0;top<h;top+=tileSize)for(int left=0;left<w;left+=tileSize)
@@ -243,6 +330,13 @@ internal sealed class PreparedWorkbench(WorkbenchPlan plan) : IDisposable
                 token.ThrowIfCancellationRequested();int tw=Math.Min(tileSize,w-left),th=Math.Min(tileSize,h-top);
                 int x0=Math.Max(0,left-2),y0=Math.Max(0,top-2),x1=Math.Min(w,left+tw+2),y1=Math.Min(h,top+th+2);
                 int rw=x1-x0,rh=y1-y0;
+                var exact=camera with{Left=camera.Left+(camera.RightEdge-camera.Left)*left/w,RightEdge=camera.Left+(camera.RightEdge-camera.Left)*(left+tw)/w,Top=camera.Top-(camera.Top-camera.Bottom)*top/h,Bottom=camera.Top-(camera.Top-camera.Bottom)*(top+th)/h};
+                if(depth!=null)depth.WriteTile(left,top,DepthRenderer.Render(tw,th,exact,occluders!,Plants,PlantSettings,token),token);
+                foreach(var (source,scene) in ColorScenes)
+                {
+                    var samples=TexturedRasterizer.Render(tw,th,exact,scene.Surfaces,scene.Objects,scene.Triangles,token,true);
+                    foreach(var (key,pass) in colorPasses.Where(p=>p.Key.Source==source))pass.WriteTile(left,top,samples.Grouped(key.Grouping),token);
+                }
                 var tile=camera with{Left=camera.Left+(camera.RightEdge-camera.Left)*x0/w,RightEdge=camera.Left+(camera.RightEdge-camera.Left)*x1/w,
                     Top=camera.Top-(camera.Top-camera.Bottom)*y0/h,Bottom=camera.Top-(camera.Top-camera.Bottom)*y1/h};
                 if(texturePasses.Count>0)
@@ -271,15 +365,16 @@ internal sealed class PreparedWorkbench(WorkbenchPlan plan) : IDisposable
                 }
             }
         }
-        var passes=row.Layers.Where(l=>l.Enabled).Select(l=>new StyledPass(l.Kind=="plants"?"植物":l.Kind=="texture"?"材质":l.Kind=="material"?"图层颜色":l.Kind=="shadow"?"Shadow":ModeNames[l.Mode],
-            l.Kind=="plants"?new PlantHierarchy(plantPasses[l.PlantGrouping],l.PlantGrouping,PlantRasterizer.Layout(Plants,l.PlantGrouping,Reader!.Camera).Species):l.Kind=="texture"?(IPsdImage)texturePasses[l.TextureGrouping]:l.Kind=="material"?material!:l.Kind=="shadow"?shadow!:Display[l.Mode],l.Blend,(byte)Math.Round(l.Opacity*255.0/100),l.Kind is "material" or "texture" or "plants")).ToArray();
+        depth?.Finish(token);
+        var passes=row.Layers.Where(l=>l.Enabled).Select(l=>new StyledPass(l.Kind switch{"plants"=>"植物","texture"=>"材质","material"=>"图层颜色","color"=>l.ColorSource=="layer"?"材质颜色 · 图层颜色":"材质颜色","depth"=>"深度图","shadow"=>"Shadow",_=>ModeNames[l.Mode]},
+            l.Kind switch{"plants"=>new PlantHierarchy(plantPasses[l.PlantGrouping],l.PlantGrouping,PlantRasterizer.Layout(Plants,l.PlantGrouping,Reader!.Camera).Species),"texture"=>texturePasses[l.TextureGrouping],"color"=>colorPasses[(l.ColorSource,l.TextureGrouping)],"material"=>material!,"depth"=>depth!.Image,"shadow"=>shadow!,_=>Display[l.Mode]},l.Blend,(byte)Math.Round(l.Opacity*255.0/100),l.Kind is "material" or "plants"||l.Kind is "texture" or "color"&&l.TextureGrouping!="all",l.Visible)).ToArray();
         var image=new ConfiguredStack(passes);Directory.CreateDirectory(Path.GetDirectoryName(plan.Path)!);
         int count=PsdWriter.Save(plan.Path,image,token,plan.Overwrite,true);
         return new(row.Id,row.Name,plan.Path,true,w,h,count,watch.ElapsedMilliseconds,null);
     }
     public void Dispose()
     {
-        foreach(var image in plantPasses.Values)image.Dispose();foreach(var image in texturePasses.Values)image.Dispose();foreach(var image in staged)image.Dispose();foreach(var image in Display.Values)image.Dispose();
+        foreach(var image in colorPasses.Values)image.Dispose();foreach(var image in plantPasses.Values)image.Dispose();foreach(var image in texturePasses.Values)image.Dispose();foreach(var image in staged)image.Dispose();foreach(var image in Display.Values)image.Dispose();
         Reader?.Dispose();Viewport?.Dispose();if(Directory.Exists(Staging))Directory.Delete(Staging,true);
     }
 }

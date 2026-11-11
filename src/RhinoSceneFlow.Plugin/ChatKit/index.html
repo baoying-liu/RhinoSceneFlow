@@ -1,20 +1,39 @@
-<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<style>html,body{margin:0;width:100%;height:100%;background:#fff;font:14px system-ui}openai-chatkit{display:block;width:100%;height:100%}#error{padding:20px;color:#983535;display:none}</style>
+<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="icon" href="data:,">
+<style>:root{color-scheme:light dark;--surface:Canvas;--ink:CanvasText}html,body{margin:0;width:100%;height:100%;background:var(--surface);color:var(--ink);font:14px system-ui}openai-chatkit{display:block;width:100%;height:100%}#error{padding:16px;display:none;line-height:1.6}</style>
 <div id="error"></div><openai-chatkit id="chat"></openai-chatkit>
-<script src="https://cdn.platform.openai.com/deployments/chatkit/chatkit.js"></script>
+<script defer src="https://cdn.platform.openai.com/deployments/chatkit/chatkit.js"></script>
 <script>
 const token='__TOKEN__',base='__BASE__';window.chatkitState={ready:false,error:null,thread:null};
+const query=new URLSearchParams(location.search),systemScheme=matchMedia('(prefers-color-scheme: dark)');
+history.replaceState(null,'',location.pathname);
+let hostTheme=query.has('scheme'),theme,chatOptions;
+window.sceneFlowSetTheme=value=>{
+ if(!value||!['light','dark'].includes(value.colorScheme))return;
+ const valid=c=>/^#[0-9a-f]{6}$/i.test(c||'');
+ theme={colorScheme:value.colorScheme,radius:'soft',density:'compact',typography:{baseSize:14,fontFamily:'"Segoe UI", "Microsoft YaHei UI", system-ui, sans-serif'}};
+ // ChatKit's foreground surface is the raised composer surface, not its text colour.
+ const raised=valid(value.inputBackground)?value.inputBackground:(value.colorScheme==='dark'?'#293a33':'#ffffff');
+ if(valid(value.background))theme.color={surface:{background:value.background,foreground:raised}};
+ document.documentElement.style.colorScheme=value.colorScheme;
+ document.documentElement.style.setProperty('--surface',valid(value.background)?value.background:(value.colorScheme==='dark'?'#202020':'#f5f5f5'));
+ document.documentElement.style.setProperty('--ink',valid(value.foreground)?value.foreground:(value.colorScheme==='dark'?'#eeeeee':'#222222'));
+ window.chatkitState.theme=theme;
+ if(chatOptions&&typeof window.chat?.setOptions==='function'){chatOptions={...chatOptions,theme};window.chat.setOptions(chatOptions);}
+};
+window.sceneFlowSetTheme({colorScheme:query.get('scheme')||(systemScheme.matches?'dark':'light'),background:query.get('background'),foreground:query.get('foreground'),inputBackground:query.get('inputBackground')});
+systemScheme.addEventListener('change',e=>{if(!hostTheme)window.sceneFlowSetTheme({colorScheme:e.matches?'dark':'light'});});
 function fail(e){window.chatkitState.error=String(e);const el=document.getElementById('error');el.style.display='block';el.textContent='ChatKit 加载失败：'+e;}
 customElements.whenDefined('openai-chatkit').then(()=>{
  const chat=document.getElementById('chat');window.chat=chat;
  chat.addEventListener('chatkit.error',e=>fail(e.detail.error?.message??JSON.stringify(e.detail)));
  chat.addEventListener('chatkit.ready',()=>window.chatkitState.ready=true);
  chat.addEventListener('chatkit.thread.change',e=>window.chatkitState.thread=e.detail.threadId);
- chat.setOptions({api:{url:base+'/chatkit',domainKey:'domain_pk_localhost_dev',fetch:(url,init={})=>{const headers=new Headers(init.headers);headers.set('Authorization','Bearer '+token);return fetch(url,{...init,headers});},uploadStrategy:{type:'direct',uploadUrl:base+'/upload?token='+token}},
-  locale:'zh-CN',theme:{colorScheme:'light',radius:'round'},header:{title:{text:'SceneFlow 素材助手'}},
-  startScreen:{greeting:'描述材质或植物，也可添加参考图片。植物会先核实真实物种、查找已有素材，再生成透明图片；材质仍可应用到物件或图层。',prompts:[{label:'生成清水混凝土',prompt:'生成浅灰清水混凝土，无接缝，纹理均匀',icon:'sparkle'},{label:'生成透明植物',prompt:'生成一株 Acer rubrum 美国红枫的夏季绿叶透明 PNG 素材，先核实物种，优先复用植物库。',icon:'sparkle'}]},
-  composer:{placeholder:'描述材质、植物或继续修改，支持图片参考…',attachments:{enabled:true,maxCount:8,maxSize:33554432,accept:{'image/png':['.png'],'image/jpeg':['.jpg','.jpeg']}}},
-  threadItemActions:{feedback:false,retry:true}});
+ chatOptions={api:{url:base+'/chatkit',domainKey:'domain_pk_localhost_dev',fetch:(url,init={})=>{const headers=new Headers(init.headers);headers.set('Authorization','Bearer '+token);return fetch(url,{...init,headers});},uploadStrategy:{type:'direct',uploadUrl:base+'/upload?token='+token}},
+  locale:'zh-CN',theme,header:{title:{text:'素材对话'}},
+  startScreen:{greeting:'想创建什么材质或植物？',prompts:[{label:'清水混凝土',prompt:'生成浅灰清水混凝土，无接缝，纹理均匀',icon:'sparkle'},{label:'透明植物',prompt:'生成一株 Acer rubrum 美国红枫的夏季绿叶透明 PNG 素材，先核实物种，优先复用植物库。',icon:'search'}]},
+  composer:{placeholder:'描述材质或植物，可添加参考图…',attachments:{enabled:true,maxCount:8,maxSize:33554432,accept:{'image/png':['.png'],'image/jpeg':['.jpg','.jpeg']}}},
+  threadItemActions:{feedback:false,retry:true}};
+ chat.setOptions(chatOptions);
 }).catch(fail);
 setTimeout(()=>{if(!window.customElements.get('openai-chatkit'))fail('无法访问 OpenAI ChatKit 组件，请检查网络。');},20000);
 </script></html>

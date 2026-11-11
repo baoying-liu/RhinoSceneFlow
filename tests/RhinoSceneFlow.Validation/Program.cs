@@ -1,4 +1,6 @@
-using RhinoSceneFlow.Core;
+﻿using RhinoSceneFlow.Core;
+if(args.FirstOrDefault()=="--seasons"){Directory.CreateDirectory("artifacts/validation");SeasonalValidation.Run("artifacts/validation");return;}
+if(args.FirstOrDefault()=="--channels"){Directory.CreateDirectory("artifacts/validation");ExportChannelsValidation.Run("artifacts/validation");return;}
 
 if(new Vec3(1,2,3).ToString()!="Vec3(1, 2, 3)"||default(Vec3).ToString()!="Vec3(0, 0, 0)")throw new Exception("Vector diagnostic formatting must not recurse through Unit.");
 
@@ -368,6 +370,8 @@ if(args.Contains("--large"))
     finally{Directory.Delete(largeStage,true);}
 }
 TextureValidation.Run(output);
+ExportChannelsValidation.Run(output);
+SeasonalValidation.Run(output);
 await UnwrapValidation.Run(output);
 TubeValidation.Run(output);
 CatalogValidation.Run(output);

@@ -1,4 +1,4 @@
-using Eto.Drawing;
+﻿using Eto.Drawing;
 using Eto.Forms;
 using Rhino;
 using RhinoSceneFlow.Core;
@@ -27,8 +27,10 @@ public sealed class MaterialsTool:Panel
     private readonly Panel candidateHost=new();
     private readonly MaterialShelf? shelf;
     private readonly Button apply;
+    private readonly Button cancel;
     private readonly Control[] appearanceControls;
     private bool plantContext;
+    private readonly SeasonalAssetPanel seasonal=new(false);
     private Guid? selected,job,lastJob,randomPreview;
     private MaterialAsset? selectedVersion;
     private bool closed,documentClosed;
@@ -56,12 +58,16 @@ public sealed class MaterialsTool:Panel
         random.AddRow(new Label{Text="保留真实尺寸与原图清晰度；大周期需要更多缓存。按物件模式会为图层内现有物件建立独立外观变体。",Wrap=WrapMode.Word,Width=260});
         random.AddRow(Ui.Button("保存并预览",()=>Guard(()=>{if(Busy)throw new InvalidOperationException("请先完成当前任务。");SaveRandom();randomPreview=RandomTextureService.Start(Doc,selected!.Value,preview:true).Id;})));
         randomSettings=new Expander{Header="随机去重复",Expanded=false,Content=new Scrollable{Content=random,ExpandContentWidth=true,Height=260}};randomMode.SelectedValueChanged+=(_,_)=>UpdateRandomSummary();randomMode.SelectedKey="off";randomTiles.SelectedKey="4";randomSeed.Value=42;randomStrength.Value=15;randomColumns.Value=randomRows.Value=1;randomOffset.Value=.5;
-        appearanceControls=[randomSummary,randomSettings,advanced,scope];
-        var l=Ui.Layout();l.AddRow(ToolUi.Heading(libraryOnly?"材质库":"AI 素材助手 · 材质／植物"));l.AddRow(target);
-        if(libraryOnly)l.Add(new Scrollable{Content=shelf!,ExpandContentWidth=true},true,true);
-        else{reuse.Text="优先复用已有素材";l.AddRow(ToolUi.Row(reuse,null,Ui.Button("材质库",()=>ShowLibrary(true)),Ui.Button("植物库",()=>SceneFlowWorkspace.Open("planting"))));l.Add(chat!,true,true);l.AddRow(candidateHost);}
-        l.AddRow(chosen);l.AddRow(randomSummary);l.AddRow(randomSettings);l.AddRow(advanced);l.AddRow(scope);
-        apply=Ui.Button("应用选中材质",Apply);l.AddRow(apply);l.AddRow(progress);l.AddRow(status);l.AddRow(ToolUi.Row(Ui.Button("取消任务",Cancel),null));
+        var settingsBody=Ui.Layout();settingsBody.AddRow(randomSummary);settingsBody.AddRow(randomSettings);settingsBody.AddRow(advanced);
+        var materialSettings=new Expander{Header="铺贴与外观设置",Expanded=false,Content=new Scrollable{Content=settingsBody,ExpandContentWidth=true,Height=240}};
+        appearanceControls=[randomSummary,materialSettings,scope];
+        var l=Ui.Layout();l.AddRow(ToolUi.Heading(libraryOnly?"材质库":"AI 素材对话"));l.AddRow(target);
+        if(libraryOnly)l.Add(new Scrollable{Content=shelf!,ExpandContentWidth=true,ExpandContentHeight=false},true,true);
+        else{reuse.Text="优先查找已有素材";l.AddRow(reuse);var fourSeasons=new CheckBox{Text="生成四季版本（默认只生成夏季）",Checked=PluginPreferences.Load().GenerateFourSeasons};fourSeasons.CheckedChanged+=(_,_)=>{var preferences=PluginPreferences.Load();preferences.GenerateFourSeasons=fourSeasons.Checked==true;PluginPreferences.Save(preferences);};l.AddRow(fourSeasons);l.AddRow(ToolUi.Pair(Ui.Button("浏览材质库",()=>ShowLibrary(true)),Ui.Button("浏览植物库",()=>SceneFlowWorkspace.Open("planting"))));l.Add(chat!,true,true);l.AddRow(candidateHost);}
+        var application=Ui.Layout();application.AddRow(chosen);application.AddRow(scope);apply=Ui.Button("应用选中材质",Apply);application.AddRow(apply);
+        l.AddRow(ToolUi.Section("应用材质",application));l.AddRow(materialSettings);l.AddRow(seasonal);
+        progress.Visible=false;cancel=Ui.Button("取消当前任务",Cancel);cancel.Visible=false;
+        l.AddRow(progress);l.AddRow(status);l.AddRow(cancel);
         Content=l;
         if(SceneFlowWorkspace.SelectedAsset(document) is Guid asset)Guard(()=>ReceiveAsset(asset));
         Load+=(_,_)=>Activate();poll.Elapsed+=(_,_)=>Tick();poll.Start();
@@ -79,6 +85,7 @@ public sealed class MaterialsTool:Panel
     internal void ReceiveProgress(string message,int percent){if(closed)return;status.Text=message;progress.Indeterminate=false;progress.Value=percent;}
     internal void ReceiveAsset(Guid id)
     {
+        seasonal.Bind(id);
         plantContext=false;foreach(var control in appearanceControls)control.Visible=true;apply.Text="应用选中材质";
         var a=MaterialService.Library.Get(id);selected=id;selectedVersion=MaterialLibrary.Clone(a);width.Value=a.WidthMeters*1000;height.Value=a.HeightMeters*1000;roughness.Value=a.Roughness;metallic.Value=a.Metallic;chosen.Text=a.Name+" · "+a.Category;status.Text="材质已选中；点击应用即可。";
         var r=a.Randomization;randomMode.SelectedKey=r.Mode;randomTiles.SelectedKey=r.Tiles.ToString();randomSeed.Value=r.Seed;randomStrength.Value=r.Strength*100;randomRotate.Checked=r.Rotate;randomColumns.Value=r.Columns;randomRows.Value=r.Rows;randomOffset.Value=r.RowOffset;randomReason.Text=(r.RecommendedBy=="ai"?"AI 建议：":"")+r.Reason;UpdateRandomSummary();
@@ -107,7 +114,7 @@ public sealed class MaterialsTool:Panel
         if(closed||documentClosed)return;
         Guard(()=>
         {
-            target.Text=$"当前选择 · {ToolUi.Selection(Doc).Length} 个物件";apply.Enabled=!Busy&&(plantContext||selected.HasValue);reuse.Enabled=!job.HasValue;randomSettings.Enabled=!Busy;
+            int count=ToolUi.Selection(Doc).Length;target.Text=count>0?$"当前选择 · {count} 个物件":"在 Rhino 中选择物件后可应用材质";apply.Enabled=!Busy&&(plantContext||selected.HasValue&&count>0);reuse.Enabled=!job.HasValue;randomSettings.Enabled=!Busy;progress.Visible=cancel.Visible=Busy;
             if(randomPreview.HasValue){var p=RandomTextureService.Get(randomPreview.Value);status.Text=p.Stage;progress.Value=p.Percent;if(p.Status=="running")return;randomPreview=null;if(p.Status=="completed"&&selected.HasValue){SceneFlowWorkspace.Open("library");SelectAsset(selected.Value);}return;}
             if(!job.HasValue)return;var j=MaterialChat.Get(job.Value);status.Text=j.Stage;
             if(j.Status=="running")return;job=null;progress.Indeterminate=false;
@@ -120,7 +127,7 @@ public sealed class MaterialsTool:Panel
             candidateHost.Content=j.Matches.Length+j.PlantMatches.Length>0?new Expander{Header="找到可复用素材 · 选择后应用／种植",Expanded=true,Content=list}:null;
         });
     }
-    public object GetState()=>new{open=!closed,page=libraryOnly?"library":"materials",document,selected,job,lastJob,randomPreview,randomization=selectedVersion?.Randomization,chatKit=chat?.State,busy=Busy,scope=scope.SelectedKey,reuseSimilar=reuse.Checked,shelf=shelf?.GetState(),status=status.Text};
+    public object GetState()=>new{open=!closed,page=libraryOnly?"library":"materials",document,selected,job,lastJob,randomPreview,randomization=selectedVersion?.Randomization,chatKit=chat?.State,chatTheme=chat?.Theme,busy=Busy,scope=scope.SelectedKey,reuseSimilar=reuse.Checked,shelf=shelf?.GetState(),status=status.Text};
     protected override void Dispose(bool disposing)
     {
         if(disposing)
@@ -159,11 +166,12 @@ public sealed class MaterialShelf:Panel
     public Guid? SelectedAsset=>selected;
     public MaterialShelf(RhinoDoc doc,Action<Guid> select)
     {
-        document=doc.RuntimeSerialNumber;this.select=select;Padding=new(8);
-        list.Columns.Add(new GridColumn{DataCell=new ImageViewCell(0),Width=36});list.Columns.Add(new GridColumn{DataCell=new TextBoxCell(1),AutoSize=true});
-        var l=Ui.Layout();l.AddRow(ToolUi.Row(Ui.Button("刷新",Refresh),null,Ui.Button("AI 整理",()=>Guard(()=>{organize=CatalogService.Organize().Id;status.Text="正在整体优化分类、标签与名称…";}))));l.AddRow(search);l.AddRow(category);l.AddRow(tag);l.AddRow(list);l.AddRow(details);l.AddRow(status);l.AddRow(inspector);
+        document=doc.RuntimeSerialNumber;this.select=select;
+        list.Columns.Add(new GridColumn{DataCell=new ImageViewCell(0),Width=36});list.Columns.Add(new GridColumn{DataCell=new TextBoxCell(1),Width=220});
+        var refresh=Ui.Button("↻",Refresh,32);refresh.ToolTip="刷新材质库";
+        var l=Ui.Layout();l.AddRow(new TableLayout{Spacing=new(6,0),Rows={new TableRow(new TableCell(search,true),refresh)}});l.AddRow(new Label{Text="分类"});l.AddRow(category);l.AddRow(new Label{Text="标签"});l.AddRow(tag);l.AddRow(list);l.AddRow(details);l.AddRow(status);l.AddRow(inspector);
         BuildInspector();inspector.Visible=false;
-        var advanced=Ui.Layout();advanced.AddRow(Ui.Button("导入图片…",Import));advanced.AddRow(Ui.Button("切换材质库文件夹…",()=>Guard(()=>{using var dialog=new SelectFolderDialog{Directory=MaterialService.Library.Root};if(dialog.ShowDialog(this)==DialogResult.Ok){SceneFlowPlugin.Instance.MaterialDirectory=dialog.Directory;Refresh();}})));advanced.AddRow(new Label{Text="材质尺寸与铺贴参数在助手的高级设置中调整。",Wrap=WrapMode.Word});l.AddRow(new Expander{Header="库管理",Content=advanced});Content=l;
+        var advanced=Ui.Layout();advanced.AddRow(Ui.Button("导入图片…",Import));advanced.AddRow(Ui.Button("AI 整理名称、分类与标签",()=>Guard(()=>{organize=CatalogService.Organize().Id;status.Text="正在整体优化分类、标签与名称…";})));advanced.AddRow(Ui.Button("切换材质库文件夹…",()=>Guard(()=>{using var dialog=new SelectFolderDialog{Directory=MaterialService.Library.Root};if(dialog.ShowDialog(this)==DialogResult.Ok){SceneFlowPlugin.Instance.MaterialDirectory=dialog.Directory;Refresh();}})));advanced.AddRow(ToolUi.Note("尺寸、外观与随机去重复可在下方“铺贴与外观设置”调整。"));l.AddRow(new Expander{Header="库管理",Content=advanced});Content=l;
         search.TextChanged+=(_,_)=>Filter();category.SelectedValueChanged+=(_,_)=>{if(!binding){FillTags();Filter();}};tag.SelectedValueChanged+=(_,_)=>{if(!binding)Filter();};
         list.SelectionChanged+=(_,_)=>{if(!binding&&list.SelectedRow>=0&&list.SelectedRow<rows.Length)Guard(()=>Select((Guid)rows[list.SelectedRow][2]));};
         poll.Elapsed+=(_,_)=>Guard(()=>{if(stopped)return;if(DateTime.UtcNow>=nextRefresh){nextRefresh=DateTime.UtcNow.AddSeconds(2);var assets=MaterialService.Library.List();if(Stamp(assets)!=catalogStamp)Refresh();}if(organize==null)return;var j=CatalogService.Get(organize.Value);status.Text=j.Stage;if(j.Status!="running"){organize=null;if(j.Status=="completed")Refresh();}});poll.Start();Refresh();

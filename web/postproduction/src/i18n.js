@@ -44,3 +44,12 @@ Object.assign(strings['zh-CN'],{editScope:'修改范围',scopeWhole:'整图调�
 Object.assign(strings['zh-CN'],{traceInput:'用输入图辅助标注'});
 Object.assign(strings.en,{annotationBackground:'Input background · not generated',annotationBackgroundHint:'Input pixels shown for annotation; this draft has no AI result yet.'});
 Object.assign(strings['zh-CN'],{annotationBackground:'标注底图 · 尚未生成',annotationBackgroundHint:'当前显示输入图供标注；此草稿还没有 AI 结果。'});
+
+Object.assign(strings.en,{discard:'Restore task settings',discardHint:'Restores this task’s saved parameters, local annotations, frame and AI group switches. Shared canvas notes, reference resources and PhotoCraft edits stay; use Undo for shared canvas edits. Visibility stays unchanged.'});
+Object.assign(strings['zh-CN'],{discard:'恢复任务设置',discardHint:'恢复此任务保存的参数、局部标注、考虑框和 AI 分组开关。共享画布标注、参考资源及 PhotoCraft 编辑保留；共享画布操作请使用撤销。显示状态保持。'});
+
+Object.assign(strings.en,{plannedOutput:'Output dimensions',wholeKeepsSize:'Whole-image exploration keeps input dimensions. Use High-resolution output on the completed result to enlarge it.'});
+Object.assign(strings['zh-CN'],{plannedOutput:'本次输出尺寸',wholeKeepsSize:'整图探索沿用输入像素尺寸；放大请在结果完成后选择“高清输出”。'});
+
+Object.assign(strings.en,{loadingBoard:'Opening board…'});
+Object.assign(strings['zh-CN'],{loadingBoard:'正在切换画板…'});

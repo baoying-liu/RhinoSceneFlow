@@ -11,11 +11,11 @@ def localized(parent,tag,en,zh):
     ET.SubElement(e,'locale_1033').text=en
     ET.SubElement(e,'locale_2052').text=zh
 
-entries=[('Workspace','工作区','RhinoSceneFlow','Materials'),('AI assets','AI 素材','RhinoSceneFlowMaterials','Materials'),
+entries=[('Workspace','工作区','RhinoSceneFlow','Workspace'),('AI assets','AI 素材','RhinoSceneFlowMaterials','Materials'),
  ('Materials','材质库','RhinoSceneFlowMaterialLibrary','Library'),('UV tools','UV 工具','RhinoSceneFlowUVTools','Uv'),
- ('Planting','植物库与种植','RhinoSceneFlowPlant','Planting'),('Plants List','植物组合列表','RhinoSceneFlowPlantsList','Planting'),
- ('Properties','属性','RhinoSceneFlowProperties','Uv'),('PSD export','PSD 导出','RhinoSceneFlowPanel','Export'),
- ('AI Studio','AI 后期','RhinoSceneFlowPostProduction','Export')]
+ ('Planting','植物库与种植','RhinoSceneFlowPlant','Planting'),('Plants List','植物组合列表','RhinoSceneFlowPlantsList','PlantsList'),
+ ('Properties','属性','RhinoSceneFlowProperties','Properties'),('PSD export','PSD 导出','RhinoSceneFlowPanel','Export'),
+ ('AI Studio','AI 后期','RhinoSceneFlowPostProduction','PostProduction')]
 r=ET.Element('RhinoUI',major_ver='2',minor_ver='0',guid=uid('file'),localize='True',default_language_id='1033')
 ET.SubElement(r,'extend_rhino_menus');ET.SubElement(r,'menus')
 groups=ET.SubElement(r,'tool_bar_groups');group=ET.SubElement(groups,'tool_bar_group',guid=uid('group'),single_file='True',hide_single_tab='True',point_floating='100,100')

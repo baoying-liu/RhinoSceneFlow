@@ -9,7 +9,7 @@ class StudioMcp:
  def __init__(self,out):
   self.out=Path(out);self.out.mkdir(parents=True,exist_ok=True)
   s=json.loads(subprocess.check_output([sys.executable,str(ROOT/'scripts/Sandbox-Mcp.py'),'workspace_status']))
-  assert s['ChannelId']=='1cee488700ad42f59492743cc4a2a3fe' and s.get('Pid'),'Office B must be running'
+  assert s['ChannelId'] in ('1cee488700ad42f59492743cc4a2a3fe','0d327c4c84f644f089b73834ffd93cfe') and s.get('Pid'),'A known sandbox B must be running'
   m=json.loads((Path(s['LastStartupDirectory'])/'monitor-status.json').read_text(encoding='utf-8-sig'))
   assert m['Pid']==s['Pid'] and m['PlatformAllowed'];self.pid=s['Pid'];self.port=m['Port']
  def native(self,operation,**kw):
@@ -30,7 +30,11 @@ class StudioMcp:
   if body is not None:args['body']=body
   job=self.native('postproduction_request',**args)
   while time.monotonic()-started<240:
-   state=self.native('postproduction_status',jobId=job['id'])
+   try:state=self.native('postproduction_status',jobId=job['id'])
+   except (ConnectionResetError,ConnectionAbortedError):
+    # Platform can recycle its connection just after New/Open. Poll the same
+    # recorded job; never repeat the original request, which may be a mutation.
+    time.sleep(.25);continue
    if state['status']=='completed':
     with (self.out/'mcp-requests.jsonl').open('a',encoding='utf8') as f:f.write(json.dumps(dict(route=route,method=args['method'],seconds=round(time.monotonic()-started,3)))+'\n')
     return state['response']

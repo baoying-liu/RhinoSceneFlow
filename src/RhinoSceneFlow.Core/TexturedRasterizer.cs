@@ -20,7 +20,7 @@ public sealed record PixelTexture(int Width,int Height,byte[] Rgb,bool RepeatU=t
         return new(C(0),C(1),C(2));
     }
 }
-public sealed record TextureSurface(string MaterialKey,string MaterialName,Rgb Color,PixelTexture? Texture,bool Modulate=true,double TextureAmount=1);
+public sealed record TextureSurface(string MaterialKey,string MaterialName,Rgb Color,PixelTexture? Texture,bool Modulate=true,double TextureAmount=1,Rgb? Representative=null);
 public sealed record TextureObject(string Key,string Name,int Material);
 public readonly record struct TextureTriangle(Vec3 A,Vec3 B,Vec3 C,Uv UA,Uv UB,Uv UC,int Object,bool UseTexture=true);
 
@@ -29,7 +29,7 @@ public static class TexturedRasterizer
 {
     private readonly record struct Vertex(ClipVertex P,Uv U)
     {public static Vertex Lerp(Vertex a,Vertex b,double t)=>new(ClipVertex.Lerp(a.P,b.P,t),Uv.Lerp(a.U,b.U,t));}
-    public static TextureSamples Render(int width,int height,CameraProjection camera,IReadOnlyList<TextureSurface> surfaces,IReadOnlyList<TextureObject> objects,IEnumerable<TextureTriangle> triangles,CancellationToken token=default)
+    public static TextureSamples Render(int width,int height,CameraProjection camera,IReadOnlyList<TextureSurface> surfaces,IReadOnlyList<TextureObject> objects,IEnumerable<TextureTriangle> triangles,CancellationToken token=default,bool flatColor=false)
     {
         if(width<1||height<1||(long)width*height>2_000_000)throw new ArgumentException("Texture render tile too large.");
         int sw=width*2,sh=height*2;var owners=new int[sw*sh];Array.Fill(owners,-1);var colors=new uint[owners.Length];var depth=new double[owners.Length];Array.Fill(depth,double.PositiveInfinity);
@@ -69,8 +69,8 @@ public static class TexturedRasterizer
                     if(z>depth[index]+1e-12||(Math.Abs(z-depth[index])<=1e-12&&owners[index]>=0&&triangle.Object>=owners[index]))continue;
                     double q=wa/a.P.W+wb/b.P.W+wc/c.P.W;
                     var uv=new Uv((wa*a.U.U/a.P.W+wb*b.U.U/b.P.W+wc*c.U.U/c.P.W)/q,(wa*a.U.V/a.P.W+wb*b.U.V/b.P.W+wc*c.U.V/c.P.W)/q);
-                    bool textured=triangle.UseTexture&&surface.Texture!=null;
-                    var color=textured?surface.Texture!.Sample(uv):surface.Color;
+                    bool textured=!flatColor&&triangle.UseTexture&&surface.Texture!=null;
+                    var color=flatColor?surface.Representative??surface.Color:textured?surface.Texture!.Sample(uv):surface.Color;
                     byte Mul(byte v,byte m)=>(byte)((v*m+127)/255);
                     byte Mix(byte value,byte fallback)=>(byte)Math.Clamp(Math.Round(value*surface.TextureAmount+fallback*(1-surface.TextureAmount)),0,255);
                     if(textured)color=surface.Modulate?new(Mul(color.R,surface.Color.R),Mul(color.G,surface.Color.G),Mul(color.B,surface.Color.B)):
@@ -86,12 +86,12 @@ public sealed class TextureSamples(int width,int height,int[] owners,uint[] colo
 {
     public IPsdImage Grouped(string grouping)
     {
-        if(grouping is not ("material" or "object"))throw new ArgumentException("Invalid texture grouping.");
-        var keys=objects.Select((o,i)=>grouping=="object"?o.Key:surfaces[o.Material].MaterialKey).ToArray();
+        if(grouping is not ("material" or "object" or "all"))throw new ArgumentException("Invalid texture grouping.");
+        var keys=objects.Select((o,i)=>grouping=="all"?"all":grouping=="object"?o.Key:surfaces[o.Material].MaterialKey).ToArray();
         var unique=keys.Distinct().Order(StringComparer.Ordinal).ToArray();if(unique.Length==0)unique=["empty"];
         var index=unique.Select((key,i)=>(key,i)).ToDictionary(p=>p.key,p=>p.i);
         var map=keys.Select(k=>index[k]).ToArray();
-        var groups=unique.Select(key=>{int i=Array.IndexOf(keys,key);return new ColorGroup(i<0?"未指定材质":grouping=="object"?objects[i].Name+" · "+surfaces[objects[i].Material].MaterialName:surfaces[objects[i].Material].MaterialName,new(0,0,0));}).ToArray();
+        var groups=unique.Select(key=>{int i=Array.IndexOf(keys,key);return new ColorGroup(grouping=="all"?"全部物件":i<0?"未指定材质":grouping=="object"?objects[i].Name+" · "+surfaces[objects[i].Material].MaterialName:surfaces[objects[i].Material].MaterialName,new(0,0,0));}).ToArray();
         return new SampleImage(width,height,owners,colors,map,groups);
     }
     private sealed class SampleImage(int width,int height,int[] owners,uint[] colors,int[] map,ColorGroup[] groups) : IPsdImage

@@ -1,4 +1,4 @@
-using System.Drawing;
+﻿using System.Drawing;
 using System.Text.Json;
 using Rhino;
 using Rhino.DocObjects;
@@ -124,6 +124,7 @@ public static partial class MaterialService
         }
         finally{if(undo!=0)doc.EndUndoRecord(undo);}
         foreach(var item in plan.Items)UvRenderProvider.Refresh(doc,doc.Objects.FindId(item.Object.Id)!);
+        SeasonalMaterials.ApplyLive(doc,PlantService.CurrentSeason,asset.Id);
         doc.Views.Redraw();return report;
     }
     public static object Restore(RhinoDoc doc,Guid[]? objects,Guid[]? layers)
@@ -254,7 +255,7 @@ public static partial class MaterialService
         string name=$"SceneFlow_{asset.Id:N}_r{asset.Revision}_meter2"+(checker?"_checker":view!.Key.Length>0?"_random_"+view.Key:"");
         var existing=doc.RenderMaterials.FirstOrDefault(m=>m.Name==name);if(existing!=null)return existing;
         using var native=new Material{Name=name};native.ToPhysicallyBased();native.PhysicallyBased.Roughness=asset.Roughness;native.PhysicallyBased.Metallic=asset.Metallic;
-        foreach(var (slot,_) in checker?new Dictionary<string,string>{{"baseColor",""}}:asset.Maps)
+        foreach(var (slot,_) in checker?new Dictionary<string,string>{{"baseColor",""}}:asset.Maps.Where(p=>MaterialLibrary.Slots.Contains(p.Key)).ToDictionary(p=>p.Key,p=>p.Value))
         {
             string path=checker?CheckerPath():view!.Maps[slot];double width=view?.WidthMeters??asset.WidthMeters,height=view?.HeightMeters??asset.HeightMeters;
             using var texture=new Texture{FileName=path,Enabled=true,TreatAsLinear=slot!="baseColor",WrapU=TextureUvwWrapping.Repeat,WrapV=TextureUvwWrapping.Repeat,UvwTransform=Transform.Scale(Plane.WorldXY,1/width,1/height,1)};
@@ -262,7 +263,7 @@ public static partial class MaterialService
             native.PhysicallyBased.SetTexture(texture,type);
         }
         var render=RenderMaterial.FromMaterial(native,doc);render.Name=name;
-        foreach(var slot in asset.Maps.Keys)
+        foreach(var slot in asset.Maps.Keys.Where(MaterialLibrary.Slots.Contains))
         {
             var usage=slot switch{"roughness"=>RenderMaterial.StandardChildSlots.PbrRoughness,"metallic"=>RenderMaterial.StandardChildSlots.PbrMetallic,"normal"=>RenderMaterial.StandardChildSlots.Bump,_=>RenderMaterial.StandardChildSlots.PbrBaseColor};
             var texture=render.GetTextureFromUsage(usage);if(texture!=null)

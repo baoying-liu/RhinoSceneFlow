@@ -305,7 +305,7 @@ public static class PlantGroups
         {
             if(!spec.Assets.TryGetValue(row.Asset,out var a))continue;var p=row.Position/units;
             var billboard=new PlantBillboard(obj.Id+"/"+row.Id,a.ScientificName,a.ScientificName+(row.Manual?" · 手工":" · 自动"),p,a.WidthMeters*row.Scale/units*widthScale,a.HeightMeters*row.Scale/units*heightScale,a.AnchorU,a.AnchorV,row.Mirror,images[row.Asset]);
-            yield return(obj,billboard,row.Manual,a.Image);
+            yield return(obj,billboard with{AssetId=a.Asset},row.Manual,a.Image);
         }
     }
 }

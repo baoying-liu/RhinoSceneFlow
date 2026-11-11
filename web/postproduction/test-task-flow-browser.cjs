@@ -12,14 +12,14 @@ const root=path.resolve(__dirname,'../..'),{chromium}=require(path.join(root,'ar
  await page.getByRole('button',{name:'High-resolution output',exact:true}).click();await page.getByRole('button',{name:'Generate image…',exact:true}).waitFor();
  let b=await api('/boards/'+f.board),hd=b.nodes.find(n=>n.id===b.selectedId);assert.equal(hd.parentId,f.child);assert.equal(hd.params.generationStage,'detail');assert.equal(hd.params.prompt,'');assert(hd.pending&&!hd.locked);
  await page.getByRole('button',{name:'Generate image…',exact:true}).click();await page.locator('.inputCheck').waitFor({timeout:30000});
- assert.equal(await page.locator('.inputCheck strong').innerText(),before.nodes.find(n=>n.id===f.child).name);assert.equal(await page.locator('.inputCheck img').count(),1);
- assert(await page.getByRole('button',{name:'Confirm and generate',exact:true}).isEnabled());await page.getByRole('button',{name:'Back to editing',exact:true}).click();
+ assert.equal(await page.locator('.inputCheck>strong').innerText(),before.nodes.find(n=>n.id===f.child).name);assert.equal(await page.locator('.inputCheck img').count(),1);
+ assert.match(await page.locator('.plannedOutput').innerText(),/2048 × 1536/);assert(await page.getByRole('button',{name:'Confirm and generate',exact:true}).isEnabled());await page.getByRole('button',{name:'Back to editing',exact:true}).click();
  await page.locator('.resource').nth(1).click();const oldCount=await page.locator('.resource').count();await page.getByRole('button',{name:'Another proposal · sibling',exact:true}).click();await page.locator('.resource').nth(oldCount).waitFor();await page.locator('.pendingBoard').waitFor();
  b=await api('/boards/'+f.board);const draft=b.nodes.find(n=>n.id===b.selectedId);assert.equal(draft.parentId,f.original);assert.equal(draft.params.prompt,'');
  const prompt=page.locator('.contentFields textarea');await prompt.fill('Refine the wood cladding');
  assert((await prompt.boundingBox()).y<650,'Brief must be in the first screen');assert.equal(await page.locator('.contextTools').getAttribute('open'),null);
  await page.getByRole('button',{name:'Generate image…',exact:true}).click();await page.locator('.inputCheck').waitFor({timeout:30000});
- assert.equal(await page.locator('.inputCheck strong').innerText(),'Architecture.psd');await page.getByRole('button',{name:'Editable mask',exact:true}).click();await page.locator('.inputCheck img').waitFor();
+ assert.equal(await page.locator('.inputCheck>strong').innerText(),'Architecture.psd');await page.getByRole('button',{name:'Editable mask',exact:true}).click();await page.locator('.inputCheck img').waitFor();
  assert.match(await page.locator('.inputCheck').innerText(),/White: editable/);await page.getByRole('button',{name:'Back to editing',exact:true}).click();
  await page.getByRole('button',{name:'Use input as annotation background',exact:true}).click();await page.getByRole('button',{name:'Input background · not generated',exact:true}).waitFor();assert.equal(await page.locator('.viewerToolbar').getByRole('button',{name:'AI result',exact:true}).count(),0);
  await page.locator('.contextTools>summary').click();await page.getByRole('button',{name:'Adjust context frame',exact:true}).click();await page.locator('.konvajs-content').waitFor();

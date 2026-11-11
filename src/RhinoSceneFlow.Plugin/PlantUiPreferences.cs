@@ -8,7 +8,7 @@ public sealed class PlantUiPreferences
     public string Language {get;set;}="auto";
     public string LibraryView {get;set;}="tiles";
     public string CompositionView {get;set;}="tiles";
-    public string ResolvedLanguage=>Language=="auto"?(AppearanceSettings.LanguageIdentifier&1023)==4?"zh":"en":Language;
+    public string ResolvedLanguage=>PluginPreferences.Load().ResolvedLanguage;
     internal static PlantUiPreferences Load()=>JsonSerializer.Deserialize<PlantUiPreferences>(SceneFlowPlugin.Instance.Settings.GetString("PlantUiPreferences","{}"),MaterialLibrary.Json)!;
     internal static PlantUiPreferences Save(PlantUiPreferences value)
     {

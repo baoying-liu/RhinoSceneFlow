@@ -40,7 +40,11 @@ try:
  assert obj(id).Attributes.GetUserString('RhinoSceneFlow.WorldUv')==record
  simulated=obj(id).RenderMaterial.SimulatedMaterial(Rhino.Render.RenderTexture.TextureGeneration.Allow)
  tex=simulated.GetBitmapTexture();point=Point3d(1,1,0);point.Transform(tex.UvwTransform)
- close(point.X,1/asset['widthMeters']);close(point.Y,1/asset['heightMeters']);report['textureScale']=[point.X,point.Y]
+ # Since v0.14 structured/stochastic/macro bakes contain Tiles base periods.
+ # Their RDK repeat is for the supertile; WorldUv itself is still one unit/meter.
+ random=MaterialService.Library.Get(System.Guid(asset['id'])).Randomization
+ span=1 if random.ResolvedMode in ('off','object') else random.Tiles
+ close(point.X,1/(asset['widthMeters']*span));close(point.Y,1/(asset['heightMeters']*span));report['textureScale']=[point.X,point.Y];report['bakedPeriods']=span
  other=next(a for a in assets if a['id']!=asset['id'])
  r=api('material_apply',assetId=other['id'],objects=[str(id)]);assert r['uvComputed']==0 and r['uvReused']==1
  assert obj(id).Attributes.GetUserString('RhinoSceneFlow.WorldUv')==record;report['materialSwitchReusesUv']=True

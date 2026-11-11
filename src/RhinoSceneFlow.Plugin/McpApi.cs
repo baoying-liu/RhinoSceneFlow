@@ -26,6 +26,17 @@ public static class McpApi
             object response;
             switch (operation)
             {
+                case "plugin_settings":
+                    response=r.TryGetProperty("settings",out var preferences)?PluginPreferences.Save(JsonSerializer.Deserialize<PluginPreferences>(preferences.GetRawText(),MaterialLibrary.Json)!):PluginPreferences.Load();break;
+                case "plugin_settings_open":PluginPreferences.Show();response=new{closed=true};break;
+                case "seasonal_start":response=SeasonalGeneration.Start(Guid.Parse(r.GetProperty("assetId").GetString()!),r.TryGetProperty("plant",out var isPlant)&&isPlant.GetBoolean(),!r.TryGetProperty("fourSeasons",out var four)||four.GetBoolean());break;
+                case "seasonal_status":response=SeasonalGeneration.Status(Guid.Parse(r.GetProperty("jobId").GetString()!));break;
+                case "seasonal_cancel":response=SeasonalGeneration.Cancel(Guid.Parse(r.GetProperty("jobId").GetString()!));break;
+                case "seasonal_asset":
+                    var seasonalLibrary=r.TryGetProperty("plant",out var plantAsset)&&plantAsset.GetBoolean()?PlantService.Library:MaterialService.Library;
+                    var seasonalAsset=seasonalLibrary.Get(Guid.Parse(r.GetProperty("assetId").GetString()!));
+                    if(r.TryGetProperty("seasonal",out var seasonalSettings)){seasonalAsset.Seasonal=JsonSerializer.Deserialize<SeasonalAppearance>(seasonalSettings.GetRawText(),MaterialLibrary.Json)!;seasonalAsset=seasonalLibrary.Update(seasonalAsset);PlantService.RefreshSeasons();}response=seasonalAsset;break;
+                case "workbench_activate":var activateDoc=Document(r);WorkbenchService.Activate(activateDoc,WorkbenchService.Settings(activateDoc).First(v=>v.Id==Guid.Parse(r.GetProperty("viewId").GetString()!)));response=new{activated=true};break;
                 case "postproduction_start":
                     response=PostProduction.Start(Document(r),r.TryGetProperty("path",out var postPath)?postPath.GetString():null,r.TryGetProperty("browser",out var postBrowser)&&postBrowser.GetBoolean());break;
                 case "postproduction_status":
@@ -40,13 +51,20 @@ public static class McpApi
                     response = new { name = "RhinoSceneFlow", version = typeof(McpApi).Assembly.GetName().Version!.ToString(3), transport = "Rhino-MCP-Platform.run_python",materialLibrary=MaterialApi.Contract,plants=PlantApi.Operations,
                         entryPoint = "RhinoSceneFlow.Plugin.McpApi.Execute(string)",
                         operations = new object[] {
+                            new {name="plugin_settings",required=Array.Empty<string>(),parameters="settings?: language:auto|zh|en, theme:rhino|light|dark, season:spring|summer|autumn|winter, climate, generateFourSeasons; plugin_settings_open opens native settings",output="Preferences"},
+                            new {name="seasonal_start",required=new[]{"assetId"},parameters="plant?:false, fourSeasons?:true; only missing variants, summer elevation+plan for plants; seasonal_status/seasonal_cancel require jobId; successful slots persist on cancellation",output="Seasonal job"},
+                            new {name="seasonal_asset",required=new[]{"assetId"},parameters="plant?:false, seasonal?: followSeason/fixedSeason/climate/variants; returns single parent library record",output="Asset"},
+                            new {name="workbench_activate",required=new[]{"document","viewId"},parameters="Activates Named View and its preview season/mode without entering detail editor; configure_view supports previewSeason/followPreviewSeason/exportSeasons/seasonExpanded",output="activated"},
                             new {name="postproduction_start",required=new[]{"document"},parameters="path?: absolute PSD/PSB; browser?:false(default); starts/reuses authenticated local Web workbench; file snapshot and current-document metadata only",output="Launch job id; poll postproduction_status. Completed launch is not completed PSD parsing."},
                             new {name="postproduction_status",required=new[]{"jobId"},parameters="Launch/request job GUID",output="status,stage,url (contains local bearer fragment; do not log),project,importJob,response,error. PNG generation/fusion jobs have their own HTTP job/run IDs."},
                             new {name="postproduction_request",required=new[]{"route"},parameters="Authenticated JSON-only Web request via original Platform. route:/api/status|projects/...|jobs/...; method:GET(default)|POST|PUT; body?:JSON. Supports generate, resume, review acceptance, retry, cancel, run/settings/status; no second MCP server.",output="Request job; poll postproduction_status for response, then poll backend image job via this same operation."},
                             new { name="selection_properties",required=new[]{"document","objects"},parameters="objects:[GUID]; effective native materials and world UV status",output="Selected object properties" },
                             new { name="selection_material_update",required=new[]{"document","objects"},parameters="scope:material(default)|layer|object; name?,roughness?,metallic?,widthMeters?,heightMeters?; document-only RDK edits with isolation and Undo; prepare UV through existing UV operations when needed",output="Affected objects and clone count" },
+                            new { name="workbench_create_view",required=new[]{"document"},parameters="name?: create a native Named View from the active viewport (auto-numbered if absent)",output="viewId" },
+                            new { name="workbench_rename_view",required=new[]{"document","viewId","name"},parameters="Rename the native Named View in place; duplicate/empty names rejected",output="viewId,name" },
+                            new { name="workbench_expand",required=new[]{"document","expanded"},parameters="scope:view(default)|layers; viewId?: target one or all cards; independent section folding",output="Panel state" },
                             new { name="workbench_settings",required=new[]{"document"},parameters="Per-view configuration, exportable display modes and PSD blend keys",output="views, displayModes, blends" },
-                            new { name="configure_view",required=new[]{"document","viewId","settings"},parameters="Patch width,height,mode,layers:[{kind:shadow|texture|material|display,textureGrouping:material(default)|object,mode:guid,blend:norm|mul |scrn|over|dark|lite,opacity:0..100,enabled:true}], camera:{yaw,pitch,zoom,panX,panY,panZ}, sun:{useDocument,azimuth,altitude},included. Saved per document path, without altering Named Views.",output="Updated view configuration" },
+                            new { name="configure_view",required=new[]{"document","viewId","settings"},parameters="Patch width,height,mode,layers:[{kind:shadow|texture|material|display|plants|color|depth,colorSource:material(default)|layer,textureGrouping:material(default)|object|all,plantGrouping:species(default)|individual|all,visible:true,expanded:false,mode:guid,blend:norm|mul |scrn|over|dark|lite,opacity:0..100,enabled:true}], camera:{yaw,pitch,zoom,panX,panY,panZ}, sun:{useDocument,azimuth,altitude},included. Saved per document path, without altering Named Views.",output="Updated view configuration" },
                             new { name="export_workbench",required=new[]{"document","directory"},parameters="views?: [Named View GUIDs] (otherwise included saved views); collision?: number|overwrite|cancel. Captures RGB display modes, unlit bitmap albedo (kind:texture, material-ID merge or per-object children in one group), legacy layer RGB (kind:material), and tiled shadows. Independent pass blend/opacity. Side <=8192; total <=8192 squared; PSD raw <=2GB.",output="Batch report" },
                             new { name="open_panel", required=new[]{"document"}, parameters="Opens or activates the native Eto Named View export panel", output="Panel state" },
                             new { name="panel_status", required=new[]{"document"}, parameters="Read-only panel state", output="Panel state, or open=false" },
@@ -61,6 +79,13 @@ public static class McpApi
                     break;
                 case "workbench_settings":
                     response=new{views=WorkbenchService.Settings(Document(r)),displayModes=WorkbenchService.Modes().Select(m=>new{id=m.Id,name=m.LocalName}),blends=Ui.Blends.Select(b=>new{key=b.Key,name=b.Name})};break;
+                case "workbench_create_view":
+                    var createDoc=Document(r);response=new{viewId=WorkbenchService.CreateNamedView(createDoc,r.TryGetProperty("name",out var createdName)?createdName.GetString():null)};break;
+                case "workbench_rename_view":
+                    var renameDoc=Document(r);var renameId=Guid.Parse(r.GetProperty("viewId").GetString()!);var renameName=r.GetProperty("name").GetString()!;
+                    if(ExportPanelController.Find(renameDoc.RuntimeSerialNumber) is {} renamePanel)renamePanel.RenameView(renameId,renameName);else WorkbenchService.RenameNamedView(renameDoc,renameId,renameName);response=new{viewId=renameId,name=renameName.Trim()};break;
+                case "workbench_expand":
+                    ExportPanelController.Open(Document(r)).SetExpansion(r.GetProperty("expanded").GetBoolean(),r.TryGetProperty("scope",out var foldScope)?foldScope.GetString()!:"view",r.TryGetProperty("viewId",out var foldId)?Guid.Parse(foldId.GetString()!):null);response=ExportPanelController.Find(Document(r).RuntimeSerialNumber)!.GetState();break;
                 case "configure_view":
                     var configDoc=Document(r);var configId=Guid.Parse(r.GetProperty("viewId").GetString()!);
                     var existing=WorkbenchService.Settings(configDoc).FirstOrDefault(v=>v.Id==configId)??throw new ArgumentException("Named View does not exist.");

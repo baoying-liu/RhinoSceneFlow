@@ -19,7 +19,7 @@ public static class SceneFlowWorkspace
     internal static void Register(SceneFlowPlugin plugin)
     {
         string[] titles=["SceneFlow · AI 素材","SceneFlow · 材质库","SceneFlow · UV","SceneFlow · 种植","SceneFlow · PSD","SceneFlow · Plants List","SceneFlow · 属性","SceneFlow · AI 后期"];
-        string[] icons=["Materials","Library","Uv","Planting","Export","Planting","Uv","Export"];
+        string[] icons=["Materials","Library","Uv","Planting","Export","PlantsList","Properties","PostProduction"];
         for(int i=0;i<pages.Length;i++)Panels.RegisterPanel(plugin,pages[i],titles[i],typeof(SceneFlowPlugin).Assembly,"RhinoSceneFlow.Plugin.Resources."+icons[i]+".ico",PanelType.System);
         RhinoDoc.CloseDocument+=OnDocumentClosed;
     }
@@ -76,7 +76,7 @@ public static class SceneFlowWorkspace
     internal static PlantTool? Planting=>Hosts.GetValueOrDefault("planting")?.Tool as PlantTool;
     internal static void Stop()
     {
-        RhinoDoc.CloseDocument-=OnDocumentClosed;
+        RhinoDoc.CloseDocument-=OnDocumentClosed;NamedViewUndo.Stop();
         // Registered panel controls belong to Rhino. Disposing them here leaves a
         // disposed descendant in Rhino's later UnLoad/DataContext traversal.
         foreach(var host in AllHosts.ToArray())host.Shutdown();Hosts.Clear();AllHosts.Clear();selectedAssets.Clear();materialScopes.Clear();
@@ -94,16 +94,20 @@ public abstract class WorkspaceHost:Panel,IPanel
     internal Control? Tool{get;private set;}
     protected WorkspaceHost(string page)
     {
-        this.page=page;SceneFlowWorkspace.Hosts[page]=this;SceneFlowWorkspace.AllHosts.Add(this);Padding=new(8);MinimumSize=new(320,300);
+        this.page=page;SceneFlowWorkspace.Hosts[page]=this;SceneFlowWorkspace.AllHosts.Add(this);Padding=new(10);MinimumSize=new(320,300);
         var nav=new DropDown();foreach(var p in new[]{("materials","AI · 素材对话"),("library","材质库 · 浏览与应用"),("uv","UV · 真实尺寸展开"),("planting","植物库 · 种植"),("plantsList","Plants List · 组合管理"),("properties","属性 · 当前选择"),("export","PSD · 视图导出"),("post","AI 后期 · Web 工作台")})nav.Items.Add(new ListItem{Key=p.Item1,Text=p.Item2});nav.SelectedKey=page;
         nav.SelectedValueChanged+=(_,_)=>{if(nav.SelectedKey!=page){SceneFlowWorkspace.Open(nav.SelectedKey!);nav.SelectedKey=page;}};
         var menu=new Button{Text="⋯",Width=28,ToolTip="工作区布局"};var context=new ContextMenu();var group=new ButtonMenuItem{Text="将所有工具放入同一容器"};group.Click+=(_,_)=>{try{SceneFlowWorkspace.Group();}catch(Exception e){RhinoApp.WriteLine(e.Message);}};context.Items.Add(group);menu.Click+=(_,_)=>context.Show(menu);
-        var navigation=new TableLayout{Spacing=new(6,0),Rows={new TableRow(new TableCell(nav,true),menu)}};
+        var theme=new ButtonMenuItem{Text="界面主题：跟随 Rhino",Enabled=false};context.Items.Add(theme);
+        var settings=new Button{Text="⚙",Width=28,ToolTip="SceneFlow 设置 / Settings"};settings.Click+=(_,_)=>PluginPreferences.Show();
+        var groupButton=new Button{Text="▤",Width=28,ToolTip="将所有工具放入同一容器"};groupButton.Click+=(_,_)=>SceneFlowWorkspace.Group();
+        var navigation=new TableLayout{Spacing=new(6,0),Rows={new TableRow(new TableCell(nav,true),groupButton,settings,menu)}};
         var root=Ui.Layout();root.AddRow(navigation);root.Add(body,true,true);Content=root;
         Load+=(_,_)=>RefreshDocument();documents.Elapsed+=(_,_)=>RefreshDocument();documents.Start();
     }
     internal void RefreshDocument()
     {
+        if(!IsDisposed&&!stopped)WorkspaceAppearance.Apply(this);
         if(IsDisposed||stopped||rebinding)return;var doc=RhinoDoc.ActiveDoc;
         if(doc!=null&&(!doc.IsAvailable||doc.IsClosing||doc.IsOpening||doc.IsCreating||doc.IsInitializing))return;
         uint next=doc?.RuntimeSerialNumber??0;if(next==serial&&Tool!=null)return;
@@ -153,7 +157,11 @@ public sealed class WorkspaceCommand:Rhino.Commands.Command
 internal static class ToolUi
 {
     internal static TableLayout Row(params Control?[] controls)=>new(){Spacing=new(6,4),Rows={new TableRow(controls.Select(c=>new TableCell(c,c==null)).ToArray())}};
-    internal static Label Heading(string text)=>new(){Text=text,Font=new Font(SystemFont.Bold,12)};
+    internal static Label Heading(string text)=>new(){Text=text,Font=new Font(SystemFont.Bold,11),Wrap=WrapMode.Word};
+    internal static Label Note(string text)=>new(){Text=text,Wrap=WrapMode.Word};
+    internal static GroupBox Section(string title,Control content)=>new(){Text=title,Content=new Panel{Padding=new(8),Content=content}};
+    internal static Expander Help(string text)=>new(){Header="使用说明",Content=Note(text),Expanded=false};
+    internal static TableLayout Pair(Control first,Control second)=>new(){Spacing=new(6,4),Rows={new TableRow(new TableCell(first,true),new TableCell(second,true))}};
     internal static Guid[] Selection(RhinoDoc doc)=>doc.Objects.GetSelectedObjects(false,false).Select(o=>o.Id).Distinct().ToArray();
     internal static (Guid[]? Objects,Guid[]? Layers) Targets(RhinoDoc doc,bool layers)
     {
@@ -218,6 +226,7 @@ public sealed class UvTool:Panel
     private readonly MaterialActionQueue actions;
     private readonly Label selection=new(),status=new(){Wrap=WrapMode.Word};
     private readonly DropDown mapping=new();
+    private readonly Button prepare,cancel;
     private readonly UITimer timer=new(){Interval=.5};
     private bool disposed,documentClosed;
     public bool Busy=>actions.Busy;
@@ -225,10 +234,13 @@ public sealed class UvTool:Panel
     {
         document=doc.RuntimeSerialNumber;actions=new(document,(s,p)=>status.Text=s);
         foreach(var m in new[]{("auto","自动 · 平面 / 箱式"),("xatlas","复杂曲面 · xatlas"),("plane","平面"),("box","箱式"),("cylinder","圆柱侧面")})mapping.Items.Add(new ListItem{Key=m.Item1,Text=m.Item2});mapping.SelectedKey="auto";
-        var l=Ui.Layout();l.AddRow(ToolUi.Heading("真实尺寸 UV"));l.AddRow(new Label{Text="准备一次，换材质时复用。1 UV 单位 = 1 米。",Wrap=WrapMode.Word});l.AddRow(selection);l.AddRow(mapping);
-        l.AddRow(Ui.Button("准备 / 更新选中物件的 UV",()=>Guard(()=>{var t=ToolUi.Targets(Doc,false);actions.Start(t.Objects,t.Layers,new(){Mode=mapping.SelectedKey!},force:true);})));l.AddRow(Ui.Button("等径管体 · 沿中心线展开…",()=>Guard(()=>RhinoApp.RunScript("_RhinoSceneFlowTubeUV",false))));
-        l.AddRow(new Label{Text="复杂曲面需要接缝；砖纹等方向图案的管体优先选中心线展开。材质工具会自动补算缺失的真实尺寸 UV。",Wrap=WrapMode.Word,Width=280});l.AddRow(Ui.Button("取消后续步骤",actions.Cancel));l.AddRow(status);l.AddRow(null);Content=l;
-        timer.Elapsed+=(_,_)=>{if(!IsDisposed&&!documentClosed)Guard(()=>selection.Text=$"当前选择 · {ToolUi.Selection(Doc).Length} 个物件");};timer.Start();RhinoDoc.CloseDocument+=OnDocumentClosed;
+        var l=Ui.Layout();l.AddRow(ToolUi.Heading("真实尺寸 UV"));l.AddRow(ToolUi.Note("准备一次，换材质时复用 · 1 UV 单位 = 1 米"));l.AddRow(selection);
+        prepare=Ui.Button("准备 / 更新 UV",()=>Guard(()=>{var t=ToolUi.Targets(Doc,false);actions.Start(t.Objects,t.Layers,new(){Mode=mapping.SelectedKey!},force:true);}));
+        var basic=Ui.Layout();basic.AddRow(new Label{Text="展开方式"});basic.AddRow(mapping);basic.AddRow(prepare);l.AddRow(ToolUi.Section("选中物件",basic));
+        var tube=Ui.Layout();tube.AddRow(ToolUi.Note("适用于砖纹、网格等有方向的等径管体。"));tube.AddRow(Ui.Button("选择管体与中心线…",()=>Guard(()=>RhinoApp.RunScript("_RhinoSceneFlowTubeUV",false))));l.AddRow(new Expander{Header="管体专用展开",Content=tube});
+        l.AddRow(ToolUi.Help("复杂曲面需要接缝。材质工具会自动补算缺失的真实尺寸 UV，通常无需手动准备。"));cancel=Ui.Button("取消后续步骤",actions.Cancel);cancel.Visible=false;l.AddRow(status);l.AddRow(cancel);l.AddRow(null);Content=new Scrollable{Content=l,ExpandContentWidth=true};
+        void Sync(){if(IsDisposed||documentClosed)return;Guard(()=>{int count=ToolUi.Selection(Doc).Length;selection.Text=count>0?$"当前选择 · {count} 个物件":"先在 Rhino 中选择需要展开的物件";prepare.Enabled=count>0&&!Busy;mapping.Enabled=!Busy;cancel.Visible=Busy;});}
+        timer.Elapsed+=(_,_)=>Sync();timer.Start();Sync();RhinoDoc.CloseDocument+=OnDocumentClosed;
     }
     private void OnDocumentClosed(object? sender,DocumentEventArgs e){if(e.Document.RuntimeSerialNumber!=document)return;documentClosed=true;timer.Stop();actions.Dispose();}
     private RhinoDoc Doc=>RhinoDoc.FromRuntimeSerialNumber(document)??throw new InvalidOperationException("文档已关闭。");
