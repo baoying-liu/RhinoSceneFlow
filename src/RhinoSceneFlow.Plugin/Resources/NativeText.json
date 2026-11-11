@@ -1,0 +1,2858 @@
+[
+  {
+    "zh": "AI 整理分类与标签",
+    "en": "Organize categories and tags with AI",
+    "shortZh": "AI 整理",
+    "shortEn": "AI organize"
+  },
+  {
+    "zh": "AI 整理名称、分类与标签",
+    "en": "Organize material names, categories and tags with AI",
+    "shortZh": "AI 整理",
+    "shortEn": "AI organize"
+  },
+  {
+    "zh": "AI 渲染工作台",
+    "en": "AI render studio",
+    "shortZh": "AI 工作台",
+    "shortEn": "Studio"
+  },
+  {
+    "zh": "PSD 中可见；点击隐藏",
+    "en": "Visible in PSD; click to hide",
+    "shortZh": "可见",
+    "shortEn": "Visible"
+  },
+  {
+    "zh": "PSD 中隐藏；点击显示",
+    "en": "Hidden in PSD; click to show",
+    "shortZh": "隐藏",
+    "shortEn": "Hidden"
+  },
+  {
+    "zh": "PSD 已提交，工作台正在解析图层",
+    "en": "PSD sent; Studio is reading its layers",
+    "shortZh": "正在读取 PSD",
+    "shortEn": "Reading PSD"
+  },
+  {
+    "zh": "PSD 文件重名",
+    "en": "PSD filename already exists",
+    "shortZh": "PSD 重名",
+    "shortEn": "Duplicate PSD"
+  },
+  {
+    "zh": "Photoshop 文件",
+    "en": "Photoshop files",
+    "shortZh": "PSD 文件",
+    "shortEn": "PSD files"
+  },
+  {
+    "zh": "Plants List · 植物组合",
+    "en": "Plants List · Plant groups",
+    "shortZh": "植物组合",
+    "shortEn": "Groups"
+  },
+  {
+    "zh": "Rhino 原生着色球体预览 · 示意铺贴效果。",
+    "en": "Native Rhino shaded sphere preview of the texture mapping.",
+    "shortZh": "球体铺贴预览",
+    "shortEn": "Sphere mapping preview"
+  },
+  {
+    "zh": "Rhino 图层颜色",
+    "en": "Rhino layer colors",
+    "shortZh": "图层色",
+    "shortEn": "Layer RGB"
+  },
+  {
+    "zh": "SceneFlow · AI 后期",
+    "en": "SceneFlow · AI Studio",
+    "shortZh": "",
+    "shortEn": ""
+  },
+  {
+    "zh": "SceneFlow · AI 素材",
+    "en": "SceneFlow · AI Assets",
+    "shortZh": "",
+    "shortEn": ""
+  },
+  {
+    "zh": "SceneFlow · 属性",
+    "en": "SceneFlow · Properties",
+    "shortZh": "",
+    "shortEn": ""
+  },
+  {
+    "zh": "SceneFlow · 材质库",
+    "en": "SceneFlow · Materials",
+    "shortZh": "",
+    "shortEn": ""
+  },
+  {
+    "zh": "SceneFlow · 种植",
+    "en": "SceneFlow · Planting",
+    "shortZh": "",
+    "shortEn": ""
+  },
+  {
+    "zh": "SceneFlow · 设置",
+    "en": "SceneFlow · Settings",
+    "shortZh": "",
+    "shortEn": ""
+  },
+  {
+    "zh": "SceneFlow 设置 / Settings",
+    "en": "SceneFlow settings",
+    "shortZh": "设置",
+    "shortEn": "Settings"
+  },
+  {
+    "zh": "UV 未完成，材质修改未应用。",
+    "en": "UV preparation did not finish; material changes were not applied.",
+    "shortZh": "UV 未完成，未应用",
+    "shortEn": "UV incomplete; not applied"
+  },
+  {
+    "zh": "UV 设置 · 默认自动",
+    "en": "UV settings · Automatic by default",
+    "shortZh": "UV 设置",
+    "shortEn": "UV"
+  },
+  {
+    "zh": "← 返回全部视图",
+    "en": "Back to all views",
+    "shortZh": "返回视图",
+    "shortEn": "Back"
+  },
+  {
+    "zh": "上移图层",
+    "en": "Move layer up",
+    "shortZh": "上移",
+    "shortEn": "Up"
+  },
+  {
+    "zh": "下移图层",
+    "en": "Move layer down",
+    "shortZh": "下移",
+    "shortEn": "Down"
+  },
+  {
+    "zh": "仅应用勾选或修改的参数，只修改当前文件。缩小范围时自动隔离共享材质，库中素材保留；贴图通道可能覆盖对应常数参数。",
+    "en": "Only checked or edited values affect this document. A narrower scope duplicates shared materials; library assets stay unchanged. Texture maps may override numeric values.",
+    "shortZh": "仅应用修改项；局部修改自动隔离材质。",
+    "shortEn": "Apply edited values; local changes isolate materials."
+  },
+  {
+    "zh": "仅所选物体",
+    "en": "Selected objects only",
+    "shortZh": "所选物体",
+    "shortEn": "Objects"
+  },
+  {
+    "zh": "仅立面",
+    "en": "Elevation only",
+    "shortZh": "立面",
+    "shortEn": "Elevation"
+  },
+  {
+    "zh": "从上到下排序 · 眼睛控制 PSD 显示 · 勾选控制是否导出",
+    "en": "Top-to-bottom order · Eye: PSD visibility · Checkbox: include in export",
+    "shortZh": "上下排序 · 眼睛控制显示 · 勾选控制导出",
+    "shortEn": "Layer order · Eye: visible · Check: export"
+  },
+  {
+    "zh": "从当前视口创建已命名视图",
+    "en": "Create a Named View from the current viewport",
+    "shortZh": "从当前视口创建",
+    "shortEn": "From current viewport"
+  },
+  {
+    "zh": "从本机选择 PSD / PSB…",
+    "en": "Choose a PSD / PSB file…",
+    "shortZh": "选择 PSD / PSB…",
+    "shortEn": "Choose PSD / PSB…"
+  },
+  {
+    "zh": "从组合中移除所选类型",
+    "en": "Remove the selected species from this group",
+    "shortZh": "移除所选种类",
+    "shortEn": "Remove species"
+  },
+  {
+    "zh": "优先复用相似的已有材质",
+    "en": "Reuse similar existing materials first",
+    "shortZh": "优先复用",
+    "shortEn": "Reuse first"
+  },
+  {
+    "zh": "使用文档太阳",
+    "en": "Use document sun",
+    "shortZh": "文档太阳",
+    "shortEn": "Document sun"
+  },
+  {
+    "zh": "保存单株设置",
+    "en": "Save individual plant settings",
+    "shortZh": "保存单株",
+    "shortEn": "Save plant"
+  },
+  {
+    "zh": "保存尺寸与外观参数",
+    "en": "Save texture dimensions and appearance",
+    "shortZh": "保存尺寸与外观",
+    "shortEn": "Save appearance"
+  },
+  {
+    "zh": "保存属性",
+    "en": "Save material properties",
+    "shortZh": "保存",
+    "shortEn": "Save"
+  },
+  {
+    "zh": "保存并预览",
+    "en": "Save and preview",
+    "shortZh": "保存预览",
+    "shortEn": "Preview"
+  },
+  {
+    "zh": "保留真实尺寸与原图清晰度；大周期需要更多缓存。按物件模式会为图层内现有物件建立独立外观变体。",
+    "en": "Preserves physical size and source detail. Larger repeats need more cache. Object mode creates an appearance variant for each existing object on the layer.",
+    "shortZh": "保持真实尺寸；大周期占用更多缓存。",
+    "shortEn": "Physical scale retained; larger repeats use more cache."
+  },
+  {
+    "zh": "保留结构 · 分区色差",
+    "en": "Preserve structure · Regional color variation",
+    "shortZh": "保留结构",
+    "shortEn": "Structured"
+  },
+  {
+    "zh": "保留结构分区色差",
+    "en": "Structure-preserving regional variation",
+    "shortZh": "保留结构",
+    "shortEn": "Structured"
+  },
+  {
+    "zh": "修改名字…",
+    "en": "Rename…",
+    "shortZh": "重命名…",
+    "shortEn": "Rename…"
+  },
+  {
+    "zh": "修改所在图层…",
+    "en": "Change layer…",
+    "shortZh": "修改图层…",
+    "shortEn": "Layer…"
+  },
+  {
+    "zh": "修改范围",
+    "en": "Edit scope",
+    "shortZh": "范围",
+    "shortEn": "Scope"
+  },
+  {
+    "zh": "修改贴图实际尺寸（米）",
+    "en": "Change physical texture dimensions (m)",
+    "shortZh": "修改实际尺寸 m",
+    "shortEn": "Resize texture (m)"
+  },
+  {
+    "zh": "俯仰 °",
+    "en": "Camera pitch °",
+    "shortZh": "俯仰 °",
+    "shortEn": "Pitch °"
+  },
+  {
+    "zh": "允许旋转（非方形仅 180°）",
+    "en": "Allow rotation (non-square maps: 180° only)",
+    "shortZh": "允许旋转 · 非方形 180°",
+    "shortEn": "Rotate · non-square 180°"
+  },
+  {
+    "zh": "全不选",
+    "en": "Deselect all",
+    "shortZh": "全不选",
+    "shortEn": "None"
+  },
+  {
+    "zh": "全局相机朝向",
+    "en": "Global camera-facing settings",
+    "shortZh": "全局朝向",
+    "shortEn": "Facing"
+  },
+  {
+    "zh": "全选",
+    "en": "Select all",
+    "shortZh": "全选",
+    "shortEn": "All"
+  },
+  {
+    "zh": "全部合并 · 一张图层",
+    "en": "Merge everything into one layer",
+    "shortZh": "全部合并",
+    "shortEn": "Merge all"
+  },
+  {
+    "zh": "全部植物合并为一层",
+    "en": "Merge all plants into one layer",
+    "shortZh": "全部合并",
+    "shortEn": "Merge all"
+  },
+  {
+    "zh": "关闭",
+    "en": "Off",
+    "shortZh": "关",
+    "shortEn": "Off"
+  },
+  {
+    "zh": "写回 Named View 相机",
+    "en": "Write camera to Named View",
+    "shortZh": "写回视图相机",
+    "shortEn": "Write camera"
+  },
+  {
+    "zh": "准备 / 更新 UV",
+    "en": "Prepare or update physical-scale UVs",
+    "shortZh": "准备 UV",
+    "shortEn": "Prepare UV"
+  },
+  {
+    "zh": "准备一次，换材质时复用 · 1 UV 单位 = 1 米",
+    "en": "Prepare once and reuse across materials · 1 UV unit = 1 meter",
+    "shortZh": "准备一次复用 · 1 UV = 1 米",
+    "shortEn": "Reusable UV · 1 unit = 1 m"
+  },
+  {
+    "zh": "分层方式",
+    "en": "Layer grouping",
+    "shortZh": "分层",
+    "shortEn": "Grouping"
+  },
+  {
+    "zh": "分类",
+    "en": "Category",
+    "shortZh": "分类",
+    "shortEn": "Category"
+  },
+  {
+    "zh": "分类、名称与标签已更新。",
+    "en": "Categories, names and tags updated.",
+    "shortZh": "分类与标签已更新",
+    "shortEn": "Catalog updated"
+  },
+  {
+    "zh": "切换材质库文件夹…",
+    "en": "Change material library folder…",
+    "shortZh": "切换库文件夹…",
+    "shortEn": "Library folder…"
+  },
+  {
+    "zh": "列表",
+    "en": "List",
+    "shortZh": "列表",
+    "shortEn": "List"
+  },
+  {
+    "zh": "创建视图",
+    "en": "Create Named View",
+    "shortZh": "创建视图",
+    "shortEn": "New view"
+  },
+  {
+    "zh": "刷新全部已命名视图与预览",
+    "en": "Refresh all Named Views and previews",
+    "shortZh": "刷新全部",
+    "shortEn": "Refresh all"
+  },
+  {
+    "zh": "刷新导出文件列表",
+    "en": "Refresh exported file list",
+    "shortZh": "刷新文件",
+    "shortEn": "Refresh"
+  },
+  {
+    "zh": "刷新材质库",
+    "en": "Refresh material library",
+    "shortZh": "刷新材质",
+    "shortEn": "Refresh"
+  },
+  {
+    "zh": "刷新预览",
+    "en": "Refresh preview",
+    "shortZh": "刷新",
+    "shortEn": "Refresh"
+  },
+  {
+    "zh": "前往 PSD 导出",
+    "en": "Go to PSD export",
+    "shortZh": "PSD 导出",
+    "shortEn": "Export PSD"
+  },
+  {
+    "zh": "单株 · 学名子文件夹",
+    "en": "Individual plants in species subfolders",
+    "shortZh": "单株分层",
+    "shortEn": "Individual"
+  },
+  {
+    "zh": "原图包含的列 × 行（不确定时保持 1 × 1）",
+    "en": "Source tile columns × rows (keep 1 × 1 if unknown)",
+    "shortZh": "原图列 × 行 · 默认 1 × 1",
+    "shortEn": "Source grid · default 1 × 1"
+  },
+  {
+    "zh": "参数已保存，正在更新…",
+    "en": "Parameters saved; updating…",
+    "shortZh": "正在更新…",
+    "shortEn": "Updating…"
+  },
+  {
+    "zh": "双击修改名称，同步 Rhino 已命名视图",
+    "en": "Double-click to rename and sync the Rhino Named View",
+    "shortZh": "双击同步重命名",
+    "shortEn": "Double-click to rename"
+  },
+  {
+    "zh": "双击组合进入隔离编辑，单击植物调整。右键组合可重命名、修改图层、显示或锁定；列表与视口双向选择。",
+    "en": "Double-click a group to edit in isolation; select a plant to adjust it. Right-click a group to rename, change layer, show or lock. List and viewport selections stay synchronized.",
+    "shortZh": "双击隔离编辑；右键管理；双向选择。",
+    "shortEn": "Double-click: edit · Right-click: manage · Selection syncs."
+  },
+  {
+    "zh": "取消",
+    "en": "Cancel",
+    "shortZh": "取消",
+    "shortEn": "Cancel"
+  },
+  {
+    "zh": "取消后续步骤",
+    "en": "Cancel remaining steps",
+    "shortZh": "取消",
+    "shortEn": "Cancel"
+  },
+  {
+    "zh": "取消本次编辑",
+    "en": "Cancel current edits",
+    "shortZh": "取消编辑",
+    "shortEn": "Cancel edits"
+  },
+  {
+    "zh": "变亮",
+    "en": "Lighten",
+    "shortZh": "",
+    "shortEn": ""
+  },
+  {
+    "zh": "变暗",
+    "en": "Darken",
+    "shortZh": "",
+    "shortEn": ""
+  },
+  {
+    "zh": "叠加",
+    "en": "Overlay",
+    "shortZh": "",
+    "shortEn": ""
+  },
+  {
+    "zh": "只绕 Z 轴",
+    "en": "Rotate around Z only",
+    "shortZh": "Z 轴",
+    "shortEn": "Z only"
+  },
+  {
+    "zh": "名称",
+    "en": "Name",
+    "shortZh": "",
+    "shortEn": ""
+  },
+  {
+    "zh": "图层",
+    "en": "Layer",
+    "shortZh": "",
+    "shortEn": ""
+  },
+  {
+    "zh": "图层颜色（旧版）",
+    "en": "Layer colors (legacy)",
+    "shortZh": "图层色 · 旧版",
+    "shortEn": "Layer RGB (legacy)"
+  },
+  {
+    "zh": "图片已导入；请在高级设置中确认实际尺寸。",
+    "en": "Image imported; confirm its physical dimensions in advanced settings.",
+    "shortZh": "已导入；请校准尺寸。",
+    "shortEn": "Imported; calibrate size."
+  },
+  {
+    "zh": "圆柱",
+    "en": "Cylindrical",
+    "shortZh": "圆柱",
+    "shortEn": "Cylinder"
+  },
+  {
+    "zh": "圆柱侧面",
+    "en": "Cylindrical sides",
+    "shortZh": "圆柱侧面",
+    "shortEn": "Cylinder sides"
+  },
+  {
+    "zh": "在 Rhino 中选择物件后可应用材质",
+    "en": "Select Rhino objects to apply a material.",
+    "shortZh": "选择物件后应用材质",
+    "shortEn": "Select objects to apply"
+  },
+  {
+    "zh": "在网页中先做整图探索与标注修改，再对满意的结果进行高清细化。图片、版本和画板自动保存在本机；原始 PSD 保留，最终导出 PNG。显示语言可在网页设置中调整。",
+    "en": "Explore and annotate the whole image in Studio, then refine the chosen result in high resolution. Images, versions and boards save locally; the original PSD stays unchanged. Export PNG and set the web language in Studio settings.",
+    "shortZh": "整图探索 → 标注修改 → 高清细化；自动保存到本机。",
+    "shortEn": "Explore → annotate → refine. Boards save locally."
+  },
+  {
+    "zh": "在视口中单击需要调整的植物。移动、缩放、镜像和复制只作用于这一株。整体布局参数请完成或取消后调整。",
+    "en": "Select a plant in the viewport. Move, scale, mirror and copy affect only that plant. Finish or cancel before changing the overall layout.",
+    "shortZh": "单株移动、缩放、镜像与复制；完成后调整布局。",
+    "shortEn": "Edit one plant; finish before changing the layout."
+  },
+  {
+    "zh": "在视口中移动 · 吸附承载面",
+    "en": "Move in viewport · Snap to host surface",
+    "shortZh": "吸附移动",
+    "shortEn": "Move on surface"
+  },
+  {
+    "zh": "复制此株",
+    "en": "Duplicate this plant",
+    "shortZh": "复制单株",
+    "shortEn": "Duplicate"
+  },
+  {
+    "zh": "复杂曲面 · xatlas",
+    "en": "Complex surfaces · xatlas",
+    "shortZh": "复杂曲面 · xatlas",
+    "shortEn": "xatlas"
+  },
+  {
+    "zh": "复杂曲面需要接缝。材质工具会自动补算缺失的真实尺寸 UV，通常无需手动准备。",
+    "en": "Complex surfaces need seams. The material tool prepares missing physical-scale UVs automatically; manual preparation is usually unnecessary.",
+    "shortZh": "复杂曲面需接缝；缺失 UV 会自动准备。",
+    "shortEn": "Complex surfaces need seams; missing UVs are prepared automatically."
+  },
+  {
+    "zh": "夏季回退",
+    "en": "Summer fallback",
+    "shortZh": "回退夏季",
+    "shortEn": "Summer fallback"
+  },
+  {
+    "zh": "大小 Seed",
+    "en": "Scale seed",
+    "shortZh": "大小种子",
+    "shortEn": "Scale seed"
+  },
+  {
+    "zh": "大尺度色差",
+    "en": "Large-scale color variation",
+    "shortZh": "大尺度色差",
+    "shortEn": "Macro variation"
+  },
+  {
+    "zh": "太阳方位 °",
+    "en": "Sun azimuth °",
+    "shortZh": "方位 °",
+    "shortEn": "Azimuth °"
+  },
+  {
+    "zh": "太阳设置同时用于显示模式和独立阴影通道；独立阴影不包含反射 / GI / AO。",
+    "en": "Sun settings affect display modes and the shadow pass. The shadow pass excludes reflections, GI and AO.",
+    "shortZh": "太阳同时影响预览与阴影；不含反射 / GI / AO。",
+    "shortEn": "Shared sun; shadows exclude reflections / GI / AO."
+  },
+  {
+    "zh": "失败",
+    "en": "Failed",
+    "shortZh": "",
+    "shortEn": ""
+  },
+  {
+    "zh": "完全朝向相机",
+    "en": "Face camera freely",
+    "shortZh": "自由朝向",
+    "shortEn": "Free facing"
+  },
+  {
+    "zh": "完成并退出",
+    "en": "Finish and exit",
+    "shortZh": "完成",
+    "shortEn": "Finish"
+  },
+  {
+    "zh": "完成并退出单株编辑",
+    "en": "Finish individual plant editing",
+    "shortZh": "完成单株编辑",
+    "shortEn": "Finish editing"
+  },
+  {
+    "zh": "定位到组合",
+    "en": "Zoom to plant group",
+    "shortZh": "定位组合",
+    "shortEn": "Zoom to group"
+  },
+  {
+    "zh": "实际宽度 m",
+    "en": "Physical width (m)",
+    "shortZh": "宽 m",
+    "shortEn": "Width (m)"
+  },
+  {
+    "zh": "实际高度 m",
+    "en": "Physical height (m)",
+    "shortZh": "高 m",
+    "shortEn": "Height (m)"
+  },
+  {
+    "zh": "密度 株/m²",
+    "en": "Density (plants/m²)",
+    "shortZh": "密度 株/m²",
+    "shortEn": "Plants/m²"
+  },
+  {
+    "zh": "密度、大小与随机",
+    "en": "Density, scale and randomization",
+    "shortZh": "密度与随机",
+    "shortEn": "Distribution"
+  },
+  {
+    "zh": "导入",
+    "en": "Import",
+    "shortZh": "",
+    "shortEn": ""
+  },
+  {
+    "zh": "导入 PSD",
+    "en": "Import PSD",
+    "shortZh": "",
+    "shortEn": ""
+  },
+  {
+    "zh": "导入图片…",
+    "en": "Import image…",
+    "shortZh": "导入图片…",
+    "shortEn": "Import…"
+  },
+  {
+    "zh": "导入所选文件到工作台",
+    "en": "Import selected file into Studio",
+    "shortZh": "导入所选 PSD",
+    "shortEn": "Import selected"
+  },
+  {
+    "zh": "导出中…",
+    "en": "Exporting…",
+    "shortZh": "",
+    "shortEn": ""
+  },
+  {
+    "zh": "将当前 Rhino 视口保存为已命名视图",
+    "en": "Save the current Rhino viewport as a Named View.",
+    "shortZh": "保存当前视口为视图",
+    "shortEn": "Save current viewport"
+  },
+  {
+    "zh": "小方块",
+    "en": "Tiles",
+    "shortZh": "",
+    "shortEn": ""
+  },
+  {
+    "zh": "尚无导出文件，可从本机选择 PSD / PSB。",
+    "en": "No exported files yet. Choose a PSD / PSB file from this computer.",
+    "shortZh": "无导出文件；可选择本机 PSD。",
+    "shortEn": "No exports yet; choose a local PSD."
+  },
+  {
+    "zh": "尚未选择材质",
+    "en": "No material selected",
+    "shortZh": "未选材质",
+    "shortEn": "No material"
+  },
+  {
+    "zh": "就绪",
+    "en": "Ready",
+    "shortZh": "",
+    "shortEn": ""
+  },
+  {
+    "zh": "尺寸、外观与随机去重复可在下方“铺贴与外观设置”调整。",
+    "en": "Adjust dimensions, appearance and random variation under Mapping and appearance.",
+    "shortZh": "尺寸与去重复见下方外观设置。",
+    "shortEn": "Scale and variation are below in appearance settings."
+  },
+  {
+    "zh": "尺寸与外观参数已保存，下次应用生效。",
+    "en": "Dimensions and appearance saved; used next time you apply the material.",
+    "shortZh": "已保存，下次应用生效。",
+    "shortEn": "Saved for next application."
+  },
+  {
+    "zh": "尺寸与高级设置",
+    "en": "Dimensions and advanced settings",
+    "shortZh": "尺寸 / 高级",
+    "shortEn": "Advanced"
+  },
+  {
+    "zh": "展开全部画面设置",
+    "en": "Expand all view settings",
+    "shortZh": "展开画面",
+    "shortEn": "Expand views"
+  },
+  {
+    "zh": "展开完成",
+    "en": "Unwrap completed",
+    "shortZh": "展开完成",
+    "shortEn": "UV ready"
+  },
+  {
+    "zh": "展开方式",
+    "en": "UV projection method",
+    "shortZh": "展开方式",
+    "shortEn": "Projection"
+  },
+  {
+    "zh": "工作台已启动",
+    "en": "Studio started",
+    "shortZh": "已启动",
+    "shortEn": "Started"
+  },
+  {
+    "zh": "工作台请求已完成",
+    "en": "Studio request completed",
+    "shortZh": "已完成",
+    "shortEn": "Complete"
+  },
+  {
+    "zh": "已保存；自定义植物计入密度和间距。",
+    "en": "Saved; custom plants count toward density and spacing.",
+    "shortZh": "已保存；单株计入密度与间距。",
+    "shortEn": "Saved; custom plants count toward density and spacing."
+  },
+  {
+    "zh": "已取消",
+    "en": "Cancelled",
+    "shortZh": "",
+    "shortEn": ""
+  },
+  {
+    "zh": "已取消，未写入文件。",
+    "en": "Cancelled; no files written.",
+    "shortZh": "未写入文件",
+    "shortEn": "No files written"
+  },
+  {
+    "zh": "已复制图层配置",
+    "en": "Layer configuration copied",
+    "shortZh": "已复制图层",
+    "shortEn": "Layers copied"
+  },
+  {
+    "zh": "已复制输出尺寸",
+    "en": "Output dimensions copied",
+    "shortZh": "已复制尺寸",
+    "shortEn": "Size copied"
+  },
+  {
+    "zh": "已导出",
+    "en": "Exported",
+    "shortZh": "",
+    "shortEn": ""
+  },
+  {
+    "zh": "已有",
+    "en": "Existing",
+    "shortZh": "",
+    "shortEn": ""
+  },
+  {
+    "zh": "平面",
+    "en": "Planar",
+    "shortZh": "平面",
+    "shortEn": "Plane"
+  },
+  {
+    "zh": "库管理",
+    "en": "Library management",
+    "shortZh": "管理",
+    "shortEn": "Manage"
+  },
+  {
+    "zh": "应用到当前物件",
+    "en": "Apply to selected objects",
+    "shortZh": "所选物件",
+    "shortEn": "Objects"
+  },
+  {
+    "zh": "应用到物件所在图层",
+    "en": "Apply to object layers",
+    "shortZh": "所在图层",
+    "shortEn": "Layers"
+  },
+  {
+    "zh": "应用材质修改",
+    "en": "Apply material changes",
+    "shortZh": "应用修改",
+    "shortEn": "Apply"
+  },
+  {
+    "zh": "应用材质前会自动补算缺失或失效的 UV",
+    "en": "Missing or stale UVs are prepared automatically before applying material.",
+    "shortZh": "缺失 UV 自动准备",
+    "shortEn": "UVs prepared automatically"
+  },
+  {
+    "zh": "强度 0–1",
+    "en": "Strength (0–1)",
+    "shortZh": "强度 0–1",
+    "shortEn": "Strength (0–1)"
+  },
+  {
+    "zh": "当前导出文件夹",
+    "en": "Current export folder",
+    "shortZh": "导出文件夹",
+    "shortEn": "Folder"
+  },
+  {
+    "zh": "当前模型还没有植物组合。到“植物库 · 种植”创建一个组合。",
+    "en": "No plant groups in this model. Create one in Plants · Library.",
+    "shortZh": "尚无组合；在植物库创建。",
+    "shortEn": "No groups yet. Create one in Plants."
+  },
+  {
+    "zh": "当前选择的属性",
+    "en": "Properties of current selection",
+    "shortZh": "选择属性",
+    "shortEn": "Properties"
+  },
+  {
+    "zh": "影响植物大小",
+    "en": "Affect plant scale",
+    "shortZh": "影响大小",
+    "shortEn": "Scale"
+  },
+  {
+    "zh": "影响自动密度",
+    "en": "Affect generated density",
+    "shortZh": "影响密度",
+    "shortEn": "Density"
+  },
+  {
+    "zh": "待种植植物",
+    "en": "Planting palette",
+    "shortZh": "待种植",
+    "shortEn": "Palette"
+  },
+  {
+    "zh": "恢复组合设置",
+    "en": "Restore group settings",
+    "shortZh": "恢复组合",
+    "shortEn": "Reset to group"
+  },
+  {
+    "zh": "所有分类",
+    "en": "All categories",
+    "shortZh": "所有分类",
+    "shortEn": "All categories"
+  },
+  {
+    "zh": "所有标签",
+    "en": "All tags",
+    "shortZh": "所有标签",
+    "shortEn": "All tags"
+  },
+  {
+    "zh": "所有相同材质",
+    "en": "All objects sharing this material",
+    "shortZh": "相同材质",
+    "shortEn": "Same material"
+  },
+  {
+    "zh": "所选物件所在图层",
+    "en": "Layers of selected objects",
+    "shortZh": "所在图层",
+    "shortEn": "Layers"
+  },
+  {
+    "zh": "手工植物保留位置，只参与大小衰减。",
+    "en": "Manually placed plants keep their positions; only their scale falls off.",
+    "shortZh": "手工植物只衰减大小。",
+    "shortEn": "Manual plants: scale falloff only."
+  },
+  {
+    "zh": "打开 AI 渲染工作台",
+    "en": "Open AI render studio",
+    "shortZh": "打开工作台",
+    "shortEn": "Open Studio"
+  },
+  {
+    "zh": "打开 Rhino 模型后开始。",
+    "en": "Open a Rhino model to begin.",
+    "shortZh": "请打开模型",
+    "shortEn": "Open a model"
+  },
+  {
+    "zh": "打开工具",
+    "en": "Open tool",
+    "shortZh": "",
+    "shortEn": ""
+  },
+  {
+    "zh": "打开 UV 工具",
+    "en": "Open physical-scale UV tool",
+    "shortZh": "UV 工具",
+    "shortEn": "Open UV"
+  },
+  {
+    "zh": "打开植物库与种植",
+    "en": "Open plant library and planting",
+    "shortZh": "植物库",
+    "shortEn": "Plants"
+  },
+  {
+    "zh": "找到可复用素材 · 选择后应用／种植",
+    "en": "Reusable assets found · Select to apply or plant.",
+    "shortZh": "找到已有素材",
+    "shortEn": "Existing assets found"
+  },
+  {
+    "zh": "折叠全部画面设置",
+    "en": "Collapse all view settings",
+    "shortZh": "折叠画面",
+    "shortEn": "Collapse views"
+  },
+  {
+    "zh": "拖入或双击库中植物",
+    "en": "Drag or double-click a library plant.",
+    "shortZh": "拖入植物",
+    "shortEn": "Drag plants here"
+  },
+  {
+    "zh": "拖动旋转，滚轮缩放。相机 / 太阳只用于此视图导出；写回按钮只更新 Named View 相机。",
+    "en": "Drag to orbit; scroll to zoom. Camera and sun changes affect this export only. Write camera updates the Named View.",
+    "shortZh": "拖动旋转，滚轮缩放；写回才修改视图。",
+    "shortEn": "Drag: orbit · Wheel: zoom · Write to change Named View."
+  },
+  {
+    "zh": "按学名合并（默认）",
+    "en": "Merge by scientific name (default)",
+    "shortZh": "按学名合并",
+    "shortEn": "By species"
+  },
+  {
+    "zh": "按材质合并（默认；图层色按颜色）",
+    "en": "Merge by material (layer colors by RGB; default)",
+    "shortZh": "按材质 / 颜色",
+    "shortEn": "By material / RGB"
+  },
+  {
+    "zh": "按物件分开 · 同一组",
+    "en": "Separate objects in one group",
+    "shortZh": "按物件分层",
+    "shortEn": "By object"
+  },
+  {
+    "zh": "按物件随机",
+    "en": "Randomize per object",
+    "shortZh": "按物件随机",
+    "shortEn": "Per object"
+  },
+  {
+    "zh": "描述材质，或从材质库中选择。",
+    "en": "Describe a material or choose one from the library.",
+    "shortZh": "描述或选择材质",
+    "shortEn": "Describe or choose a material"
+  },
+  {
+    "zh": "搜索名称、分类或标签",
+    "en": "Search name, category or tag",
+    "shortZh": "搜索材质",
+    "shortEn": "Search materials"
+  },
+  {
+    "zh": "搜索名称、学名、科属或标签",
+    "en": "Search name, scientific name, taxonomy or tag",
+    "shortZh": "搜索植物",
+    "shortEn": "Search plants"
+  },
+  {
+    "zh": "搜索组合名称或图层",
+    "en": "Search group name or layer",
+    "shortZh": "搜索组合",
+    "shortEn": "Search groups"
+  },
+  {
+    "zh": "数量比重",
+    "en": "Relative species weight",
+    "shortZh": "比重",
+    "shortEn": "Weight"
+  },
+  {
+    "zh": "整张贴图代表的实际宽 × 高（mm）",
+    "en": "Physical width × height of the full texture (mm)",
+    "shortZh": "整图宽 × 高 mm",
+    "shortEn": "Texture width × height (mm)"
+  },
+  {
+    "zh": "新建",
+    "en": "New",
+    "shortZh": "",
+    "shortEn": ""
+  },
+  {
+    "zh": "新组合 · 先添加植物，再选择承载面",
+    "en": "New group · Add plants, then select a host surface.",
+    "shortZh": "新组合：添加植物 → 选择面",
+    "shortEn": "New group: plants → host surface"
+  },
+  {
+    "zh": "新组合；原种植对象保持。",
+    "en": "New group; existing planting objects are unchanged.",
+    "shortZh": "已新建组合",
+    "shortEn": "New group ready"
+  },
+  {
+    "zh": "旧版 · 图层颜色",
+    "en": "Legacy · Layer colors",
+    "shortZh": "旧版图层色",
+    "shortEn": "Legacy RGB"
+  },
+  {
+    "zh": "是否导出此图层",
+    "en": "Include this layer in export",
+    "shortZh": "导出图层",
+    "shortEn": "Export layer"
+  },
+  {
+    "zh": "显示方式",
+    "en": "View style",
+    "shortZh": "显示方式",
+    "shortEn": "View"
+  },
+  {
+    "zh": "显示模式",
+    "en": "Display mode",
+    "shortZh": "模式",
+    "shortEn": "Mode"
+  },
+  {
+    "zh": "更新真实尺寸 UV",
+    "en": "Update physical-scale UVs",
+    "shortZh": "更新 UV",
+    "shortEn": "Update UV"
+  },
+  {
+    "zh": "最大比例",
+    "en": "Maximum scale",
+    "shortZh": "最大",
+    "shortEn": "Max"
+  },
+  {
+    "zh": "最小比例",
+    "en": "Minimum scale",
+    "shortZh": "最小",
+    "shortEn": "Min"
+  },
+  {
+    "zh": "材质名称（多个值时留空）",
+    "en": "Material name (blank for mixed values)",
+    "shortZh": "材质名称",
+    "shortEn": "Material name"
+  },
+  {
+    "zh": "材质图片",
+    "en": "Material images",
+    "shortZh": "贴图",
+    "shortEn": "Textures"
+  },
+  {
+    "zh": "材质已应用；真实尺寸 UV 已就绪。",
+    "en": "Material applied; physical-scale UVs are ready.",
+    "shortZh": "材质与 UV 已就绪",
+    "shortEn": "Material and UV ready"
+  },
+  {
+    "zh": "材质已选中；点击应用即可。",
+    "en": "Material selected; click Apply to use it.",
+    "shortZh": "材质已选，可应用。",
+    "shortEn": "Material ready to apply"
+  },
+  {
+    "zh": "材质等效单色（贴图平均色）",
+    "en": "Representative material color (texture average)",
+    "shortZh": "材质平均色",
+    "shortEn": "Material RGB"
+  },
+  {
+    "zh": "材质设置",
+    "en": "Material settings",
+    "shortZh": "材质",
+    "shortEn": "Material"
+  },
+  {
+    "zh": "材质贴图",
+    "en": "Material textures",
+    "shortZh": "贴图",
+    "shortEn": "Textures"
+  },
+  {
+    "zh": "材质颜色",
+    "en": "Material colors",
+    "shortZh": "材质色",
+    "shortEn": "Material RGB"
+  },
+  {
+    "zh": "查看球体上的效果",
+    "en": "Preview on a shaded sphere",
+    "shortZh": "球体预览",
+    "shortEn": "Sphere preview"
+  },
+  {
+    "zh": "标签",
+    "en": "Tags",
+    "shortZh": "",
+    "shortEn": ""
+  },
+  {
+    "zh": "标签（逗号分隔）",
+    "en": "Tags (comma-separated)",
+    "shortZh": "标签",
+    "shortEn": "Tags"
+  },
+  {
+    "zh": "株数",
+    "en": "Plant count",
+    "shortZh": "株数",
+    "shortEn": "Count"
+  },
+  {
+    "zh": "植物",
+    "en": "Plants",
+    "shortZh": "",
+    "shortEn": ""
+  },
+  {
+    "zh": "植物库",
+    "en": "Plant library",
+    "shortZh": "植物库",
+    "shortEn": "Plants"
+  },
+  {
+    "zh": "植物库管理",
+    "en": "Plant library management",
+    "shortZh": "植物库管理",
+    "shortEn": "Manage plants"
+  },
+  {
+    "zh": "植物类型 · 更换时保留当前高度",
+    "en": "Plant species · Keep height when changing species",
+    "shortZh": "植物类型 · 保留高度",
+    "shortEn": "Species · retain height"
+  },
+  {
+    "zh": "植物素材 · 在植物库中选择并种植",
+    "en": "Plant asset · Select and place from the plant library.",
+    "shortZh": "到植物库种植",
+    "shortEn": "Place from Plants"
+  },
+  {
+    "zh": "植物间距 m",
+    "en": "Plant spacing (m)",
+    "shortZh": "间距 m",
+    "shortEn": "Spacing (m)"
+  },
+  {
+    "zh": "正在取消…",
+    "en": "Cancelling…",
+    "shortZh": "",
+    "shortEn": ""
+  },
+  {
+    "zh": "正在启动本机工作台",
+    "en": "Starting local Studio…",
+    "shortZh": "正在启动…",
+    "shortEn": "Starting…"
+  },
+  {
+    "zh": "正在整体优化分类、标签与名称…",
+    "en": "Organizing categories, tags and names…",
+    "shortZh": "正在整理素材库…",
+    "shortEn": "Organizing library…"
+  },
+  {
+    "zh": "正在更新单株…",
+    "en": "Updating plant…",
+    "shortZh": "",
+    "shortEn": ""
+  },
+  {
+    "zh": "正在检查随机贴图与真实尺寸 UV…",
+    "en": "Checking random textures and physical-scale UVs…",
+    "shortZh": "检查贴图与 UV…",
+    "shortEn": "Checking texture and UV…"
+  },
+  {
+    "zh": "正在生成种植组合…",
+    "en": "Generating plant group…",
+    "shortZh": "正在种植…",
+    "shortEn": "Planting…"
+  },
+  {
+    "zh": "正在编辑选中的种植对象",
+    "en": "Editing the selected plant group",
+    "shortZh": "正在编辑组合",
+    "shortEn": "Editing group"
+  },
+  {
+    "zh": "正在连接后期工作台",
+    "en": "Connecting to Studio…",
+    "shortZh": "正在连接…",
+    "shortEn": "Connecting…"
+  },
+  {
+    "zh": "正常",
+    "en": "Normal",
+    "shortZh": "",
+    "shortEn": ""
+  },
+  {
+    "zh": "正片叠底",
+    "en": "Multiply",
+    "shortZh": "",
+    "shortEn": ""
+  },
+  {
+    "zh": "此文件夹中还没有 PSD。请先从“PSD · 视图导出”工具导出。",
+    "en": "No PSD files in this folder. Export one from PSD · View export first.",
+    "shortZh": "尚无 PSD，请先导出。",
+    "shortEn": "No PSD yet; export one first."
+  },
+  {
+    "zh": "水平旋转 °",
+    "en": "Camera yaw °",
+    "shortZh": "水平角 °",
+    "shortEn": "Yaw °"
+  },
+  {
+    "zh": "水平镜像",
+    "en": "Horizontal mirror",
+    "shortZh": "镜像",
+    "shortEn": "Mirror"
+  },
+  {
+    "zh": "没有匹配的组合，试试其他名称或图层。",
+    "en": "No matching groups. Try another name or layer.",
+    "shortZh": "未找到组合",
+    "shortEn": "No matching groups"
+  },
+  {
+    "zh": "深度图",
+    "en": "Depth map",
+    "shortZh": "深度",
+    "shortEn": "Depth"
+  },
+  {
+    "zh": "混合",
+    "en": "Blend mode",
+    "shortZh": "混合",
+    "shortEn": "Blend"
+  },
+  {
+    "zh": "滑块可调区间",
+    "en": "Slider limits",
+    "shortZh": "滑块范围",
+    "shortEn": "Limits"
+  },
+  {
+    "zh": "滤色",
+    "en": "Screen",
+    "shortZh": "",
+    "shortEn": ""
+  },
+  {
+    "zh": "状态",
+    "en": "Status",
+    "shortZh": "",
+    "shortEn": ""
+  },
+  {
+    "zh": "生成四季版本（默认只生成夏季）",
+    "en": "Generate all seasons (summer only by default)",
+    "shortZh": "生成四季",
+    "shortEn": "All seasons"
+  },
+  {
+    "zh": "界面与名称语言设置",
+    "en": "Interface and naming language settings",
+    "shortZh": "界面语言",
+    "shortEn": "Language settings"
+  },
+  {
+    "zh": "留空自动命名",
+    "en": "Leave blank for an automatic name.",
+    "shortZh": "留空自动命名",
+    "shortEn": "Auto-name if blank"
+  },
+  {
+    "zh": "目标平移 X",
+    "en": "Target offset X",
+    "shortZh": "平移 X",
+    "shortEn": "Offset X"
+  },
+  {
+    "zh": "目标平移 Y",
+    "en": "Target offset Y",
+    "shortZh": "平移 Y",
+    "shortEn": "Offset Y"
+  },
+  {
+    "zh": "目标平移 Z",
+    "en": "Target offset Z",
+    "shortZh": "平移 Z",
+    "shortEn": "Offset Z"
+  },
+  {
+    "zh": "相对素材大小",
+    "en": "Scale relative to source asset",
+    "shortZh": "相对大小",
+    "shortEn": "Scale factor"
+  },
+  {
+    "zh": "相机方向的线性深度，近白远黑；按可见模型归一化，黑色背景不参与范围。植物按透明轮廓计入。",
+    "en": "Linear camera depth: near white, far black. Normalized to visible geometry; background is excluded. Plant alpha silhouettes are included.",
+    "shortZh": "近白远黑；背景不计，植物按透明轮廓计入。",
+    "shortEn": "Near white, far black; no background. Plant silhouettes included."
+  },
+  {
+    "zh": "真实尺寸 UV",
+    "en": "Physical-scale UVs",
+    "shortZh": "真实 UV",
+    "shortEn": "World UV"
+  },
+  {
+    "zh": "真实尺寸 UV 已就绪。",
+    "en": "Physical-scale UVs are ready.",
+    "shortZh": "UV 已就绪",
+    "shortEn": "UV ready"
+  },
+  {
+    "zh": "真实尺寸 UV 有效",
+    "en": "Physical-scale UVs are valid",
+    "shortZh": "UV 有效",
+    "shortEn": "UV valid"
+  },
+  {
+    "zh": "确定",
+    "en": "OK",
+    "shortZh": "",
+    "shortEn": ""
+  },
+  {
+    "zh": "种植对象已删除或撤销",
+    "en": "Plant group deleted or undone",
+    "shortZh": "组合已删除",
+    "shortEn": "Group removed"
+  },
+  {
+    "zh": "种植组合",
+    "en": "Plant group",
+    "shortZh": "组合",
+    "shortEn": "Group"
+  },
+  {
+    "zh": "移动到图层",
+    "en": "Move to layer",
+    "shortZh": "修改图层",
+    "shortEn": "Layer"
+  },
+  {
+    "zh": "移除此图层配置",
+    "en": "Remove this layer configuration",
+    "shortZh": "删除图层配置",
+    "shortEn": "Remove layer"
+  },
+  {
+    "zh": "突破植物间距",
+    "en": "Ignore minimum plant spacing",
+    "shortZh": "忽略间距",
+    "shortEn": "Ignore spacing"
+  },
+  {
+    "zh": "立面＋平面",
+    "en": "Elevation + plan",
+    "shortZh": "立面 / 平面",
+    "shortEn": "Both views"
+  },
+  {
+    "zh": "管体专用展开",
+    "en": "UV mapping for tubes",
+    "shortZh": "管体展开",
+    "shortEn": "Tube UV"
+  },
+  {
+    "zh": "管理植物组合",
+    "en": "Manage plant groups",
+    "shortZh": "管理组合",
+    "shortEn": "Manage groups"
+  },
+  {
+    "zh": "箱式",
+    "en": "Box projection",
+    "shortZh": "箱式",
+    "shortEn": "Box"
+  },
+  {
+    "zh": "粗糙度",
+    "en": "Roughness",
+    "shortZh": "粗糙",
+    "shortEn": "Roughness"
+  },
+  {
+    "zh": "组合名称",
+    "en": "Plant group name",
+    "shortZh": "组合名",
+    "shortEn": "Group name"
+  },
+  {
+    "zh": "结束单株编辑",
+    "en": "Finish individual plant editing",
+    "shortZh": "结束编辑",
+    "shortEn": "Finish editing"
+  },
+  {
+    "zh": "继续上次的画板，或在网页中新建项目。",
+    "en": "Continue the last board or create a project in Studio.",
+    "shortZh": "继续画板或新建项目。",
+    "shortEn": "Continue a board or start a project."
+  },
+  {
+    "zh": "继续后期项目",
+    "en": "Continue postproduction project",
+    "shortZh": "继续项目",
+    "shortEn": "Continue"
+  },
+  {
+    "zh": "编辑名称、分类与标签",
+    "en": "Edit name, category and tags",
+    "shortZh": "编辑标签",
+    "shortEn": "Edit metadata"
+  },
+  {
+    "zh": "编辑组合",
+    "en": "Edit plant group",
+    "shortZh": "编辑组合",
+    "shortEn": "Edit group"
+  },
+  {
+    "zh": "缩放",
+    "en": "Zoom",
+    "shortZh": "",
+    "shortEn": ""
+  },
+  {
+    "zh": "自动",
+    "en": "Automatic",
+    "shortZh": "自动",
+    "shortEn": "Auto"
+  },
+  {
+    "zh": "自动 · 使用 AI 建议",
+    "en": "Automatic · Use AI recommendation",
+    "shortZh": "AI 建议",
+    "shortEn": "AI recommended"
+  },
+  {
+    "zh": "自动 · 平面 / 箱式",
+    "en": "Automatic · Planar / Box",
+    "shortZh": "自动展开",
+    "shortEn": "Auto projection"
+  },
+  {
+    "zh": "自动朝向",
+    "en": "Automatic camera facing",
+    "shortZh": "自动朝向",
+    "shortEn": "Auto facing"
+  },
+  {
+    "zh": "自定义",
+    "en": "Custom",
+    "shortZh": "",
+    "shortEn": ""
+  },
+  {
+    "zh": "自定义 · 不随组合参数重新随机",
+    "en": "Custom overrides · Exclude from group randomization",
+    "shortZh": "使用单株自定义",
+    "shortEn": "Custom overrides"
+  },
+  {
+    "zh": "自然纹理 · 随机平铺",
+    "en": "Natural textures · Stochastic tiling",
+    "shortZh": "自然随机",
+    "shortEn": "Stochastic"
+  },
+  {
+    "zh": "自然纹理随机平铺",
+    "en": "Stochastic tiling for natural textures",
+    "shortZh": "自然随机",
+    "shortEn": "Stochastic"
+  },
+  {
+    "zh": "色差 %",
+    "en": "Color variation (%)",
+    "shortZh": "色差 %",
+    "shortEn": "Variation (%)"
+  },
+  {
+    "zh": "衰减曲线：边界 0% → 内部 100%",
+    "en": "Falloff curve: boundary 0% → interior 100%",
+    "shortZh": "边界 0% → 内部 100%",
+    "shortEn": "Edge 0% → inside 100%"
+  },
+  {
+    "zh": "解锁",
+    "en": "Unlock",
+    "shortZh": "",
+    "shortEn": ""
+  },
+  {
+    "zh": "设置已更新",
+    "en": "Settings updated",
+    "shortZh": "已更新",
+    "shortEn": "Updated"
+  },
+  {
+    "zh": "边缘衰减",
+    "en": "Edge falloff",
+    "shortZh": "边缘衰减",
+    "shortEn": "Falloff"
+  },
+  {
+    "zh": "边缘距离 m",
+    "en": "Edge distance (m)",
+    "shortZh": "边距 m",
+    "shortEn": "Edge (m)"
+  },
+  {
+    "zh": "返回组合设置",
+    "en": "Return to group settings",
+    "shortZh": "返回组合",
+    "shortEn": "Back to group"
+  },
+  {
+    "zh": "进入单株编辑",
+    "en": "Enter individual plant editing",
+    "shortZh": "编辑单株",
+    "shortEn": "Edit plants"
+  },
+  {
+    "zh": "连续种植 · 点击承载面 · Enter / Esc 结束",
+    "en": "Continuous planting · Click host surface · Enter / Esc to finish",
+    "shortZh": "连续点种 · Enter / Esc 结束",
+    "shortEn": "Plant · Enter / Esc to finish"
+  },
+  {
+    "zh": "适用于砖纹、网格等有方向的等径管体。",
+    "en": "For constant-radius tubes with directional patterns such as bricks or grids.",
+    "shortZh": "等径管体方向性贴图",
+    "shortEn": "Directional textures on constant-radius tubes"
+  },
+  {
+    "zh": "选中物件",
+    "en": "Selected objects",
+    "shortZh": "所选物件",
+    "shortEn": "Objects"
+  },
+  {
+    "zh": "选择图层内容",
+    "en": "Choose layer content",
+    "shortZh": "选择内容",
+    "shortEn": "Choose content"
+  },
+  {
+    "zh": "选择已导出的文件",
+    "en": "Choose an exported file",
+    "shortZh": "导出文件",
+    "shortEn": "Exported file"
+  },
+  {
+    "zh": "选择文件夹…",
+    "en": "Choose output folder…",
+    "shortZh": "选择文件夹…",
+    "shortEn": "Folder…"
+  },
+  {
+    "zh": "选择物件、植物组合或组合中的一株植物",
+    "en": "Select an object, a plant group or an individual plant.",
+    "shortZh": "选择物体、组合或单株",
+    "shortEn": "Select object / group / plant"
+  },
+  {
+    "zh": "选择种植承载曲面或网格",
+    "en": "Select a host surface or mesh for planting",
+    "shortZh": "选择承载面",
+    "shortEn": "Select host"
+  },
+  {
+    "zh": "选择管体与中心线…",
+    "en": "Select tube and centerline…",
+    "shortZh": "选择管体…",
+    "shortEn": "Select tube…"
+  },
+  {
+    "zh": "选择素材后可补齐季节版本。",
+    "en": "Select an asset to complete its seasonal variants.",
+    "shortZh": "选择素材后补齐季节。",
+    "shortEn": "Select asset for seasons"
+  },
+  {
+    "zh": "通道 · 材质贴图",
+    "en": "Pass · Material textures",
+    "shortZh": "材质贴图",
+    "shortEn": "Textures"
+  },
+  {
+    "zh": "通道 · 材质颜色",
+    "en": "Pass · Material colors",
+    "shortZh": "材质色",
+    "shortEn": "Material RGB"
+  },
+  {
+    "zh": "通道 · 植物",
+    "en": "Pass · Plants",
+    "shortZh": "植物",
+    "shortEn": "Plants"
+  },
+  {
+    "zh": "通道 · 深度图",
+    "en": "Pass · Depth",
+    "shortZh": "深度",
+    "shortEn": "Depth"
+  },
+  {
+    "zh": "通道 · 阴影",
+    "en": "Pass · Shadow",
+    "shortZh": "阴影",
+    "shortEn": "Shadow"
+  },
+  {
+    "zh": "重置相机",
+    "en": "Reset camera",
+    "shortZh": "重置相机",
+    "shortEn": "Reset camera"
+  },
+  {
+    "zh": "金属度",
+    "en": "Metallic",
+    "shortZh": "金属",
+    "shortEn": "Metallic"
+  },
+  {
+    "zh": "锁定",
+    "en": "Lock",
+    "shortZh": "",
+    "shortEn": ""
+  },
+  {
+    "zh": "错缝比例",
+    "en": "Row stagger ratio",
+    "shortZh": "错缝",
+    "shortEn": "Stagger"
+  },
+  {
+    "zh": "阴影",
+    "en": "Shadow",
+    "shortZh": "",
+    "shortEn": ""
+  },
+  {
+    "zh": "随机水平镜像",
+    "en": "Random horizontal mirroring",
+    "shortZh": "随机镜像",
+    "shortEn": "Random mirror"
+  },
+  {
+    "zh": "随机种子",
+    "en": "Random seed",
+    "shortZh": "种子",
+    "shortEn": "Seed"
+  },
+  {
+    "zh": "隐藏",
+    "en": "Hide",
+    "shortZh": "",
+    "shortEn": ""
+  },
+  {
+    "zh": "隐藏或锁定的组合可在右键菜单恢复。",
+    "en": "Use the context menu to show or unlock a group.",
+    "shortZh": "右键显示或解锁。",
+    "shortEn": "Right-click to show or unlock."
+  },
+  {
+    "zh": "隔离编辑中 · 单击一株后拖动操作柄；Ctrl 拖动复制单株。外部物件与整个组合已临时锁定。",
+    "en": "Isolation edit · Select a plant and drag its handles; Ctrl-drag duplicates it. Other objects and the group are temporarily locked.",
+    "shortZh": "隔离编辑 · 拖动调整，Ctrl 拖动复制。",
+    "shortEn": "Isolation · Drag to edit, Ctrl-drag to copy."
+  },
+  {
+    "zh": "隔离编辑中 · 整个组合不会被移动或复制",
+    "en": "Isolation edit · The whole group will not move or duplicate.",
+    "shortZh": "隔离编辑中",
+    "shortEn": "Isolation edit"
+  },
+  {
+    "zh": "颜色来源",
+    "en": "Color source",
+    "shortZh": "颜色来源",
+    "shortEn": "RGB source"
+  },
+  {
+    "zh": "高度 °",
+    "en": "Sun altitude °",
+    "shortZh": "高度 °",
+    "shortEn": "Altitude °"
+  },
+  {
+    "zh": "默认夏季；相同素材版本合并输出，文件名包含季节。缺失版本使用夏季。",
+    "en": "Summer by default. Identical variants export together; filenames include seasons. Missing variants use summer.",
+    "shortZh": "默认夏季；相同版本合并，缺失用夏季。",
+    "shortEn": "Summer default; identical variants merge; missing variants use summer."
+  },
+  {
+    "zh": "春",
+    "en": "Spring",
+    "shortZh": "",
+    "shortEn": ""
+  },
+  {
+    "zh": "夏",
+    "en": "Summer",
+    "shortZh": "",
+    "shortEn": ""
+  },
+  {
+    "zh": "秋",
+    "en": "Autumn",
+    "shortZh": "",
+    "shortEn": ""
+  },
+  {
+    "zh": "冬",
+    "en": "Winter",
+    "shortZh": "",
+    "shortEn": ""
+  },
+  {
+    "zh": "设置已立即保存。",
+    "en": "Appearance saved and applied immediately.",
+    "shortZh": "界面已保存",
+    "shortEn": "Appearance applied"
+  },
+  {
+    "zh": "界面选项立即生效；其他设置使用下方保存按钮。",
+    "en": "Interface options apply immediately. Use Save for other settings.",
+    "shortZh": "界面立即生效；其他设置需保存。",
+    "shortEn": "Interface applies now; Save other settings."
+  },
+  {
+    "zh": "{0} 个材质",
+    "en": "{0} materials",
+    "shortZh": "{0} 材质",
+    "shortEn": "{0} mats"
+  },
+  {
+    "zh": "找到 {0} 个文件 · 选择后导入",
+    "en": "Found {0} files · Select one to import",
+    "shortZh": "{0} 个文件",
+    "shortEn": "{0} files"
+  },
+  {
+    "zh": "{0} 个视图 · 双击预览进入细节调整",
+    "en": "{0} views · Double-click a preview to activate the view",
+    "shortZh": "{0} 个视图 · 双击激活",
+    "shortEn": "{0} views · Double-click to activate"
+  },
+  {
+    "zh": "当前选择 · {0} 个物件",
+    "en": "Current selection · {0} objects",
+    "shortZh": "已选 {0} 物件",
+    "shortEn": "{0} selected"
+  },
+  {
+    "zh": "当前选择：{0} 个物件",
+    "en": "Current selection: {0} objects",
+    "shortZh": "已选 {0} 物件",
+    "shortEn": "{0} selected"
+  },
+  {
+    "zh": "去重复 · {0}",
+    "en": "Variation · {0}",
+    "shortZh": "去重复 · {0}",
+    "shortEn": "Variation · {0}"
+  },
+  {
+    "zh": "{0} × {1} 个原图周期",
+    "en": "{0} × {1} source repeats",
+    "shortZh": "{0} × {1} 周期",
+    "shortEn": "{0} × {1} repeats"
+  },
+  {
+    "zh": "已选择 {0} 个组合",
+    "en": "Selected {0} groups",
+    "shortZh": "已选 {0} 组合",
+    "shortEn": "{0} groups selected"
+  },
+  {
+    "zh": "已就绪 {0}",
+    "en": "Ready {0}",
+    "shortZh": "已就绪 {0}",
+    "shortEn": "Ready {0}"
+  },
+  {
+    "zh": "界面",
+    "en": "Interface",
+    "shortZh": "",
+    "shortEn": ""
+  },
+  {
+    "zh": "素材生成",
+    "en": "Asset generation",
+    "shortZh": "素材生成",
+    "shortEn": "Generation"
+  },
+  {
+    "zh": "植物显示",
+    "en": "Plant display",
+    "shortZh": "植物显示",
+    "shortEn": "Plant display"
+  },
+  {
+    "zh": "季节版本",
+    "en": "Seasonal variants",
+    "shortZh": "季节",
+    "shortEn": "Seasons"
+  },
+  {
+    "zh": "跟随季节变化",
+    "en": "Follow scene season",
+    "shortZh": "跟随季节",
+    "shortEn": "Follow season"
+  },
+  {
+    "zh": "预览季节",
+    "en": "Preview season",
+    "shortZh": "季节",
+    "shortEn": "Season"
+  },
+  {
+    "zh": "生成／补齐四季",
+    "en": "Generate missing seasons",
+    "shortZh": "补齐四季",
+    "shortEn": "Complete seasons"
+  },
+  {
+    "zh": "补齐夏季立面／平面",
+    "en": "Complete summer elevation and plan",
+    "shortZh": "补齐夏季",
+    "shortEn": "Complete summer"
+  },
+  {
+    "zh": "取消季节任务",
+    "en": "Cancel seasonal job",
+    "shortZh": "取消任务",
+    "shortEn": "Cancel job"
+  },
+  {
+    "zh": "展开所有",
+    "en": "Expand all",
+    "shortZh": "展开",
+    "shortEn": "Expand"
+  },
+  {
+    "zh": "折叠所有",
+    "en": "Collapse all",
+    "shortZh": "折叠",
+    "shortEn": "Collapse"
+  },
+  {
+    "zh": "展开所有图层",
+    "en": "Expand all layers",
+    "shortZh": "展开图层",
+    "shortEn": "Expand layers"
+  },
+  {
+    "zh": "折叠所有图层",
+    "en": "Collapse all layers",
+    "shortZh": "折叠图层",
+    "shortEn": "Collapse layers"
+  },
+  {
+    "zh": "＋ 添加图层",
+    "en": "Add export layer",
+    "shortZh": "添加图层",
+    "shortEn": "Add layer"
+  },
+  {
+    "zh": "导出勾选视图 · PSD",
+    "en": "Export selected views as PSD",
+    "shortZh": "导出 PSD",
+    "shortEn": "Export PSD"
+  },
+  {
+    "zh": "取消导出",
+    "en": "Cancel export",
+    "shortZh": "取消",
+    "shortEn": "Cancel"
+  },
+  {
+    "zh": "导出日志",
+    "en": "Export log",
+    "shortZh": "日志",
+    "shortEn": "Log"
+  },
+  {
+    "zh": "输出文件夹",
+    "en": "Output folder",
+    "shortZh": "文件夹",
+    "shortEn": "Folder"
+  },
+  {
+    "zh": "页面大小",
+    "en": "Output dimensions",
+    "shortZh": "尺寸",
+    "shortEn": "Size"
+  },
+  {
+    "zh": "PSD 图层",
+    "en": "PSD layers",
+    "shortZh": "图层",
+    "shortEn": "Layers"
+  },
+  {
+    "zh": "随机去重复",
+    "en": "Random texture variation",
+    "shortZh": "去重复",
+    "shortEn": "Variation"
+  },
+  {
+    "zh": "铺贴与外观设置",
+    "en": "Mapping and appearance",
+    "shortZh": "铺贴外观",
+    "shortEn": "Appearance"
+  },
+  {
+    "zh": "优先查找已有素材",
+    "en": "Find existing assets first",
+    "shortZh": "优先复用",
+    "shortEn": "Reuse first"
+  },
+  {
+    "zh": "应用选中材质",
+    "en": "Apply selected material",
+    "shortZh": "应用材质",
+    "shortEn": "Apply material"
+  },
+  {
+    "zh": "打开全局植物显示设置",
+    "en": "Open global plant display settings",
+    "shortZh": "全局植物显示",
+    "shortEn": "Plant display"
+  },
+  {
+    "zh": "复制设置",
+    "en": "Copy settings",
+    "shortZh": "复制",
+    "shortEn": "Copy"
+  },
+  {
+    "zh": "粘贴设置",
+    "en": "Paste settings",
+    "shortZh": "粘贴",
+    "shortEn": "Paste"
+  },
+  {
+    "zh": "全局设置 · 所有 Rhino 文件共用",
+    "en": "Global settings shared by all Rhino documents",
+    "shortZh": "所有文件共用",
+    "shortEn": "Shared across documents"
+  },
+  {
+    "zh": "保存设置",
+    "en": "Save settings",
+    "shortZh": "保存",
+    "shortEn": "Save"
+  },
+  {
+    "zh": "还原未保存修改",
+    "en": "Discard unsaved changes",
+    "shortZh": "放弃修改",
+    "shortEn": "Discard"
+  },
+  {
+    "zh": "恢复界面默认",
+    "en": "Reset interface defaults",
+    "shortZh": "重置界面",
+    "shortEn": "Reset UI"
+  },
+  {
+    "zh": "恢复生成默认",
+    "en": "Reset asset generation defaults",
+    "shortZh": "重置生成",
+    "shortEn": "Reset generation"
+  },
+  {
+    "zh": "恢复植物显示默认",
+    "en": "Reset plant display defaults",
+    "shortZh": "重置植物显示",
+    "shortEn": "Reset plants"
+  },
+  {
+    "zh": "不是植物素材。",
+    "en": "Not a plant asset.",
+    "shortZh": "",
+    "shortEn": ""
+  },
+  {
+    "zh": "不是植物组合。",
+    "en": "Not a plant group.",
+    "shortZh": "",
+    "shortEn": ""
+  },
+  {
+    "zh": "先修改材质参数。",
+    "en": "Change a material parameter first.",
+    "shortZh": "",
+    "shortEn": ""
+  },
+  {
+    "zh": "先准备真实尺寸 UV，再修改并应用材质…",
+    "en": "Preparing physical-scale UVs before applying material changes…",
+    "shortZh": "",
+    "shortEn": ""
+  },
+  {
+    "zh": "先在 Rhino 中选择需要处理的物件。",
+    "en": "Select the target objects in Rhino first.",
+    "shortZh": "",
+    "shortEn": ""
+  },
+  {
+    "zh": "先在 Rhino 中选择需要展开的物件",
+    "en": "Select objects in Rhino to prepare UVs.",
+    "shortZh": "",
+    "shortEn": ""
+  },
+  {
+    "zh": "先生成或选择材质。",
+    "en": "Generate or select a material first.",
+    "shortZh": "",
+    "shortEn": ""
+  },
+  {
+    "zh": "先选择普通物件。",
+    "en": "Select a regular object first.",
+    "shortZh": "",
+    "shortEn": ""
+  },
+  {
+    "zh": "先选择材质。",
+    "en": "Select a material first.",
+    "shortZh": "",
+    "shortEn": ""
+  },
+  {
+    "zh": "先选择植物。",
+    "en": "Select a plant first.",
+    "shortZh": "",
+    "shortEn": ""
+  },
+  {
+    "zh": "先选择组合。",
+    "en": "Select a plant group first.",
+    "shortZh": "",
+    "shortEn": ""
+  },
+  {
+    "zh": "先选择组合中的单株。",
+    "en": "Select an individual plant in the group first.",
+    "shortZh": "",
+    "shortEn": ""
+  },
+  {
+    "zh": "当前任务尚未完成。",
+    "en": "The current task is not finished.",
+    "shortZh": "",
+    "shortEn": ""
+  },
+  {
+    "zh": "请先完成当前任务。",
+    "en": "Finish the current task first.",
+    "shortZh": "",
+    "shortEn": ""
+  },
+  {
+    "zh": "请先等待 UV 更新完成。",
+    "en": "Wait for the UV update to finish.",
+    "shortZh": "",
+    "shortEn": ""
+  },
+  {
+    "zh": "请先完成或取消单株编辑，再管理组合。",
+    "en": "Finish or cancel individual plant editing before managing the group.",
+    "shortZh": "",
+    "shortEn": ""
+  },
+  {
+    "zh": "请填写项目地区。",
+    "en": "Enter a project location.",
+    "shortZh": "",
+    "shortEn": ""
+  },
+  {
+    "zh": "请输入绝对 PNG 路径。",
+    "en": "Enter an absolute PNG path.",
+    "shortZh": "",
+    "shortEn": ""
+  },
+  {
+    "zh": "请选择一个植物组合，或进入组合编辑后选择单株。",
+    "en": "Select a plant group, or edit a group and select a plant.",
+    "shortZh": "",
+    "shortEn": ""
+  },
+  {
+    "zh": "请选择植物组合。",
+    "en": "Select a plant group.",
+    "shortZh": "",
+    "shortEn": ""
+  },
+  {
+    "zh": "请选择现有 PSD / PSB 的绝对路径。",
+    "en": "Choose an existing PSD / PSB using its absolute path.",
+    "shortZh": "",
+    "shortEn": ""
+  },
+  {
+    "zh": "请选择通道 / 显示模式…",
+    "en": "Choose a pass or display mode…",
+    "shortZh": "",
+    "shortEn": ""
+  },
+  {
+    "zh": "请选择非植物承载面。",
+    "en": "Select a non-plant host surface.",
+    "shortZh": "",
+    "shortEn": ""
+  },
+  {
+    "zh": "该植物有手工补种，暂不能移出；请保留该项。",
+    "en": "This species has manually placed plants and cannot be removed yet.",
+    "shortZh": "",
+    "shortEn": ""
+  },
+  {
+    "zh": "视图不存在。",
+    "en": "Named View does not exist.",
+    "shortZh": "",
+    "shortEn": ""
+  },
+  {
+    "zh": "图层不存在。",
+    "en": "Layer does not exist.",
+    "shortZh": "",
+    "shortEn": ""
+  },
+  {
+    "zh": "组合不存在。",
+    "en": "Plant group does not exist.",
+    "shortZh": "",
+    "shortEn": ""
+  },
+  {
+    "zh": "组合已删除。",
+    "en": "Plant group was deleted.",
+    "shortZh": "",
+    "shortEn": ""
+  },
+  {
+    "zh": "无法修改组合。",
+    "en": "Cannot modify this plant group.",
+    "shortZh": "",
+    "shortEn": ""
+  },
+  {
+    "zh": "组合名称需为 1–200 个字符。",
+    "en": "Plant group names must contain 1–200 characters.",
+    "shortZh": "",
+    "shortEn": ""
+  },
+  {
+    "zh": "文档已关闭。",
+    "en": "Document is closed.",
+    "shortZh": "",
+    "shortEn": ""
+  },
+  {
+    "zh": "目标包含锁定物件，请先解锁。",
+    "en": "Unlock the target objects first.",
+    "shortZh": "",
+    "shortEn": ""
+  },
+  {
+    "zh": "已取消选择承载面。",
+    "en": "Host selection cancelled.",
+    "shortZh": "",
+    "shortEn": ""
+  },
+  {
+    "zh": "最多 32 个图层条目。",
+    "en": "At most 32 layer entries are allowed.",
+    "shortZh": "",
+    "shortEn": ""
+  },
+  {
+    "zh": "请先在 Rhino 中保存 Named Views。",
+    "en": "Save Named Views in Rhino first.",
+    "shortZh": "",
+    "shortEn": ""
+  },
+  {
+    "zh": "请先复制图层配置。",
+    "en": "Copy a layer configuration first.",
+    "shortZh": "",
+    "shortEn": ""
+  },
+  {
+    "zh": "请先复制输出尺寸。",
+    "en": "Copy output dimensions first.",
+    "shortZh": "",
+    "shortEn": ""
+  },
+  {
+    "zh": "选择一个组合修改名字。",
+    "en": "Select one plant group to rename.",
+    "shortZh": "",
+    "shortEn": ""
+  },
+  {
+    "zh": "选择一个组合进入编辑。",
+    "en": "Select one plant group to edit.",
+    "shortZh": "",
+    "shortEn": ""
+  },
+  {
+    "zh": "承载面已删除，请重新关联。",
+    "en": "Host surface was deleted; rebind it.",
+    "shortZh": "",
+    "shortEn": ""
+  },
+  {
+    "zh": "正在停止后续步骤；已完成的修改可用 Rhino 撤销。",
+    "en": "Stopping remaining steps; use Rhino Undo for completed changes.",
+    "shortZh": "",
+    "shortEn": ""
+  },
+  {
+    "zh": "正在准备随机贴图，完成后自动检查真实尺寸 UV…",
+    "en": "Preparing randomized textures, then checking physical-scale UVs…",
+    "shortZh": "",
+    "shortEn": ""
+  },
+  {
+    "zh": "正在展开复杂曲面…",
+    "en": "Unwrapping complex surfaces…",
+    "shortZh": "",
+    "shortEn": ""
+  },
+  {
+    "zh": "正在处理，请等待或取消。",
+    "en": "Processing; please wait or cancel.",
+    "shortZh": "",
+    "shortEn": ""
+  },
+  {
+    "zh": "正在导出。",
+    "en": "Exporting.",
+    "shortZh": "",
+    "shortEn": ""
+  },
+  {
+    "zh": "正在把 PSD 快照交给工作台",
+    "en": "Sending a PSD snapshot to Studio…",
+    "shortZh": "",
+    "shortEn": ""
+  },
+  {
+    "zh": "后期启动任务不存在。",
+    "en": "Studio launch task does not exist.",
+    "shortZh": "",
+    "shortEn": ""
+  },
+  {
+    "zh": "后期工作台有旧版服务正在运行，请在旧页面点击‘关闭服务’再打开新版。",
+    "en": "An older Studio service is running. Close it from its page before opening the new version.",
+    "shortZh": "",
+    "shortEn": ""
+  },
+  {
+    "zh": "后期服务启动失败，请运行 scripts/Setup-PostProduction.ps1 检查依赖。",
+    "en": "Studio failed to start. Run scripts/Setup-PostProduction.ps1 to check dependencies.",
+    "shortZh": "",
+    "shortEn": ""
+  },
+  {
+    "zh": "后期服务启动超时，请检查运行环境后重试。",
+    "en": "Studio startup timed out. Check the runtime and try again.",
+    "shortZh": "",
+    "shortEn": ""
+  },
+  {
+    "zh": "后期服务未能启动。",
+    "en": "Studio could not start.",
+    "shortZh": "",
+    "shortEn": ""
+  },
+  {
+    "zh": "后期请求失败。",
+    "en": "Studio request failed.",
+    "shortZh": "",
+    "shortEn": ""
+  },
+  {
+    "zh": "请先运行 scripts/Setup-PostProduction.ps1 安装后期运行环境。",
+    "en": "Run scripts/Setup-PostProduction.ps1 to install the Studio runtime first.",
+    "shortZh": "",
+    "shortEn": ""
+  },
+  {
+    "zh": "该路由返回文件，请在 Web 工作台下载。",
+    "en": "This route returns a file; download it in Studio.",
+    "shortZh": "",
+    "shortEn": ""
+  },
+  {
+    "zh": "需要工作台 status、projects、jobs、boards 或 board-preferences 的相对 JSON 路由。",
+    "en": "Use a relative Studio JSON route: status, projects, jobs, boards or board-preferences.",
+    "shortZh": "",
+    "shortEn": ""
+  },
+  {
+    "zh": "导出面板未初始化。",
+    "en": "Export panel is not initialized.",
+    "shortZh": "",
+    "shortEn": ""
+  },
+  {
+    "zh": "材质修改已应用，可使用 Rhino 撤销。",
+    "en": "Material changes applied; Rhino Undo is available.",
+    "shortZh": "",
+    "shortEn": ""
+  },
+  {
+    "zh": "季节任务已启动；已有版本会复用。",
+    "en": "Seasonal job started; existing variants will be reused.",
+    "shortZh": "",
+    "shortEn": ""
+  },
+  {
+    "zh": "工具切换文档失败：{0}",
+    "en": "Tool document switch failed: {0}",
+    "shortZh": "",
+    "shortEn": ""
+  },
+  {
+    "zh": "模式 · {0}",
+    "en": "Mode · {0}",
+    "shortZh": "模式 · {0}",
+    "shortEn": "Mode · {0}"
+  },
+  {
+    "zh": "自定义 {0}",
+    "en": "Custom {0}",
+    "shortZh": "自定义 {0}",
+    "shortEn": "Custom {0}"
+  },
+  {
+    "zh": "真实尺寸 UV · {0}/{1}",
+    "en": "Physical-scale UV · {0}/{1}",
+    "shortZh": "UV · {0}/{1}",
+    "shortEn": "UV · {0}/{1}"
+  },
+  {
+    "zh": "春季",
+    "en": "Spring",
+    "shortZh": "",
+    "shortEn": ""
+  },
+  {
+    "zh": "夏季",
+    "en": "Summer",
+    "shortZh": "",
+    "shortEn": ""
+  },
+  {
+    "zh": "秋季",
+    "en": "Autumn",
+    "shortZh": "",
+    "shortEn": ""
+  },
+  {
+    "zh": "冬季",
+    "en": "Winter",
+    "shortZh": "",
+    "shortEn": ""
+  },
+  {
+    "zh": "极地",
+    "en": "Arctic",
+    "shortZh": "",
+    "shortEn": ""
+  },
+  {
+    "zh": "着色",
+    "en": "Shaded",
+    "shortZh": "",
+    "shortEn": ""
+  },
+  {
+    "zh": "渲染",
+    "en": "Rendered",
+    "shortZh": "",
+    "shortEn": ""
+  },
+  {
+    "zh": "线框",
+    "en": "Wireframe",
+    "shortZh": "",
+    "shortEn": ""
+  },
+  {
+    "zh": "半透明",
+    "en": "Ghosted",
+    "shortZh": "",
+    "shortEn": ""
+  },
+  {
+    "zh": "X 光",
+    "en": "X-Ray",
+    "shortZh": "",
+    "shortEn": ""
+  },
+  {
+    "zh": "技术",
+    "en": "Technical",
+    "shortZh": "",
+    "shortEn": ""
+  },
+  {
+    "zh": "艺术",
+    "en": "Artistic",
+    "shortZh": "",
+    "shortEn": ""
+  },
+  {
+    "zh": "钢笔",
+    "en": "Pen",
+    "shortZh": "",
+    "shortEn": ""
+  },
+  {
+    "zh": "单色",
+    "en": "Monochrome",
+    "shortZh": "",
+    "shortEn": ""
+  },
+  {
+    "zh": "编辑中",
+    "en": "Editing",
+    "shortZh": "",
+    "shortEn": ""
+  },
+  {
+    "zh": "图层隐藏",
+    "en": "Layer hidden",
+    "shortZh": "",
+    "shortEn": ""
+  },
+  {
+    "zh": "图层锁定",
+    "en": "Layer locked",
+    "shortZh": "",
+    "shortEn": ""
+  },
+  {
+    "zh": "材质库",
+    "en": "Material library",
+    "shortZh": "材质",
+    "shortEn": "Materials"
+  },
+  {
+    "zh": "浏览材质库",
+    "en": "Material library",
+    "shortZh": "材质",
+    "shortEn": "Materials"
+  },
+  {
+    "zh": "浏览植物库",
+    "en": "Plant library",
+    "shortZh": "植物",
+    "shortEn": "Plants"
+  },
+  {
+    "zh": "植物库与种植",
+    "en": "Plant library and planting",
+    "shortZh": "种植",
+    "shortEn": "Planting"
+  },
+  {
+    "zh": "AI 素材对话",
+    "en": "AI asset chat",
+    "shortZh": "AI 对话",
+    "shortEn": "AI chat"
+  },
+  {
+    "zh": "AI · 素材对话",
+    "en": "AI · Assets",
+    "shortZh": "AI",
+    "shortEn": "AI"
+  },
+  {
+    "zh": "材质库 · 浏览与应用",
+    "en": "Materials · Library",
+    "shortZh": "材质",
+    "shortEn": "Materials"
+  },
+  {
+    "zh": "UV · 真实尺寸展开",
+    "en": "UV · Physical scale",
+    "shortZh": "UV",
+    "shortEn": "UV"
+  },
+  {
+    "zh": "植物库 · 种植",
+    "en": "Plants · Library",
+    "shortZh": "植物",
+    "shortEn": "Plants"
+  },
+  {
+    "zh": "Plants List · 组合管理",
+    "en": "Plants List · Groups",
+    "shortZh": "组合",
+    "shortEn": "Groups"
+  },
+  {
+    "zh": "属性 · 当前选择",
+    "en": "Properties · Selection",
+    "shortZh": "属性",
+    "shortEn": "Props"
+  },
+  {
+    "zh": "PSD · 视图导出",
+    "en": "PSD · View export",
+    "shortZh": "PSD",
+    "shortEn": "PSD"
+  },
+  {
+    "zh": "AI 后期 · Web 工作台",
+    "en": "AI · Web studio",
+    "shortZh": "工作台",
+    "shortEn": "Studio"
+  },
+  {
+    "zh": "设置 · SceneFlow",
+    "en": "Settings · SceneFlow",
+    "shortZh": "设置",
+    "shortEn": "Settings"
+  },
+  {
+    "zh": "跟随预览导出",
+    "en": "Export preview season",
+    "shortZh": "跟随预览",
+    "shortEn": "Follow preview"
+  },
+  {
+    "zh": "默认生成夏季；植物同时补齐立面和平面。缺失版本回退夏季。",
+    "en": "Summer is the default. Plants get elevation and plan images. Missing variants fall back to summer.",
+    "shortZh": "默认夏季；缺失版本用夏季。",
+    "shortEn": "Summer default; missing variants use summer."
+  },
+  {
+    "zh": "影响 Rhino 侧栏和素材对话；Web 工作台有独立的语言设置。",
+    "en": "Applies to Rhino panels and asset chat. Web Studio has its own language setting.",
+    "shortZh": "用于 Rhino；网页单独设置。",
+    "shortEn": "Rhino settings; Studio is independent."
+  },
+  {
+    "zh": "至少保留文字或图标。素材名、输入值和状态仍显示；悬停查看全称。设置影响 Rhino 工具页，不改写素材或网页内容。",
+    "en": "Keep text or icons visible. Names, values and status remain readable; hover for full labels. Applies to Rhino tools, not asset data or web content.",
+    "shortZh": "文字与图标至少保留一项；悬停看全称。",
+    "shortEn": "Keep text or icons; hover for full labels."
+  },
+  {
+    "zh": "{0} 个物件 · 普通物件属性",
+    "en": "{0} objects · Object properties",
+    "shortZh": "{0} 物件属性",
+    "shortEn": "{0} objects · Properties"
+  },
+  {
+    "zh": "{0} · 单株",
+    "en": "{0} · Individual plant",
+    "shortZh": "{0} · 单株",
+    "shortEn": "{0} · Plant"
+  },
+  {
+    "zh": "{0} · 独立植物",
+    "en": "{0} · Standalone plant",
+    "shortZh": "{0} · 植物",
+    "shortEn": "{0} · Plant"
+  },
+  {
+    "zh": "{0} · 隔离编辑",
+    "en": "{0} · Isolation edit",
+    "shortZh": "{0} · 隔离编辑",
+    "shortEn": "{0} · Isolation"
+  },
+  {
+    "zh": "{0} · 组合参数",
+    "en": "{0} · Group settings",
+    "shortZh": "{0} · 组合",
+    "shortEn": "{0} · Group"
+  },
+  {
+    "zh": "复制页面大小设置",
+    "en": "Copy output size settings",
+    "shortZh": "复制尺寸",
+    "shortEn": "Copy size"
+  },
+  {
+    "zh": "粘贴页面大小设置",
+    "en": "Paste output size settings",
+    "shortZh": "粘贴尺寸",
+    "shortEn": "Paste size"
+  },
+  {
+    "zh": "复制PSD 图层设置",
+    "en": "Copy PSD layer settings",
+    "shortZh": "复制图层",
+    "shortEn": "Copy layers"
+  },
+  {
+    "zh": "粘贴PSD 图层设置",
+    "en": "Paste PSD layer settings",
+    "shortZh": "粘贴图层",
+    "shortEn": "Paste layers"
+  },
+  {
+    "zh": "AI 建议：",
+    "en": "AI recommendation: ",
+    "shortZh": "AI 建议：",
+    "shortEn": "AI: "
+  },
+  {
+    "zh": "参考高度 {0} m · ",
+    "en": "Reference height {0} m · ",
+    "shortZh": "高度 {0} m · ",
+    "shortEn": "Height {0} m · "
+  },
+  {
+    "zh": "已就绪",
+    "en": "Ready",
+    "shortZh": "已就绪",
+    "shortEn": "Ready"
+  },
+  {
+    "zh": "透视",
+    "en": "Perspective",
+    "shortZh": "",
+    "shortEn": ""
+  },
+  {
+    "zh": "{0} 株 · 手工 {1} · 目标 {2}",
+    "en": "{0} plants · Manual {1} · Target {2}",
+    "shortZh": "{0} 株 · 手工 {1} · 目标 {2}",
+    "shortEn": "{0} plants · {1} manual · Target {2}"
+  },
+  {
+    "zh": "{0} 株 · 手工 {1} · 目标 {2} · 间距／边缘限制未填满",
+    "en": "{0} plants · Manual {1} · Target {2} · Spacing / edge limits prevented filling",
+    "shortZh": "{0} 株 · 手工 {1} · 目标 {2} · 间距／边缘受限",
+    "shortEn": "{0} plants · {1} manual · Target {2} · Spacing / edge limit"
+  },
+  {
+    "zh": "{0} 株 · 手工 {1} · 目标 {2} · 存在待重新附着的手工植物",
+    "en": "{0} plants · Manual {1} · Target {2} · Some manual plants need reattachment",
+    "shortZh": "{0} 株 · 手工 {1} · 目标 {2} · 手工植物待附着",
+    "shortEn": "{0} plants · {1} manual · Target {2} · Reattach manual plants"
+  },
+  {
+    "zh": "{0} 株 · 手工 {1} · 目标 {2} · 间距／边缘限制未填满 · 存在待重新附着的手工植物",
+    "en": "{0} plants · Manual {1} · Target {2} · Spacing / edge limits · Some manual plants need reattachment",
+    "shortZh": "{0} 株 · 手工 {1} · 目标 {2} · 间距受限、待附着",
+    "shortEn": "{0} plants · {1} manual · Target {2} · Spacing limit; reattach plants"
+  },
+  {
+    "zh": "{0} 株 · 单株已更新",
+    "en": "{0} plants · Individual plant updated",
+    "shortZh": "{0} 株 · 已更新",
+    "shortEn": "{0} plants · Updated"
+  },
+  {
+    "zh": "等待计算",
+    "en": "Waiting to calculate",
+    "shortZh": "",
+    "shortEn": ""
+  },
+  {
+    "zh": "等待检查",
+    "en": "Waiting for validation",
+    "shortZh": "",
+    "shortEn": ""
+  },
+  {
+    "zh": "等待曲面稳定…",
+    "en": "Waiting for host surface to settle…",
+    "shortZh": "",
+    "shortEn": ""
+  },
+  {
+    "zh": "承载面已删除；保留最后结果，请重新关联。",
+    "en": "Host deleted; the last result is retained. Rebind the host.",
+    "shortZh": "",
+    "shortEn": ""
+  },
+  {
+    "zh": "正在计算种植布局…",
+    "en": "Calculating planting layout…",
+    "shortZh": "",
+    "shortEn": ""
+  },
+  {
+    "zh": "计算失败：{0}",
+    "en": "Calculation failed: {0}",
+    "shortZh": "计算失败：{0}",
+    "shortEn": "Calculation failed: {0}"
+  },
+  {
+    "zh": "ChatKit 无法启动：",
+    "en": "ChatKit could not start: ",
+    "shortZh": "",
+    "shortEn": ""
+  },
+  {
+    "zh": "请检查本机 ChatKit 运行环境与网络连接。",
+    "en": "Check the local ChatKit runtime and network connection.",
+    "shortZh": "",
+    "shortEn": ""
+  },
+  {
+    "zh": "请先运行 scripts/Setup-ChatKit.ps1 安装本机 ChatKit 运行环境。",
+    "en": "Run scripts/Setup-ChatKit.ps1 to install the local ChatKit runtime first.",
+    "shortZh": "",
+    "shortEn": ""
+  },
+  {
+    "zh": "随机缓存尚未准备，球体暂显示原图。",
+    "en": "Random variation cache is not ready; the sphere currently shows the source image.",
+    "shortZh": "去重复缓存未就绪，暂显示原图。",
+    "shortEn": "Variation cache pending; showing source."
+  },
+  {
+    "zh": "补齐素材中英文资料",
+    "en": "Complete asset translations",
+    "shortZh": "补齐译名",
+    "shortEn": "Translate assets"
+  },
+  {
+    "zh": "取消资料任务",
+    "en": "Cancel metadata task",
+    "shortZh": "取消资料任务",
+    "shortEn": "Cancel metadata"
+  },
+  {
+    "zh": "素材中英文资料已齐全。",
+    "en": "Asset Chinese and English labels are complete.",
+    "shortZh": "中英文资料已齐全",
+    "shortEn": "Translations complete"
+  },
+  {
+    "zh": "正在补齐素材中英文资料…",
+    "en": "Completing asset Chinese and English labels…",
+    "shortZh": "正在补齐译名…",
+    "shortEn": "Translating assets…"
+  },
+  {
+    "zh": "正在补齐素材中英文 · {0}/{1}",
+    "en": "Completing asset translations · {0}/{1}",
+    "shortZh": "补齐译名 · {0}/{1}",
+    "shortEn": "Translating · {0}/{1}"
+  },
+  {
+    "zh": "已补齐 {0} 个素材的中英文资料。",
+    "en": "Completed Chinese and English labels for {0} assets.",
+    "shortZh": "已补齐 {0} 个素材",
+    "shortEn": "Translated {0} assets"
+  },
+  {
+    "zh": "原始名称",
+    "en": "Source name",
+    "shortZh": "原名",
+    "shortEn": "Source name"
+  },
+  {
+    "zh": "原始分类",
+    "en": "Source category",
+    "shortZh": "原分类",
+    "shortEn": "Source category"
+  },
+  {
+    "zh": "原始标签（逗号分隔）",
+    "en": "Source tags (comma-separated)",
+    "shortZh": "原始标签",
+    "shortEn": "Source tags"
+  },
+  {
+    "zh": "显示译名随界面语言切换；修改原始内容后可重新补齐译名。",
+    "en": "Display labels follow the interface language. After editing source text, complete translations again.",
+    "shortZh": "译名跟随语言；修改原文后可重新补齐。",
+    "shortEn": "Labels follow language; complete again after source edits."
+  },
+  {
+    "zh": "尚未分析，可手动选择。",
+    "en": "Not analyzed yet; choose a mode manually.",
+    "shortZh": "未分析，可手动选择",
+    "shortEn": "Not analyzed; choose manually."
+  },
+  {
+    "zh": "素材资料已更新，请重新补齐译名。",
+    "en": "Asset metadata changed; retry localization.",
+    "shortZh": "素材资料已更新，请重新补齐译名。",
+    "shortEn": "Asset metadata changed; retry localization."
+  },
+  {
+    "zh": "AI 未返回完整中英文资料，请重试补齐。",
+    "en": "Complete Chinese and English asset labels are required.",
+    "shortZh": "AI 未返回完整中英文资料，请重试补齐。",
+    "shortEn": "Complete Chinese and English asset labels are required."
+  },
+  {
+    "zh": "中英文资料与素材原始信息不匹配，请重试。",
+    "en": "Asset language labels do not match canonical fields.",
+    "shortZh": "中英文资料与素材原始信息不匹配，请重试。",
+    "shortEn": "Asset language labels do not match canonical fields."
+  },
+  {
+    "zh": "补齐译名不能改动素材原始名称、分类或标签。",
+    "en": "Localization cannot rename or reorganize canonical fields.",
+    "shortZh": "补齐译名不能改动素材原始名称、分类或标签。",
+    "shortEn": "Localization cannot rename or reorganize canonical fields."
+  }
+]

@@ -525,3 +525,353 @@ Windows ??/??? PhotoCraft 13 ???????? CRLF????? SHA/SRI???? LF ???????? SHA ????
 已测试眼睛、设置、单素材八槽／复用、实际一张植物平面 AI 生图、夏冬材质／随机缓存、按视角判断季节合并以及全八工具 New/New/Open。季节试验库为隔离复制，未将合成冬季／圆形平面 fixture 写入正式库。真实 AI 图只在该隔离素材目录和生成执行器记录中，旧库不会自动批量生成。详细证据、测试误差与局限见 Validation.md、Seasons.md；全程原厂 MCP，没有新增 MCP 监听，也没有控制用户鼠标。
 
 0.22.9 后续：已给原库案例河桦 Betula nigra 补齐真实夏季平面图；原先恢复的旧记录只有立面，导致高俯视继续回退。B PID 56416 当前 15 株已显示 plan，地面位置、树高、相机方向保持，文档未修改。无需重启。该实际素材补齐发生在恢复测试库之后，原库现在有此季节图片更新；早先“原库未加入季节图片”的测试结束记录只描述当时状态。
+
+
+## 2026-11-11 · 公司 B · 0.22.9 更新与完整案例恢复
+
+管理任务 eb339d7f531e4fafb5ea8c0a7ff56ddd 成功，PID56980，部署20261111-153259-8b14e5837608495c859725942c361a76，原厂 Platform22801 实际确认插件与 Web 均为0.22.9。构建和完整 Core 验证通过。实际管理器隔离构建 RHP SHA256 为991E43519C1393624B5FA91E1858CC73EFC7D2316135DAEA31447B0DF5E1DE1C；普通打包路径不同导致二进制哈希不同，不冒称为实际加载包。部署46个 PostProduction 非缓存资源与源码逐字节一致。
+
+曾误开项目 artifacts/examples/Hillside-Retreat 下同名早期几何快照（69物件、无材质/植物）。随后已打开 %LOCALAPPDATA%/RhinoSceneFlow/Demos/HillsideRetreat/SceneFlow-Hillside-Retreat-Office.3dm 完整版，70物件、15株树、69材质记录、贴图均存在、文档未修改；显式 Rendered 捕获确认草地/木材/建筑/树正常。默认 CaptureToBitmap(Size) 曾返回线框，不能替代显式模式验证。
+
+案例河桦24fcecbe-4ea8-48f0-8b73-332d0d6ab3e8 经产品 seasonal_start（fourSeasons=false，真实任务593b9462-52c5-40bc-895a-06b0fa95a18c）补齐夏季平面，保留原立面。第一张偏椭圆，随后用内置 Imagegen、同一原立面参考重新生成近圆正俯视PNG1254×1254，alpha有效轮廓比例0.9934，经库AddSeason锁内修订为revision5。旧文件保留，元数据有备份。15株正俯视快照全部plan，显示宽高比1，位置/树高保持、文档未修改，未生成四季。两次独立只读探针分别遗漏document和误调用SetCameraUp，修正后通过；Open期间原厂连接重置后只读核对文档，未重复打开。证据 artifacts/office-0229/{verified,restored-case,plan-verified,round-plan-replaced,round-plan-verified}.json、explicit-rendered.png 和 river-birch-summer-plan-round.png。
+
+
+## 2026-11-11 · 0.22.10 设置页与植物阴影 · 构建完成，B待验证
+
+实现第九个原生停靠设置工具（独立齿轮图标、导航/工具栏/命令与旧设置入口同页），按界面、生成、植物显示分区，固定保存/放弃草稿反馈区，分区恢复默认。设置草稿不绑定文档，保存前验证，英文/中文和Rhino主题复用统一机制。独立植物阴影默认开启，位于首个植物组底层，保留阴影混合/透明度/眼睛，未启用植物通道时回退合并；层配置复制同时复制包含/分离开关。
+
+scripts/Build.ps1完整构建与验证通过，最后翻译字典补充后单独dotnet build再次0 warnings/0 errors，更新package。新增Core回归覆盖透明孔洞、原阴影重构、已有完全遮阴排除、穿透组兼容合成、子层顺序/透明度和隐藏影层。独立psd-tools确认合成fixture的植物影层在学名文件夹下面，混合mul、opacity137，植物组pass-through。首次独立解析按错psd-tools自下而上顺序，修正后通过。该fixture不冒称真实案例测试。
+
+B管理任务e5d399effc5347feb45c316e81aad155构建成功，部署暂存20261111-162324-eb4047fef9cb4c8db7e33338d825197a，但旧PID56980退出被Rhino“Update Available”阻塞，CloseTimedOut并保留进程；不计为新版加载或崩溃。Computer Use原生pipe unavailable，只读标题回退确认提示，未发送系统键鼠或强杀。已请用户选No。原完整案例未修改且路径/视口/配置记录于artifacts/settings-shadow-02210/baseline.json。Web在确认任务可停止后优雅关闭，新Web尚未验证。最后翻译补充尚未进入暂存部署，用户解除提示后需再次build_test再执行scripts/Test-SettingsShadow02210.py的ui/export，并独立核对真实PSD、恢复原案例视口。不得把本段构建结果称为B更新完成。
+
+
+## 2026-11-11 · 0.22.10 公司 B 实际加载与案例验证完成
+
+用户选择No解除Rhino更新提示后，重新提交管理任务d6684f742bcc4c76b6041fcefe1c439e并成功；新PID58248，部署20261111-163339-3c1d41816d16498fb2c63ab47d9ea261，实际原生与Web均0.22.10。实际加载RHP SHA256为50CB7D0BEDDA4F288C27308AE3BA2C4E96E0E22185B22C6071F57F1162167B3B，46个PostProduction非缓存资源与源码完全一致。该结果取代上一节“待验证”状态，不抹掉首次CloseTimedOut记录。
+
+通过正常注册页/API打开九个工具，全部error=null。原生按钮事件实测设置草稿不改变实时参数、保存生效、非法角度组合不提交、放弃恢复；全局偏好和植物参数最终还原。页面实际测量370×722，滚动内容与固定保存区；未做窗口像素截图或宣称完整视觉验收。新建再打开完整案例，设置控件身份及1.37临时草稿保持，最终丢弃测试草稿；同PID、70物件/15株树/Modified=false。原厂连接在New/Open中短暂重置，随后只读核对，不重复变更。已恢复更新前相机/显示模式并通过管理器显示B窗口，设置页选中。
+
+真实山地小屋六份480×360 PSD全部成功：species/individual/all的植物阴影位于植物组最底层，个体模式15个植物子层在学名文件夹内；combined关闭分离不产生组内阴影；no-plants回退主阴影（像素与combined主Shadow一致）；hidden-shadow保留真实像素但主/植物影层均隐藏。独立psd-tools解析确认混合mul、45%写为115/255、植物父组pass-through，植物阴影6968个非零像素，最终预览已目视确认材质/树木正常。分离与合并兼容图有107/172800边缘像素不同，最大通道差10/255，保留为独立图层抗锯齿差异，不声称逐字节等同。基础几何阴影算法和实体准确性未被本轮全面复验。
+
+图层配置复制/粘贴实际验证包含/分离两开关，测试后恢复原设置。首次导出脚本错误使用pythonnet不支持的C#属性构造关键字，改为实例化后赋值，六份导出通过；属于测试脚本失败，不计产品故障。现有用户可写RUI自定义副本按原约定不覆盖：新安装RUI包含10个宏，已有缓存可能仍9个；设置始终可由原生第九页/专用图标/导航/旧齿轮/RhinoSceneFlowSettings命令打开，不把缓存宏升级冒称已完成。
+
+证据artifacts/settings-shadow-02210/{retry-status,native-ui,lifecycle-start,final-native,verified,copy-settings-verified,psd-verified}.json及六份PSD、species-preview.png。没有系统键鼠，没有修改正式Rhino，也没有新的AI生图。可复用脚本scripts/Test-SettingsShadow02210.py。
+
+
+## 2026-11-11 · 设置页宽度修复（0.22.11，B加载待解除更新提示）
+
+用户截图指出0.22.10设置页右侧裁切。真实注册页测量确认外层Eto WPF Scrollable横向Auto，viewport约349 DIP而extent约571 DIP；ExpandContentWidth只拉伸短内容，不限制长文本的测量宽度。修复仅将外层ScrollViewer.HorizontalScrollBarVisibility设为Disabled，保留竖向滚动、默认文本框内部滚动和固定保存区；同时移除外层滚动框边框。没有通过放宽侧栏或截断说明掩盖问题。
+
+在当前正常设置页临时应用相同修复，全部折叠区展开后验证300 DIP英文、300 DIP中文及480 DIP英文：extent均不超过viewport，长说明实际高度随宽度变为2–3行，所有说明右界在面板内，保存按钮底边728.7小于763的面板高度。测试后恢复自动宽度、auto语言、原截图的折叠状态；窗口与原案例未发送键鼠、模型未修改。首次临时探针也影响了子文本框viewer，已恢复Hidden；正式实现只改外层viewer。第一次Web构建命令工作目录错误，改到web/postproduction后正常完成。最终scripts/Build.ps1完整构建/验证通过，package0.22.11已生成。
+
+管理任务bbd0681c68034b6691988c04c58b6083构建成功并准备20261111-165037-2c7622fe7e5b482683b91ad9fd933a67，但PID58248退出再次停在Update Available，CloseTimedOut；只读窗口标题确认，已请用户No，不冒称安装完成或崩溃。Web此前优雅停止，案例路径记录于artifacts/settings-width-02211/before.json。解除提示后优先使用test任务加载已经准备的新版本，再恢复该完整案例，检查新实例的外层viewer和保存区。证据artifacts/settings-width-{300-en,300-zh,480-en,live}.json、settings-width-02211-build.log和settings-width-02211/{job,status}.json。此补丁仅影响设置布局，不需要重复真实AI生图或PSD算法测试。
+
+
+0.22.11复核补充：用户解除提示后test任务7c8abf408c1748f39b99427b374f9f6a确实加载了首版0.22.11（PID14640），恢复完整案例70物件/15树/未修改。然而安装后宽度检查失败：Eto Scrollable.ControlObject实际为EtoBorder，首版对ScrollViewer的直接cast没有生效（300宽时extent660 > viewport282，仍Auto）。此项不得称为修复验收通过。已改为通过公开WPF Border.Child取内部ScrollViewer；在真实页验证包装类型与Child类型并成功禁用横向滚动，不依赖私有字段。补充编译0 warnings/0 errors，更新package，管理构建9972d1e14baa4011ba9dea0076701ca0准备20261111-165920-0e1f3974b86845d8a940c07203c5080f，但PID14640退出再次出现Update Available，已请用户No。后续必须加载此第二部署后直接检查原生viewer，不施加运行时补丁，然后才能写完成记录。
+
+
+## 2026-11-11 · 设置页宽度修复 0.22.11 最终加载完成
+
+用户再次No后，任务294bab88279a4ac69f6ba2bad2b5d436成功加载第二份已修正包装层的部署20261111-165920-0e1f3974b86845d8a940c07203c5080f，PID55728。新页创建后在任何运行时修改之前，直接确认外层EtoBorder.Child的HorizontalScrollBarVisibility=Disabled，证明固化逻辑生效。原生与Web均0.22.11，RHP SHA256 4A14F0C01EA83FD512C87F5D317CB8016ECEE3F4C68C90AA0C405F08A44DA65A，46个Web资源与源码一致。
+
+正常注册页的宽度测量通过：300 DIP时extent282=viewport282，保存按钮底边688<722；中文长说明230.7宽、两行，无右侧越界。480 DIP英文长说明可换行，extent460<=viewport462，说明右界均在页内。部分测量请求因父级窗口/折叠可见性不返回TextBlock，不将空文本清单当作视觉证明；此前临时等效修复下的300英文全部展开测量已有逐段证据。未做窗口截图验收。测试后恢复自动宽度、跟随Rhino语言和截图中仅素材生成展开的状态；设置草稿dirty=false、error=null。完整案例/原相机与Rendered模式恢复，70物件、15树、Modified=false，B窗口已显示。
+
+此最终结果替代之前“待加载”和首版错误cast的状态，保留其失败记录。未重跑AI或PSD图像算法。证据artifacts/settings-width-02211/{final-load-status,loaded-binding,final-native,verified}.json，及artifacts/settings-width-final-{300-en,300-zh,480-en}.json。没有系统键鼠操作。
+
+
+## 2026-11-11 · 0.22.12 气候选项及AI通道参与审计（代码/离线通过，B待更新提示）
+
+气候设置改为语言无关climateMode:species/project，默认物种气候不显示自填框，自填项目地区保留原文；标签/选项/placeholder随语言，实际用户文本不翻译。ClimateContext在Core处理默认句子与旧自填迁移、project非空/300上限和内部英文生成说明；SeasonalGeneration确实使用该说明，元数据不超过原300上限。已有资产不重生成。Core迁移/保留原文/模式切换/校验回归随scripts/Build.ps1完整通过，构建0 warnings/errors，package0.22.12已生成。
+
+读取16本机画板及最近5份真实整图request，核对源代码whole/detail实际附件列表。隔离PSD A/B改变隐藏Depth与被盖住Arctic，三个实际输入哈希不变；打开Depth则污染合成图而非变独立引导。modelCalls=0、原画板/PSD未改。建议与证据详见AI-Studio-Workflow-Audit-2026-11-09.md末节，不把目前reference/structure标签说成已接通深度控制，不在本轮擅改AI输入语义。
+
+B管理构建任务d1d28c42656442b8aa4dad7b778a8936准备20261111-171753-d287274a32834a9a8238490095a1e052，但旧PID55728退出被Update Available阻塞，CloseTimedOut，已只读确认并请用户No。新代码尚未在B加载；不能把编译/离线A/B说成原生UI迁移保存验证。基线artifacts/climate-guides-02212/{baseline,preferences-before}.json，原案例未修改。解除后用test加载ready版本，再运行同目录verify-climate-ui.py实际保存/语言/迁移/隐藏地区检查并恢复案例与镜头；旧Web已优雅停止，需要启动新版。证据build.log、board-layers.json、actual-request-audit.json、guide-input-ab/verified.json与status.json。未使用系统鼠标或新增AI生图。
+
+
+## 2026-11-11 · 0.22.12 公司 B 实际加载和气候UI验证完成
+
+用户No解除更新后，管理test任务8318f17d156d4a53b0b453d95d9c4d17成功，PID48696，部署20261111-171753-d287274a32834a9a8238490095a1e052。原生与Web均0.22.12，46个Web资源匹配源码，实际RHP SHA256 78A717FC78C107EB51A09F4E2D224C0F515976ECEC508AD091BC12F416000BCB。此结果替代本轮待加载状态，不删除首次CloseTimedOut证据。
+
+通过正常设置页和原生按钮事件验证旧默认中文→species/空自填，默认不显示自填框；英文选项与placeholder正确；选择project出现框、空项目拒绝保存；保存“Miami / 迈阿密，Florida”后切中英文原文完全不变；切species保留隐藏自填内容但内部生成说明忽略它，再切project取回原文。测试结束恢复原偏好，默认auto语言/主题、species气候、四季默认关闭，dirty=false/error=null。外层宽度修复仍Disabled。没有生图或修改现有季节素材。
+
+完整案例及基线相机/Rendered显示已恢复，70物件/15植物/Modified=false，B窗口显示且设置素材生成分区展开。原厂Open连接短暂重置后只读核对实际文档，没有重复打开。真实AI通道审计结论保持在既有审计文档末节，本轮未修改其附件/蒙版/图层参与语义。
+
+证据artifacts/climate-guides-02212/{load-status,ui-verified,final-native,verified}.json。真实UI检查脚本verify-climate-ui.py位于忽略的该证据目录。Core完整构建/迁移回归和离线通道A/B已在本轮前半通过。全程原厂MCP，没有系统键鼠，没有新增AI调用。
+
+
+### 2026-11-11 - 0.22.13 sidebar sizing
+
+- Loaded the prepared build through original sandbox management MCP on office B,
+  fresh Rhino PID 9152. Actual RHP version 0.22.13, deployment
+  `20261111-183328-680b9ae7a0e0418ab5e32e170c3add89`, SHA256
+  `23b4b86855531c4198bd0da5fe6e8bcda94e63beb2a447e589ef9e2d1162326c`.
+- Full Build.ps1/package and Core regressions passed (zero warnings/errors).
+  Both build_test attempts encountered the native Update Available prompt and
+  ended CloseTimedOut; after the user declined updates, explicit test jobs
+  succeeded. This is not recorded as a normal exit or a plugin crash.
+- The initial hidden-window probe had zero visible controls and is retained as
+  unverified evidence. The first visible case probe found an English preview
+  refresh button extending to 289px at a 280px host. That issue was corrected
+  before the final deployment. No live-root rendering or desktop mouse was used.
+- On the real 70-object Hillside case, registered native panels passed 54 visible
+  layout cases: all nine pages, English/Chinese, widths 280/360/480 logical px.
+  Measured interactive control bounds fit the host; vertical page-scroller
+  extents fit their viewports. GridViews retain their own column scrolling.
+- Twelve additional visible cases covered material inspector and view details
+  in both languages; six asynchronous selection cases covered ordinary-object
+  and Plant Group properties (28 and 60 visible controls respectively). Direct
+  same-command selection did not exercise the property timer, so those six-
+  control empty-body measurements are not claimed as populated-state coverage.
+- Source case path, 70 objects, camera, selection and Modified=false were
+  preserved. B remains open on Settings with the full office Hillside case.
+  Evidence: artifacts/workspace-width-02213/{verified,native-layout,native-states,
+  native-properties}.json and build-narrow.log. These are native layout bounds,
+  not pixel screenshot review, Photoshop validation or new AI image generation.
+
+
+### 2026-11-11 - 0.22.14 PSD participation and channel inputs
+
+- Build.ps1/package and complete Core regressions passed, zero warnings/errors.
+  Test-PsdParticipation passed actual PSD alpha/pixel preservation, default
+  effective visibility, hidden-parent gates, actual hidden-depth sheet, original
+  source-file identity, all-off rejection, input numbering and result-parent
+  isolation. Its synthetic image responder recorded one attachment request;
+  real image model calls = 0. Fixture-construction errors (unattached Group.new
+  and invalid group blend metadata) were corrected in the test, not by relaxing
+  production PSD validation.
+- TaskRestore, TaskInputs, BoardWorkflow, CanvasContext, RasterStability,
+  ReferenceGallery and GuideGates passed. Real headless Edge task-flow and task-
+  restoration passed; the PSD participation browser passed checkbox defaults,
+  auto-save/reload, branch inheritance, Undo/Redo, English/Chinese, reset and the
+  actual preflight sheet. Text redo stayed local. The first screenshot captured
+  an in-flight previous preview; the final test waits for the new image URL/load.
+  Tests also exposed checkbox focus blocking board shortcuts; the guard now
+  excludes text editing rather than every input type.
+- B exported the real Hillside case at 480x360 with six channels (21 pixel layers,
+  24 PSD records including folders). Independent PSD parsing prepared separate
+  colour-region, depth, Arctic and shadow references; the clean RGBA input stayed
+  byte-for-byte equal as pixel arrays. Original model remained 70 objects and
+  Modified=false. Old three-channel test PSD correctly had no depth; a fresh
+  six-channel export was used instead of fabricating a depth channel.
+- B build_test job 8606c337aa174d6381603d7aaec12b41 prepared the build but reached
+  CloseTimedOut at Rhino's native Update Available prompt. After the user chose
+  No, explicit test job b36780457cd04a84899b8ca605485f80 succeeded. Loaded Rhino
+  PID 50500, version 0.22.14, deployment
+  20261111-190510-e2c26451136540c3b4a7a0a097c46ff8; actual RHP SHA256
+  f4ce507ea207dc12d68dbc6f454ff88799e32fcdfd680d315a95d5501a61ae65.
+- Verified deployed psd_guides.py, board_store.py, board_render.py, board_api.py,
+  board.js, board.css and server.py match the tested source. Original Platform
+  postproduction_start/status launched the real 0.22.14 service, PID 63268.
+  Existing 16 board.json hashes were unchanged across its graceful restart.
+  B is open on AI Web Studio with the full case. Owned fixture servers and
+  headless browsers were closed, evidence retained. No system mouse was used.
+- Evidence: artifacts/psd-guides-02214/{deployed-verified,browser-verified,
+  hillside-export,hillside-latest}.json and build.log; exact pixel/request fixture
+  receipts under artifacts/psd-participation. Guidance is a real model image
+  attachment, not a claim of hard geometry control or validated new AI output.
+
+
+### 0.22.15 native presentation — prepared, runtime validation pending (2026-11-11)
+
+Added full/short/none native text, independent icon visibility and essential-text
+fallback preferences. Build.ps1 completed with zero warnings/errors and the full
+portable suite passed. Canonical Lucide PNGs: 30 icons × 4 sizes × 2 themes;
+actual alpha/size checks and contact-sheet visual inspection passed. Evidence:
+`artifacts/interface-presentation-02215`.
+
+B baseline: PID 50500, Hillside Office case, 70 objects, Modified=false, no selected
+objects, language=auto, theme=rhino. Manager build_test job
+`98fa52f2f2ea4ea5b3bed1370412d441` built/prepared the new version, then failed with
+CloseTimedOut. Read-only EnumWindows confirmed Rhino's visible Update Available
+prompt. No forced exit and no new-version native validation are claimed. Awaiting
+user No/defer; next action is manager `test`, then
+`scripts/Test-InterfacePresentation.py` against the normally registered panels.
+The standalone Web service was not restarted or migrated for these native settings.
+
+
+### 0.22.15 final native presentation validation (2026-11-11)
+
+Loaded final deployment `20261111-195958-6c259e8c4530447fadfcf37be395644f`,
+B PID 35804. Loaded RHP equals the manager's immutable build manifest and refreshed
+package by SHA256; `artifacts/interface-presentation-02215/verified.json` retains
+the digest. The sandbox uses isolated build outputs; the earlier local bin RHP is
+not this final deployment. The first build's caption loss and subsequent narrow
+PSD-header overflow were real failed checks; earlier receipts are retained.
+Final fixes restore Eto Text after Image, retain semantic source captions when
+getters normalize empty to null, preserve requested WPF widths rather than zero
+measured widths, and separate PSD layer identity from reorder/delete actions.
+Symbolic buttons use one glyph with icons enabled and localized words otherwise.
+
+Final registered native panels: en/zh × 9 pages × 6 presentation states = 108;
+all expanders temporarily opened, three widths (280/360/480) = 324 layout checks,
+zero horizontal control-bound overflows. Checked label/dropdown roundtrips,
+editable-value preservation, icon-only frames/tooltips, rejection of both-hidden
+settings, actual Settings constraint events, unsaved drafts and light/dark bitmap
+changes. Runs restore original preferences and folds. These are actual-control /
+bounds checks, not native screenshots or every display-scale/font configuration.
+
+New → reopen Hillside: same PID/settings instance and unsaved draft retained,
+nine tools with null errors, 70 objects, Modified=false. An immediate post-open
+status request returned document-closed during deferred rebind; read-only
+verification passed after Rhino returned to idle. No repeated Open mutation or
+forced termination. Temporary draft discarded; Settings page left visible.
+Existing Web service was not restarted; these preferences govern native controls.
+
+Updater timeouts remain failures in manager history. Later reloads used Windows
+UI Automation against the exact B PID's Update Available/No InvokePattern:
+no mouse/keyboard movement. Successful final load task:
+`6ce0527a2b0b471fa6256fa2069101bc`.
+
+Pinned Lucide masters: 31; transparent PNGs: 248 (16/20/24/32, light/dark).
+Notices ship in deployment Resources/InterfaceIcons/LICENSE.txt and package
+Lucide-LICENSE.txt. Build.ps1 retains this licence in future packages.
+
+
+### 0.22.16 — language, abbreviation and stretched-icon repair (2026-11-11)
+
+The 0.22.15 roundtrip/bounds tests missed actual translation coverage and image
+stretching. Reproduction in B PID 35804 found 164 Chinese control captions while
+resolvedLanguage=en, WPF icons stretched to 27.33 DIP from 20px sources, and an
+unsaved Settings textMode=short while persisted textMode=full.
+
+Repairs: one bilingual full/short catalog, immediate application/persistence of
+Interface options with other-section drafts retained, localized grid/menu/header
+captions and dynamic counts/status, and 16-DIP image constraints using 32px
+resources. Style-only saves no longer rebuild seasonal scene materials. Custom
+names, scientific names and editable values stay user data. A long English plant
+palette instruction now uses a scalable title column in narrow docks.
+
+Final deployment `20261111-203701-346aa39852ed4e19864393ce3ab916ee`, PID 46908,
+loaded by successful B build_test `e076a2422ac340ed8679515837e25fad`. The RHP and
+refreshed package match the immutable manager manifest; exact digest is in
+`artifacts/presentation-fix-02216/verified.json`. The first updater timeout is
+retained as a failed manager task; later exact-B No prompts used UI Automation
+InvokePattern without pointer/keyboard input. No forced Rhino termination.
+
+Validation: 435 static English entries plus template/enum/user-name checks;
+287 previously captured control captions translate without Chinese leakage.
+Actual registered native UI: 36 language/presentation states across nine pages,
+zero unintended Chinese captions and 552 rendered image measurements, maximum
+16 DIP. Separate en/zh presentation runs cover 108 states and 324 checks at
+280/360/480 widths, all sections opened temporarily, zero bound overflows.
+Actual Settings events verify immediate saves, pair constraints, discard semantics,
+other drafts and light/dark resources. Selected ordinary/group property states
+were reviewed; 44 material metadata JSON files remain byte-identical across
+language/style changes. User names with Chinese content are intentionally retained.
+
+ChatKit was independently hard-coded to zh-CN. It now follows the native language
+through locale and complete setOptions, without navigation. Official component
+headless checks show en/zh/en title/prompt/composer changes with draft and iframe
+retained (no model calls); actual Rhino WebView bridge passes the same locale
+roundtrip. Case New/Open retains the global draft, preferences and settings
+instance; nine tools have null errors, case has 70 objects and Modified=false.
+Final B is visible on Settings, auto/Rhino language resolves en, textMode=short,
+icons shown. Native size/caption checks are actual-control measurements, not
+native screenshot QA for every DPI. Standalone AI Studio remains independent.
+
+### 0.22.17 — single native caption writer (2026-11-11)
+
+Root cause was competing writers: MaterialsTool.Tick assigned Chinese source text
+at 0.25 s, and WorkspaceHost's 0.6 s scan translated already visible controls.
+An idle 0.22.16 observation captured 466 samples containing both Chinese and
+English for the same unchanged target status. Eto TextChanged did not report
+these programmatic handler assignments, so the regression samples real Text
+from an independent UI timer between Platform calls instead.
+
+Replaced tree text rewriting with source-owned UiCaption / bound native controls.
+Preferences and Rhino appearance events refresh the context; identical source and
+rendered values are skipped. Headers, dropdown items, menu/grid captions and input
+placeholders use the same ownership rule. User values/names stay unchanged.
+Multiline appends retain independent source fragments across language changes.
+WorkspaceAppearance is theme/layout decoration only, and the document timer no
+longer performs a presentation sweep. See Native-Presentation.md.
+
+Evidence under artifacts/presentation-fix-02217:
+
+- Build.ps1 passed the core suite and 435-caption / template validation.
+- Test-PresentationOwnership.py passed the source ownership guard.
+- Test-PresentationIdle.py on final build PID 28040: 1,069 live samples across
+  English short/full, Chinese, return to English and a live object selection;
+  zero unexpected transitions. First selection status was English `1 selected`.
+  Multiline en → zh → en preserved the same English result.
+- Nine pages / 36 language-and-icon states: zero unintended Chinese UI captions;
+  552 actual icon measurements, maximum rendered size 16 DIP. Immediate settings
+  and independent unsaved climate drafts passed.
+- Native presentation: 54 configurations per language, three widths each,
+  324 English/Chinese layout observations total; zero overflow findings.
+- Live object/group properties and library selection passed; 44 material metadata
+  files retained their hashes. Native New/Open retained the settings draft and
+  preferences, all nine tools had null errors, model restored to 70 objects and
+  Modified=false.
+- Shutdown/restart: held an OS process handle for PID 28040; native ExitCode=0
+  recorded in native-normal-exit.json. Restart loaded identical immutable build.
+  This is separate from an earlier PID 63820 CloseTimedOut at Rhino's hidden
+  Update Available dialog, retained in final-reload-timeout.json. Declined only
+  B's verified optional update via UIAutomation InvokePattern, without mouse or
+  keyboard input. Do not describe declining updates as a crash fix.
+
+Final deployment: 20261111-220918-13aa18bf109048628d4eead3a69e2331, version 0.22.17.
+RHP SHA256 94de4a53cfa650773f19428eaeb187680d5f8942c51a2545b0e751ac76ea92f9.
+Package RHP matches the loaded deployment. B restart PID 30796; office Hillside
+case restored. Native source/UI work only; no additional AI generation was run.
+
+### 0.22.18 — complete UI hints and asset-owned languages (2026-11-11)
+
+The remaining Chinese was confirmed in the live B instance: a Properties empty
+selection cue incorrectly marked as authored content, unbound tooltips, and saved
+Chinese catalog vocabulary. A broad inspection found 46 CJK rows, including valid
+source metadata. The earlier test excluded these categories and missed them.
+
+- UiCaption now owns explicit hint source as well as caption source, including
+  labels with authored names, checkboxes and placeholders. Native full/short/none
+  presentation retains one writer; no periodic translator was reintroduced.
+  Properties uses a localized context role and preserves only actual object-name
+  fragments, rather than skipping the whole instruction/title in English tests.
+- Per user direction, translations belong to each asset's optional localizations
+  metadata, not a hardcoded UI vocabulary. Names/categories/recommendations record
+  their canonical source; tag translations use canonical keys. Stale labels fall
+  back to the source. New labeling and verified plant resolution request zh/en.
+  PlantNames supports both the new data and old PlantIdentity.Names.
+- Material/plant library completion is available in UI and original Platform MCP.
+  Metadata-only AI has no tools or image generation. One atomic journalled commit
+  checks IDs, appearance/catalog revisions and exact canonical fields; a source
+  edit rejects the whole plan. ZIPs retain language metadata. Existing valid
+  translations are preserved and repeated completion is a no-op.
+- Actual metadata-only model smoke succeeded. Actual B completion succeeded for
+  all 12 materials and 2 plants. Source names/categories/tags, scientific data,
+  appearance revisions, dimensions and image hashes remained identical; only
+  localizations and CatalogRevision changed. A deliberately unsaved source-name
+  editor draft survived completion. Original asset JSON backups are retained.
+- Test-LibraryLanguages.py passed en/zh/en names, category/tag keys, English search
+  under Chinese UI, exact row IDs, source draft preservation and tooltips across
+  nine pages. No AI jobs were launched and asset JSON bytes did not change during
+  switching. Remaining CJK in diagnostics was only the Chinese language autonym
+  and authored values explicitly shown in source-edit fields.
+- Standard build/core suite and 449-caption validation passed. New persistence
+  tests cover legacy/stale fallback, canonical filter/search, no-op/conflict/atomic
+  rejection, portable ZIPs and plant identity. Nine-page native presentation had
+  568 icon measurements (max 16 DIP), 324 English/Chinese width observations with
+  no overflow, and preference/draft tests passed. Idle sampling: 1,111 samples,
+  five normal state/language cases, no unexpected transitions.
+- Native New/Open retained nine tools, settings draft and preferences; restored
+  office Hillside case has 70 objects, Modified=false. All 14 assets passed actual
+  image checksum verification. Shutdown watcher recorded B PID 37672 ExitCode=0;
+  optional Rhino update was declined through exact-PID UIAutomation, no mouse or
+  keyboard. The identical immutable deployment was then reloaded to verify that
+  stored translations persist across a process restart.
+
+Evidence: artifacts/localization-02218; source-assets-before/after.json,
+metadata-preservation.json, backfill-summary.json, library-language-regression.json,
+image-integrity.json, idle-regression.json, native-lifecycle.json and
+native-normal-exit.json. See Asset-Languages.md for storage/recovery semantics.
+
+Final 0.22.18 restart receipt: PID 39656, deployment
+20261111-225424-cad81b03d96c42bcb01f2babde849464. RHP SHA256
+34a8253680dfb15bba6a6ced8d4006d2e9abcac787ff14ec5ce6008082e8021e;
+Core SHA256 237692d03ee490f8d4b8d2fba1d0c75af2ecded5a696362e894b2b31b9be1ded.
+Post-restart Test-LibraryLanguages passed: all 14 saved language records read
+without new jobs; switching retained filters/drafts and left asset JSON bytes
+unchanged. Package binaries match the tested deployment. Office Hillside restored,
+70 objects, Modified=false, nine tool errors null; library is open on the localized
+cedar-board material. Only source-edit data and the Chinese-language autonym remain
+Chinese in the current native diagnostic. No new images were generated.

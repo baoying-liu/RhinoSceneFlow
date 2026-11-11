@@ -36,11 +36,11 @@ public static class SeasonalGeneration
                 if(complete){await RandomTextureService.PrepareSeasons(library,asset,instances,directory,cancel.Token,s=>job.Stage=s);job.Completed=requested.Length*(plant?2:1);job.Status="completed";job.Stage="所需版本已存在，已复用；随机缓存已就绪";return;}
                 var token=cancel.Token;string original=library.MapPath(asset,"baseColor");
                 string reference=Path.Combine(directory,"summer"+Path.GetExtension(original));File.Copy(original,reference);
-                var answer=await CodexPlantAgent.RunAsync(Path.Combine(directory,"plan"),"seasons",System.Text.Json.JsonSerializer.Serialize(asset,MaterialLibrary.Json)+"\nClimate: "+preferences.Climate,[asset],[reference],token);
+                var answer=await CodexPlantAgent.RunAsync(Path.Combine(directory,"plan"),"seasons",System.Text.Json.JsonSerializer.Serialize(asset,MaterialLibrary.Json)+"\nClimate: "+preferences.GenerationClimate,[asset],[reference],token);
                 if(!plant)answer.CrownWidthMeters=3;
                 if(!double.IsFinite(answer.CrownWidthMeters)||answer.CrownWidthMeters<=0||answer.CrownWidthMeters>1000)throw new InvalidDataException("AI 冠幅无效。");
                 var aliases=answer.SeasonPlan;if(aliases.Length!=4||aliases.Select(a=>a.Season).Distinct().Count()!=4||aliases.Any(a=>!Seasons.All.Contains(a.Season)||a.SourceSeason!="summer"&&a.SourceSeason!=a.Season))throw new InvalidDataException("AI 季节计划无效。");
-                asset.Seasonal.Climate=preferences.Climate;asset=library.Update(asset);
+                asset.Seasonal.Climate=preferences.ClimateMetadata;asset=library.Update(asset);
                 if(!Seasons.Has(asset,"summer"))asset=library.AddSeason(asset.Id,asset.Revision,"summer",false,null,"baseColor");
                 foreach(string season in new[]{"summer","spring","autumn","winter"}.Take(fourSeasons?4:1))
                 {
@@ -54,7 +54,7 @@ public static class SeasonalGeneration
                             "Generate exactly one NEW botanical PNG with real transparent alpha using ONLY image_gen transparent_background:true. No shell/web/MCP/APIs. Return fresh imagePath. Same exact verified species, cultivar, specimen shape, branch structure and scale as reference. No scene, ground, pot, text, watermark or cast shadow. Entire crown fits with a small transparent margin. " + (plan?"Strict orthographic TOP-DOWN crown plan, no visible elevation trunk, crown centred. Horizontal botanical cutout.":"Orthographic ELEVATION, entire plant from root base to crown, base centred at bottom. Keep the same framing and root anchor as summer reference."):
                             "Use ONLY image_gen to create one NEW seamless, tileable surface base-color PNG. No shell/web/MCP/APIs. Preserve the reference material identity, exact pattern alignment, scale, physical tile size and structures. Change seasonal appearance only, no lighting/cast shadows or scene. Return a fresh imagePath.";
                         var refs=new List<string>{reference};if(plan&&Seasons.Has(asset,"summer",true))refs.Add(library.MapPath(asset,asset.Seasonal.Variants["summer"].Plan!));
-                        var result=await CodexMaterialChatRunner.RunAsync(Path.Combine(directory,season+(plan?"-plan":"-elevation")),"Asset: "+asset.Name+"\nVerified taxon: "+asset.Plant?.ScientificName+"\nTarget season: "+season+"\nClimate: "+preferences.Climate+"\nSeason reasoning: "+aliases.Single(a=>a.Season==season).Reason,refs.ToArray(),s=>job.Stage=s,token,system);
+                        var result=await CodexMaterialChatRunner.RunAsync(Path.Combine(directory,season+(plan?"-plan":"-elevation")),"Asset: "+asset.Name+"\nVerified taxon: "+asset.Plant?.ScientificName+"\nTarget season: "+season+"\nClimate: "+preferences.GenerationClimate+"\nSeason reasoning: "+aliases.Single(a=>a.Season==season).Reason,refs.ToArray(),s=>job.Stage=s,token,system);
                         if(result.ImagePath==null)throw new InvalidOperationException("没有生成新的季节图片："+result.Reply);
                         using(var bitmap=new System.Drawing.Bitmap(result.ImagePath))
                         {

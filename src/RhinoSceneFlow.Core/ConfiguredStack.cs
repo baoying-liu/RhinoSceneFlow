@@ -1,6 +1,6 @@
 namespace RhinoSceneFlow.Core;
 
-public sealed record StyledPass(string Name,IPsdImage Image,string Blend="norm",byte Opacity=255,bool Folder=false,bool Visible=true);
+public sealed record StyledPass(string Name,IPsdImage Image,string Blend="norm",byte Opacity=255,bool Folder=false,bool Visible=true,bool PassThrough=false);
 
 /// <summary>Top-to-bottom isolated passes, with genuine PSD blend/opacity metadata.</summary>
 public sealed class ConfiguredStack : IPsdImage,IPsdHierarchy
@@ -42,7 +42,7 @@ public sealed class ConfiguredStack : IPsdImage,IPsdHierarchy
         {
             var visible=pass.Image.GetVisibleLayers(cancellation);
             if(visible.Count==0)visible=[new(0,0,0,1,1)];
-            if(pass.Folder)result.Add(new(new(-1,0,0,0,0),pass.Name,pass.Blend,pass.Opacity,1,pass.Visible));
+            if(pass.Folder)result.Add(new(new(-1,0,0,0,0),pass.Name,pass.PassThrough?"pass":pass.Blend,pass.Opacity,1,pass.Visible));
             if(pass.Image is IPsdHierarchy hierarchy)
                 result.AddRange(hierarchy.Records(cancellation).Select(r=>r with{Bounds=r.Bounds.Group<0?r.Bounds:r.Bounds with{Group=r.Bounds.Group+offset},Visible=r.Visible&&(pass.Folder||pass.Visible)}));
             else
@@ -62,14 +62,21 @@ public sealed class ConfiguredStack : IPsdImage,IPsdHierarchy
     private void Composite(int y)
     {
         if(cachedY==y)return;
-        var rgba=accumulated;Array.Clear(rgba);var source=sourceRow;
+        var rgba=accumulated;Array.Clear(rgba);CompositeOnto(rgba,y,1);
+        for(int i=0;i<composite.Length;i++)composite[i]=(byte)Math.Clamp(Math.Round(rgba[i]*255),0,255);
+        cachedY=y;
+    }
+    private void CompositeOnto(double[] rgba,int y,double opacity)
+    {
+        var source=sourceRow;
         foreach(var pass in Enumerable.Reverse(passes))
         {
             if(!pass.Visible)continue;
+            if(pass.PassThrough&&pass.Image is ConfiguredStack nested){nested.CompositeOnto(rgba,y,opacity*pass.Opacity/255);continue;}
             for(int c=0;c<4;c++)pass.Image.ReadCompositeRow(c,y,source.AsSpan(c*Width,Width));
             for(int x=0;x<Width;x++)
             {
-                double a=source[3*Width+x]/255.0*pass.Opacity/255,ab=rgba[3*Width+x],outA=a+ab*(1-a);
+                double a=source[3*Width+x]/255.0*pass.Opacity/255*opacity,ab=rgba[3*Width+x],outA=a+ab*(1-a);
                 for(int c=0;c<3;c++)
                 {
                     double b=rgba[c*Width+x],s=source[c*Width+x]/255.0;
@@ -78,8 +85,6 @@ public sealed class ConfiguredStack : IPsdImage,IPsdHierarchy
                 rgba[3*Width+x]=outA;
             }
         }
-        for(int i=0;i<composite.Length;i++)composite[i]=(byte)Math.Clamp(Math.Round(rgba[i]*255),0,255);
-        cachedY=y;
     }
     public byte CompositeChannel(int channel,int x,int y){Composite(y);return composite[channel*Width+x];}
     public void ReadCompositeRow(int channel,int y,Span<byte> row){Composite(y);composite.AsSpan(channel*Width,row.Length).CopyTo(row);}

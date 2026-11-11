@@ -23,7 +23,7 @@
   <ItemGroup><None Update="ChatKit/*.py;ChatKit/*.html;ChatKit/*.txt" CopyToOutputDirectory="PreserveNewest" /></ItemGroup>
   <ItemGroup><None Update="PostProduction/*.py;PostProduction/*.html;PostProduction/*.js;PostProduction/*.css;PostProduction/*.txt" CopyToOutputDirectory="PreserveNewest" /></ItemGroup>
   <ItemGroup><None Update="PostProduction/vendor/**/*" CopyToOutputDirectory="PreserveNewest" /></ItemGroup>
-  <ItemGroup><EmbeddedResource Include="Resources/*.ico" /></ItemGroup>
+  <ItemGroup><EmbeddedResource Include="Resources/*.ico" /><EmbeddedResource Include="Resources/NativeText.json" /><EmbeddedResource Include="Resources/InterfaceIcons/*.png" /><None Include="Resources/InterfaceIcons/LICENSE.txt" CopyToOutputDirectory="PreserveNewest" /></ItemGroup>
   <ItemGroup><None Update="RhinoSceneFlow.rui" CopyToOutputDirectory="PreserveNewest" /></ItemGroup>
   <ItemGroup><None Include="../../third-party/FastNoiseLite/LICENSE" Link="FastNoiseLite-LICENSE.txt" CopyToOutputDirectory="PreserveNewest" /></ItemGroup>
   <Target Name="KeepOnlyX64Loader" AfterTargets="Build">

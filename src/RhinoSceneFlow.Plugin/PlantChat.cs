@@ -1,4 +1,4 @@
-﻿using System.Text.Json;
+using System.Text.Json;
 using RhinoSceneFlow.Core;
 namespace RhinoSceneFlow.Plugin;
 
@@ -53,6 +53,7 @@ internal static class PlantChat
         var image=await CodexMaterialChatRunner.RunAsync(Path.Combine(directory,"plant-image"),"VERIFIED PLANT:\n"+identity+"\nAPPEARANCE REQUEST:\n"+conversation,refs,s=>ui(()=>job.Stage=s),cancel,instructions);
         if(image.ImagePath==null){ui(()=>{cancel.ThrowIfCancellationRequested();job.Reply=image.Reply;job.Status="completed";job.Stage="未生成植物图片";});return;}
         var asset=new MaterialAsset{Name=resolved.Name.Length>0?resolved.Name:resolved.ScientificName,Category=resolved.Family,Tags=resolved.Tags,Source="ai-plant",Prompt=conversation,HeightMeters=resolved.HeightMeters,Plant=new(){Names=new(){{"zh",resolved.NameZh},{"en",resolved.NameEn}},SpacingMeters=resolved.SpacingMeters,SpacingEvidence=resolved.SpacingEvidence,ScientificName=resolved.ScientificName,Family=resolved.Family,Genus=resolved.Genus,Cultivar=resolved.Cultivar,Sources=resolved.Sources,Evidence=resolved.Evidence,VerifiedUtc=DateTime.UtcNow}};
+        AssetLocalization.SetDraft(asset,resolved.Localizations);
         ui(()=>
         {
             cancel.ThrowIfCancellationRequested();if(PlantService.Library.Root!=library.Root)throw new OperationCanceledException("植物库已切换。");

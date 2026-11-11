@@ -1,0 +1,4 @@
+interface:
+  display_name: "SceneFlow Icons"
+  short_description: "Consistent small icons for Rhino and Web Studio"
+  default_prompt: "Use $sceneflow-icons to design and validate small icons for SceneFlow across Rhino and Web Studio."

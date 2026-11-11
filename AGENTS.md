@@ -63,6 +63,11 @@ work already authorized by the user.
   immutable versions, user descriptions, asset names, and Latin plant names.
   UI language changes must not rewrite user data.
 
+For icon selection, vector drawing or icon export work, use the project-local
+[SceneFlow Icons skill](.agents/skills/sceneflow-icons/SKILL.md). It covers shared
+Rhino/Web semantics and small-size/theme verification; ordinary layout or label
+edits do not require an icon redesign.
+
 ## Required technical contracts
 
 Before modifying an affected subsystem, read its section of

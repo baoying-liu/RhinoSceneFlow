@@ -29,3 +29,75 @@ PSD 工作台改为单列 Named View 卡片，适应侧栏；保留每视图预�
 旧 `material_quick_open/status` 和 `material_open_panel/panel_status` 改为工作区别名；返回结构是新的工作区 / 工具状态，旧的反射窗口测试不再适用。几何、材质与 PSD 数据 API 保持兼容。
 
 本机 Codex 负责语义检索和标签，未引入 ComfyUI、额外 API key 或外部分类服务。关闭面板 / Rhino 只取消自己的任务和子进程，不结束 Rhino。Rhino 8 现代浮动面板默认尺寸适配集中在 WorkspacePanels.cs，使用与 RhinoBIM V2 类似的版本检测反射边界；不涉及原厂 Platform 的内部实现。
+
+
+## 当前设置工具页（0.22.10）
+
+第九个工具为“设置 · SceneFlow”，具有独立齿轮图标和RhinoSceneFlowSettings命令；导航列表、原生侧栏标签、工具栏及旧设置齿轮都通往同一页，不再弹出模态对话框。既有八页GUID保持不变。页面按界面、素材生成、植物显示分区，可折叠；底部保存、还原未保存修改和内联反馈保持可见。每区提供恢复默认按钮，恢复只修改草稿，保存时统一验证植物角度约束。设置是本机全局数据，切换文档时不重建设置页或丢弃草稿。主题和语言默认跟随Rhino，Web工作台语言仍独立。语言主题设置应用于所有现有侧栏；不重写素材名称/学名。
+
+
+0.22.11：设置页外层滚动区只允许纵向滚动，说明按侧栏宽度换行；保存／放弃草稿固定在滚动区外。不能用ExpandContentWidth单独保证WPF长内容适配，也不能关闭文本框内部的横向编辑滚动。
+
+
+### Sidebar sizing (0.22.13)
+
+The shared header contains the tool picker, Settings and the layout menu. The
+redundant group-all icon has moved to the menu's named action; its meaning is to
+collect the registered tools in one Rhino sidebar container, not to group model
+objects. The obsolete disabled theme item is removed; theme belongs to Settings.
+
+The host minimum is 240 logical pixels rather than 320: a narrower dock must not
+arrange an oversized child outside its viewport. Tool pickers have a bounded
+preferred width, vertical page scrollers disable only their own horizontal
+scroll viewer, and handler-owned button/check captions wrap. GridViews keep
+native horizontal scrolling for their columns. Page-size presets and opacity
+occupy separate rows; preview images fit the actual frame without recapturing on
+resize. Settings uses the same shared vertical-scroll helper as other pages.
+
+
+### Native presentation preferences (0.22.15)
+
+Settings → Interface keeps two independent choices: Text (Full / Abbreviated /
+None), Icons (Show / None). Text=None requires icons. The UI repairs this pair
+immediately; `plugin_settings` rejects invalid pairs before persisting. Necessary
+text in icon mode can use short or full labels. Existing preferences migrate to
+Full + Show icons. Save/Discard and Reset interface defaults remain available.
+
+This setting affects native Rhino tool controls, not AI chat messages, user asset
+names, scientific names, editable values or the independent Web Studio. Unknown
+specialised actions keep readable essential labels rather than an ambiguous
+fallback icon. Short labels are semantic phrases, never arbitrary truncation.
+Full tooltips and native accessible button names remain available. Mode changes
+update existing controls in place, without recreating panels or losing drafts.
+Icon buttons use compact left-aligned frames; shared paired actions adapt their
+column scaling. Dropdown values and checkbox captions remain essential text.
+
+Icon masters are pinned Lucide SVGs with original licence in
+`src/RhinoSceneFlow.Plugin/Resources/InterfaceIcons`; development export:
+`node scripts/Generate-InterfaceIcons.cjs`. Embedded PNGs work offline; no SVG
+runtime dependency is added. The rasterizer uses the existing development Edge /
+Playwright harness at `artifacts/browser-harness/node_modules/playwright-core`.
+
+
+### Interface applies immediately (0.22.16)
+
+Language, theme, text mode, icon visibility and essential-text style apply and
+save as soon as selected. Discard affects the remaining generation/plant-display
+draft; it does not undo an applied Interface choice. Reset interface defaults
+restores auto language, Rhino theme, full text, icons and short essential text.
+Other settings retain explicit Save and validation. Source strings live in
+Resources/NativeText.json with full and short zh/en variants; user names and
+numeric/text inputs are not rewritten. Built-in display mode names use plugin
+language. Native tool captions are localized when Rhino registers the panels.
+
+Action images request 16 DIP, with 32px resources and no container upscaling;
+button hit areas remain usable. This does not shrink material/plant thumbnails.
+ChatKit UI locale, greeting, prompts and placeholder follow the native preference;
+existing chat content is retained. AI replies and user data are not translated
+by an interface setting. Standalone Web Studio retains its own language setting.
+
+
+ChatKit integration references: [supported locales](https://openai.github.io/chatkit-js/api/openai/chatkit/type-aliases/supportedlocale/)
+and [complete setOptions contract](https://openai.github.io/chatkit-js/api/openai/chatkit/interfaces/openaichatkit/).
+Checks use en and zh-CN, preserve API/attachment/theme configuration, and never
+send a prompt merely to verify localization.

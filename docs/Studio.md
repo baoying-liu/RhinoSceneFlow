@@ -164,3 +164,37 @@ PhotoCraft **0.21.0** Web/Wasm 随插件部署，本机按需启动，无需安�
 这是预览开关，与 **启用／停用 AI 参考** 分开：隐藏不会停止它参与生成，也不会改动原图、导出像素、参数或历史备份。显示状态自动保存，再次打开页面或再次编辑并应用时仍保留。不需要解锁内容即可切换。过期引用、只读备份和空白待生成结果不会套上当前编辑层。
 
 本轮流程调整见 [AI 后期任务流程 0.22.1](Task-Workflow-0221.md)。
+
+
+### PSD participation and independent channels (0.22.14)
+
+In a source PSD or a draft using that PSD as its direct input, the right-hand
+Generate pane exposes **PSD / AI participation**, outside Advanced settings.
+Each row has a participation checkbox and a usage selector. Defaults follow
+`effectiveVisible` from the imported PSD (including ancestor visibility).
+Switching a group gates its descendants; enabling a child enables its ancestors.
+All / None / Restore defaults, auto-save, board Undo/Redo and child/sibling
+parameter inheritance use the existing board configuration model. Completed
+content locks still apply. Text-input Undo remains local; checkbox/range focus
+no longer blocks board Ctrl+Z / Ctrl+R.
+
+A visible, disabled layer protects its visible composite pixels. It is not
+removed from the clean source. Explicit enabled Exclude retains the existing
+recomposite semantics. Hidden layers remain hidden in that clean source and mask;
+enabling one supplies an independent reference instead of changing PSD eyes.
+The original PSD is never written.
+
+Known channel names suggest purposes: Arctic/form, depth, material-region colours
+and shadow/lighting. Explicit Editable overrides remain authoritative. Worker
+extraction validates the PSD hierarchy and supported pixel/blend/group features,
+reads one private PSD snapshot, and groups selected guides into a bounded sheet.
+Its full-document cells have the same camera/proportions and a numbered manifest.
+Normal visible Editable layers continue through the clean image/edit mask;
+Structure/Reference and enabled hidden layers can supply separate guide pixels.
+
+Whole-image execution appends the channel sheet to its actual image attachments,
+after the optional spatial reference sheet. Preflight exposes the same channel
+sheet and manifest under **PSD guides**. This adds image context, not an extra
+image-generation request and not ControlNet/hard geometry enforcement. Explicit
+pixel protection remains enforced during backfill. A PNG/result parent does not
+reacquire its coarse ancestor PSD; HD continues from the approved anchor.

@@ -7,6 +7,8 @@ try {
     if ($LASTEXITCODE -ne 0) { throw 'Build failed.' }
     dotnet run --project tests/RhinoSceneFlow.Validation -c $Configuration --no-build -- artifacts/validation
     if ($LASTEXITCODE -ne 0) { throw 'Validation failed.' }
+    dotnet run --project tests/RhinoSceneFlow.UiText.Validation -c $Configuration
+    if ($LASTEXITCODE -ne 0) { throw 'UI text validation failed.' }
     $packagePath = Join-Path $projectRoot 'artifacts/package/RhinoSceneFlow'
     New-Item -ItemType Directory -Path $packagePath -Force | Out-Null
     $outputPath = Join-Path $projectRoot "src/RhinoSceneFlow.Plugin/bin/$Configuration/net8.0-windows"
@@ -22,6 +24,7 @@ try {
         Copy-Item -LiteralPath (Join-Path $outputPath $name) -Destination $packagePath -Recurse -Force
     }
     Copy-Item -LiteralPath (Join-Path $projectRoot 'third-party/FastNoiseLite/LICENSE') -Destination (Join-Path $packagePath 'FastNoiseLite-LICENSE.txt') -Force
+    Copy-Item -LiteralPath (Join-Path $projectRoot 'src/RhinoSceneFlow.Plugin/Resources/InterfaceIcons/LICENSE.txt') -Destination (Join-Path $packagePath 'Lucide-LICENSE.txt') -Force
     foreach ($arch in @('win-x86','win-arm64')) {
         $staleLoader = Join-Path $packagePath "runtimes/$arch/native/WebView2Loader.dll"
         if (Test-Path -LiteralPath $staleLoader) { Remove-Item -LiteralPath $staleLoader -Force }

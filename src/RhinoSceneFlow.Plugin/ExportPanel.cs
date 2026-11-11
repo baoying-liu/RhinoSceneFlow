@@ -1,4 +1,4 @@
-﻿using Eto.Drawing;
+using Eto.Drawing;
 using Eto.Forms;
 using Rhino;
 using Rhino.UI;
@@ -20,6 +20,7 @@ public static class ExportPanelController
 public sealed class ExportPanel : Panel
 {
     private static ExportLayerSetting[]? copiedLayers;
+    private static (bool Include,bool Separate) copiedPlantShadowOptions;
     private static (int Width,int Height)? copiedSize;
     private readonly uint document;
     private readonly List<ViewExportRow> rows=[];
@@ -27,10 +28,10 @@ public sealed class ExportPanel : Panel
     private readonly Queue<Guid> queue=[];
     private readonly Panel body=new(),cardHost=new();
     private readonly Scrollable overview;
-    private readonly TextBox folder=new();
-    private readonly Label status=new(){Text="就绪"};
+    private readonly UiTextBox folder=new();
+    private readonly UiLabel status=new(){Text="就绪"};
     private readonly TextArea log=new(){ReadOnly=true,Height=60};
-    private readonly Button export=new(){Text="导出勾选视图 · PSD",MinimumSize=new(0,28)},cancel=new(){Text="取消导出",Enabled=false,Visible=false};
+    private readonly UiButton export=new(){Text="导出勾选视图 · PSD",MinimumSize=new(0,28)},cancel=new(){Text="取消导出",Enabled=false,Visible=false};
     private readonly ProgressBar progress=new(){MinValue=0,MaxValue=1,Visible=false};
     private readonly DynamicLayout tools=new(){Spacing=new(6,6)};
     private readonly UITimer previews=new(){Interval=.04},save=new(){Interval=.4},detailTimer=new(){Interval=.2};
@@ -46,10 +47,10 @@ public sealed class ExportPanel : Panel
     public ExportPanel(RhinoDoc doc)
     {
         document=doc.RuntimeSerialNumber;Padding=new(2);
-        overview=new Scrollable{Content=cardHost,ExpandContentWidth=true};body.Content=overview;folder.Text=SceneFlowPlugin.Instance.ExportDirectory;
+        overview=ToolUi.VerticalScroll(cardHost);body.Content=overview;folder.Text=SceneFlowPlugin.Instance.ExportDirectory;
         tools.AddRow(ToolUi.Pair(Ui.Button("展开全部画面设置",()=>SetExpansion(true,"view")),Ui.Button("折叠全部画面设置",()=>SetExpansion(false,"view"))));
         tools.AddRow(ToolUi.Row(Ui.Button("全选",()=>Include(true)),Ui.Button("全不选",()=>Include(false)),null));
-        var newView=new Panel{Visible=false};var newName=new TextBox{PlaceholderText="留空自动命名"};
+        var newView=new Panel{Visible=false};var newName=new UiTextBox{PlaceholderText="留空自动命名"};
         void Create(){Guard(()=>{WorkbenchService.CreateNamedView(Document,string.IsNullOrWhiteSpace(newName.Text)?null:newName.Text);newView.Visible=false;newName.Text="";});}
         newName.KeyDown+=(_,e)=>{if(e.KeyData==Keys.Enter){e.Handled=true;Create();}else if(e.KeyData==Keys.Escape){e.Handled=true;newView.Visible=false;}};
         var create=Ui.Layout();create.AddRow(ToolUi.Note("将当前 Rhino 视口保存为已命名视图"));create.AddRow(newName);create.AddRow(ToolUi.Pair(Ui.Button("创建视图",Create),Ui.Button("取消",()=>newView.Visible=false)));newView.Content=create;
@@ -59,7 +60,7 @@ public sealed class ExportPanel : Panel
         var output=Ui.Layout();output.AddRow(folder);output.AddRow(browse);
         var actions=Ui.Layout();actions.AddRow(status);actions.AddRow(cancel);actions.AddRow(export);
         var root=Ui.Layout();root.AddRow(new TableLayout{Spacing=new(6,0),Rows={new TableRow(new TableCell(ToolUi.Heading("PSD · 视图导出"),true),add,refresh)}});
-        root.AddRow(newView);root.AddRow(tools);root.Add(body,true,true);root.AddRow(ToolUi.Section("输出文件夹",output));root.AddRow(progress);root.AddRow(actions);root.AddRow(new Expander{Header="导出日志",Content=log});Content=root;
+        root.AddRow(newView);root.AddRow(tools);root.Add(body,true,true);root.AddRow(ToolUi.Section("输出文件夹",output));root.AddRow(progress);root.AddRow(actions);root.AddRow(new UiExpander{Header="导出日志",Content=log});Content=root;
         export.Click+=async(_,_)=>await StartExport();cancel.Click+=(_,_)=>{cancellation?.Cancel();status.Text="正在取消…";};
         previews.Elapsed+=(_,_)=>{if(closed)return;if(busy||queue.Count==0){previews.Stop();return;}var id=queue.Dequeue();if(cards.TryGetValue(id,out var card))Guard(card.RefreshPreview);};
         save.Elapsed+=(_,_)=>{if(closed)return;save.Stop();Guard(()=>WorkbenchStore.Save(Document,rows));};
@@ -124,12 +125,12 @@ public sealed class ExportPanel : Panel
     public void RefreshCard(Guid id){if(!busy)cards[id].RefreshPreview();}
     public void CapturePreview(Guid id,string path)
     {if(!Path.IsPathFullyQualified(path)||!path.EndsWith(".png",StringComparison.OrdinalIgnoreCase))throw new ArgumentException("请输入绝对 PNG 路径。");Directory.CreateDirectory(Path.GetDirectoryName(path)!);using var b=WorkbenchService.Preview(Document,rows.First(r=>r.Id==id),700);b.Save(path,System.Drawing.Imaging.ImageFormat.Png);}
-    public void CopyLayers(Guid id){copiedLayers=rows.First(r=>r.Id==id).Layers.Select(l=>l.Copy()).ToArray();status.Text="已复制图层配置";}
+    public void CopyLayers(Guid id){var row=rows.First(r=>r.Id==id);copiedLayers=row.Layers.Select(l=>l.Copy()).ToArray();copiedPlantShadowOptions=(row.PlantShadows,row.SeparatePlantShadows);status.Text="已复制图层配置";}
     public void PasteLayers(Guid id)
     {
         if(copiedLayers is null)throw new ArgumentException("请先复制图层配置。");
         var layers=copiedLayers.Select(l=>l.Copy()).ToList();if(layers.Count>32)throw new ArgumentException("最多 32 个图层条目。");
-        var r=rows.First(r=>r.Id==id);r.Layers=layers;cards[id].RebuildLayers();Changed(r,false);
+        var r=rows.First(r=>r.Id==id);r.Layers=layers;r.PlantShadows=copiedPlantShadowOptions.Include;r.SeparatePlantShadows=copiedPlantShadowOptions.Separate;cards[id].RebuildLayers();Changed(r,false);
     }
     public void CopySize(Guid id){var r=rows.First(r=>r.Id==id);copiedSize=(r.Width,r.Height);status.Text="已复制输出尺寸";}
     public void PasteSize(Guid id)
@@ -190,9 +191,16 @@ internal static class Ui
 {
     internal static readonly (string Key,string Name)[] Blends=[("norm","正常"),("mul ","正片叠底"),("scrn","滤色"),("over","叠加"),("dark","变暗"),("lite","变亮")];
     internal static DynamicLayout Layout()=>new(){Spacing=new(8,8)};
-    internal static Button Button(string text,Action click,int width=-1){var b=new Button{Text=text,MinimumSize=new(0,26)};if(width>0)b.Width=width;b.Click+=(_,_)=>click();return b;}
+    internal static UiButton Button(string text,Action click,int width=-1){var b=new UiButton{Text=text,MinimumSize=new(0,26)};if(width>0)b.Width=width;b.Click+=(_,_)=>click();return b;}
     internal static NumericStepper Number(double min,double max,int decimals=0,int width=82)=>new(){MinValue=min,MaxValue=max,DecimalPlaces=decimals,Width=width};
-    internal static DropDown Modes(Guid selected){var d=new DropDown{Width=220};foreach(var m in WorkbenchService.Modes())d.Items.Add(new ListItem{Key=m.Id.ToString(),Text=m.LocalName});d.SelectedKey=selected.ToString();return d;}
+    internal static DropDown Modes(Guid selected){var d=new DropDown{Width=100,Tag="display-modes"};foreach(var m in WorkbenchService.Modes())d.Items.Add(new UiListItem{Key=m.Id.ToString(),IsUserContent=false,Text=m.EnglishName});d.SelectedKey=selected.ToString();return d;}
+    internal static void FitPicture(ImageView image,PixelLayout frame)
+    {
+        if(image.IsDisposed||image.Image is not {} bitmap)return;
+        double scale=Math.Min((double)Math.Max(1,frame.Width)/bitmap.Width,(double)Math.Max(1,frame.Height)/bitmap.Height);
+        var size=new Size(Math.Max(1,(int)Math.Round(bitmap.Width*scale)),Math.Max(1,(int)Math.Round(bitmap.Height*scale)));
+        image.Size=size;frame.Move(image,(frame.Width-size.Width)/2,(frame.Height-size.Height)/2);
+    }
     internal static Bitmap Bitmap(System.Drawing.Bitmap b){using var s=new MemoryStream();b.Save(s,System.Drawing.Imaging.ImageFormat.Png);s.Position=0;return new Bitmap(s);}
     internal static void Picture(ImageView image,PixelLayout frame,System.Drawing.Bitmap b,int w,int h)
     {double scale=Math.Min((double)w/b.Width,(double)h/b.Height);var old=image.Image;image.Image=Bitmap(b);old?.Dispose();var size=new Size(Math.Max(1,(int)Math.Round(b.Width*scale)),Math.Max(1,(int)Math.Round(b.Height*scale)));image.Size=size;frame.Move(image,(w-size.Width)/2,(h-size.Height)/2);}
@@ -202,34 +210,34 @@ internal sealed class ViewCard : IDisposable
 {
     private readonly ExportPanel owner;
     internal ViewExportRow Row{get;}
-    internal GroupBox Root{get;}
+    internal UiGroupBox Root{get;}
     private readonly ImageView image=new();
-    private readonly PixelLayout frame=new(){Size=new(260,150),BackgroundColor=Color.FromArgb(30,34,39)};
-    private readonly CheckBox included=new(){Text="导出此视图"};
-    private readonly Label status=new(){Wrap=WrapMode.Word},nameLabel=ToolUi.Heading(""),nameError=new(){Wrap=WrapMode.Word,Visible=false};
-    private readonly TextBox nameEdit=new();private readonly Panel nameHost=new();
+    private readonly PixelLayout frame=new(){Size=new(160,150),BackgroundColor=Color.FromArgb(30,34,39)};
+    private readonly UiCheckBox included=new(){Text="导出此视图"};
+    private readonly UiLabel status=new(){Wrap=WrapMode.Word},nameLabel=ToolUi.Heading(""),nameError=new(){Wrap=WrapMode.Word,Visible=false};
+    private readonly UiTextBox nameEdit=new();private readonly Panel nameHost=new();
     private readonly NumericStepper width=Ui.Number(64,8192),height=Ui.Number(64,8192);
     private readonly DropDown modes,presets=new(){Width=82};
     private readonly Panel layerHost=new();
-    private readonly Expander sizeSection,layersSection,seasonSection;
-    private readonly List<Expander> layerSections=[];
+    private readonly UiExpander sizeSection,layersSection,seasonSection;
+    private readonly List<UiExpander> layerSections=[];
     private bool binding,closed,rebuilding;
     private bool EventsActive=>!closed&&!rebuilding&&!owner.ClosedForUpdates;
     internal bool EditingName{get;private set;}
     internal bool Loaded{get;private set;}
     internal ViewCard(ExportPanel owner,ViewExportRow row)
     {
-        this.owner=owner;Row=row;modes=Ui.Modes(row.Mode);modes.Width=160;frame.Add(image,0,0);
+        this.owner=owner;Row=row;modes=Ui.Modes(row.Mode);modes.Width=100;frame.Add(image,0,0);frame.SizeChanged+=(_,_)=>Ui.FitPicture(image,frame);
         image.MouseDoubleClick+=(_,e)=>{e.Handled=true;owner.Guard(()=>WorkbenchService.Activate(owner.Document,row));};frame.MouseDoubleClick+=(_,e)=>{e.Handled=true;owner.Guard(()=>WorkbenchService.Activate(owner.Document,row));};
         nameLabel.Text=row.Name;nameLabel.Tag="user-content";nameLabel.ToolTip="双击修改名称，同步 Rhino 已命名视图";nameHost.Content=nameLabel;
         nameLabel.MouseDoubleClick+=(_,_)=>BeginRename();nameEdit.LostFocus+=(_,_)=>CommitRename();nameEdit.KeyDown+=(_,e)=>{if(e.KeyData==Keys.Enter){e.Handled=true;CommitRename();}else if(e.KeyData==Keys.Escape){e.Handled=true;CancelRename();}};
-        foreach(var p in new[]{("0","自定义"),("1024","1K"),("2048","2K"),("4096","4K"),("8192","8K")})presets.Items.Add(new ListItem{Key=p.Item1,Text=p.Item2});
+        foreach(var p in new[]{("0","自定义"),("1024","1K"),("2048","2K"),("4096","4K"),("8192","8K")})presets.Items.Add(new UiListItem{Key=p.Item1,Text=p.Item2});
         included.CheckedChanged+=(_,_)=>{if(!binding&&!closed){row.Included=included.Checked==true;owner.Changed(row,false);}};
         width.ValueChanged+=(_,_)=>SizeChanged();height.ValueChanged+=(_,_)=>SizeChanged();
         presets.SelectedValueChanged+=(_,_)=>{if(binding||closed||!int.TryParse(presets.SelectedKey,out int n)||n==0)return;row.SetPreset(n);Sync();owner.Changed(row);};
         modes.SelectedValueChanged+=(_,_)=>{if(!binding&&!closed&&Guid.TryParse(modes.SelectedKey,out var id)){row.Mode=id;owner.Changed(row);}};
-        var size=Ui.Layout();size.AddRow(ToolUi.Row(width,new Label{Text="×"},height,presets));
-        size.AddRow(ToolUi.Row(new Label{Text="预览"},modes,null,Ui.Button("↻",()=>owner.Guard(RefreshPreview),28)));
+        var size=Ui.Layout();size.AddRow(ToolUi.Row(width,new UiLabel{Text="×"},height,null));size.AddRow(presets);
+        size.AddRow(ToolUi.Row(new UiLabel{Text="预览"},modes,null,Ui.Button("↻",()=>owner.Guard(RefreshPreview),28)));
         sizeSection=new(){Header=SectionHeader("页面大小",()=>owner.CopySize(row.Id),()=>owner.PasteSize(row.Id)),Content=size,Expanded=row.SizeExpanded};
         sizeSection.ExpandedChanged+=(_,_)=>{if(closed)return;row.SizeExpanded=sizeSection.Expanded;owner.PresentationChanged();};
         var layers=Ui.Layout();layers.AddRow(ToolUi.Pair(Ui.Button("展开所有图层",()=>SetLayersExpanded(true)),Ui.Button("折叠所有图层",()=>SetLayersExpanded(false))));
@@ -237,15 +245,15 @@ internal sealed class ViewCard : IDisposable
         layers.AddRow(Ui.Button("＋ 添加图层",()=>{row.Layers.Add(new());RebuildLayers();owner.Changed(row,false);}));
         layersSection=new(){Header=SectionHeader("PSD 图层",()=>owner.CopyLayers(row.Id),()=>owner.PasteLayers(row.Id)),Content=layers,Expanded=row.LayerSettingsExpanded};
         layersSection.ExpandedChanged+=(_,_)=>{if(closed)return;row.LayerSettingsExpanded=layersSection.Expanded;owner.PresentationChanged();};
-        var seasons=new DropDown();foreach(string s in Seasons.All)seasons.Items.Add(new ListItem{Key=s,Text=Seasons.Name(s)+"季"});seasons.SelectedKey=row.PreviewSeason;
-        var follow=new CheckBox{Text="跟随预览导出",Checked=row.FollowPreviewSeason};var checks=Seasons.All.Select(s=>new CheckBox{Text=Seasons.Name(s),Tag=s,Checked=row.ExportSeasons.Contains(s),Enabled=!row.FollowPreviewSeason}).ToArray();
+        var seasons=new DropDown{Width=100};foreach(string s in Seasons.All)seasons.Items.Add(new UiListItem{Key=s,Text=Seasons.Name(s)+"季"});seasons.SelectedKey=row.PreviewSeason;
+        var follow=new UiCheckBox{Text="跟随预览导出",Checked=row.FollowPreviewSeason};var checks=Seasons.All.Select(s=>new UiCheckBox{Text=Seasons.Name(s),Tag=s,Checked=row.ExportSeasons.Contains(s),Enabled=!row.FollowPreviewSeason}).ToArray();
         seasons.SelectedValueChanged+=(_,_)=>{if(!EventsActive)return;row.PreviewSeason=seasons.SelectedKey!;owner.Changed(row);};
         follow.CheckedChanged+=(_,_)=>{if(!EventsActive)return;row.FollowPreviewSeason=follow.Checked==true;foreach(var c in checks)c.Enabled=!row.FollowPreviewSeason;owner.Changed(row,false);};
         foreach(var c in checks)c.CheckedChanged+=(_,_)=>{if(!EventsActive)return;row.ExportSeasons=checks.Where(x=>x.Checked==true).Select(x=>(string)x.Tag).ToArray();owner.Changed(row,false);};
         var seasonal=Ui.Layout();seasonal.AddRow(ToolUi.Row(ToolUi.Note("预览季节"),seasons,null));seasonal.AddRow(follow);seasonal.AddRow(ToolUi.Row(checks.Cast<Control>().ToArray()));seasonal.AddRow(ToolUi.Note("默认夏季；相同素材版本合并输出，文件名包含季节。缺失版本使用夏季。"));
         seasonSection=new(){Header="季节",Content=seasonal,Expanded=row.SeasonExpanded};seasonSection.ExpandedChanged+=(_,_)=>{if(!EventsActive)return;row.SeasonExpanded=seasonSection.Expanded;owner.PresentationChanged();};
         var content=Ui.Layout();content.Padding=new(8);content.AddRow(nameHost);content.AddRow(nameError);content.AddRow(ToolUi.Pair(included,Ui.Button("细节调整",()=>owner.OpenDetails(row.Id))));content.AddRow(frame);content.AddRow(sizeSection);content.AddRow(seasonSection);content.AddRow(layersSection);content.AddRow(status);
-        Root=new GroupBox{Content=content};Sync();RebuildLayers();
+        Root=new UiGroupBox{Content=content};Sync();RebuildLayers();
     }
     private Control SectionHeader(string title,Action copy,Action paste)
     {
@@ -278,45 +286,57 @@ internal sealed class ViewCard : IDisposable
         if(owner.ClosedForUpdates||closed)return;rebuilding=true;try{layerSections.Clear();var layout=Ui.Layout();layout.Spacing=new(4,6);
         for(int index=0;index<Row.Layers.Count;index++)
         {
-            int i=index;var l=Row.Layers[i];var enabled=new CheckBox{Checked=l.Enabled,ToolTip="是否导出此图层"};
+            int i=index;var l=Row.Layers[i];var enabled=new UiCheckBox{Checked=l.Enabled,ToolTip="是否导出此图层"};
             var eye=Ui.Button("",()=>{},28);eye.Image=l.Visible?shownEye:hiddenEye;eye.ToolTip=l.Visible?"PSD 中可见；点击隐藏":"PSD 中隐藏；点击显示";
             eye.Click+=(_,_)=>{if(!EventsActive||eye.IsDisposed)return;l.Visible=!l.Visible;eye.Image=l.Visible?shownEye:hiddenEye;eye.ToolTip=l.Visible?"PSD 中可见；点击隐藏":"PSD 中隐藏；点击显示";owner.Changed(Row,false);};
             var up=Ui.Button("↑",()=>Move(i,-1),24);up.Enabled=i>0;up.ToolTip="上移图层";
             var down=Ui.Button("↓",()=>Move(i,1),24);down.Enabled=i+1<Row.Layers.Count;down.ToolTip="下移图层";
             var remove=Ui.Button("×",()=>{Row.Layers.RemoveAt(i);RebuildLayers();owner.Changed(Row,false);},24);remove.ToolTip="移除此图层配置";
-            var title=ToolUi.Note(Title(l));var head=new TableLayout{Spacing=new(3,0),Rows={new TableRow(eye,enabled,new TableCell(title,true),up,down,remove)}};
-            var type=new DropDown();type.Items.Add(new ListItem{Key="",Text="请选择通道 / 显示模式…"});
-            foreach(var (key,text) in new[]{("plants","通道 · 植物"),("shadow","通道 · 阴影"),("texture","通道 · 材质贴图"),("color","通道 · 材质颜色"),("depth","通道 · 深度图"),("material","旧版 · 图层颜色")})type.Items.Add(new ListItem{Key=key,Text=text});
-            foreach(var m in WorkbenchService.Modes())type.Items.Add(new ListItem{Key="display:"+m.Id,Text="模式 · "+m.LocalName});type.SelectedKey=l.Kind=="display"?"display:"+l.Mode:l.Kind;
+            var title=ToolUi.Note(Title(l));// Separate channel identity from actions: text-only labels must also
+            // fit narrow docks, and icon mode must not consume the title space.
+            var identity=new TableLayout{Spacing=new(3,0),Rows={new TableRow(eye,enabled,new TableCell(title,true))}};
+            var actions=ToolUi.Row(up,down,remove,null);
+            var head=new TableLayout{Spacing=new(0,3),Rows={new TableRow(identity),new TableRow(actions)}};
+            var type=new DropDown{Width=100};type.Items.Add(new UiListItem{Key="",Text="请选择通道 / 显示模式…"});
+            foreach(var (key,text) in new[]{("plants","通道 · 植物"),("shadow","通道 · 阴影"),("texture","通道 · 材质贴图"),("color","通道 · 材质颜色"),("depth","通道 · 深度图"),("material","旧版 · 图层颜色")})type.Items.Add(new UiListItem{Key=key,Text=text});
+            foreach(var m in WorkbenchService.Modes())type.Items.Add(new UiListItem{Key="display:"+m.Id,Text="模式 · "+m.EnglishName});type.SelectedKey=l.Kind=="display"?"display:"+l.Mode:l.Kind;
             var detail=Ui.Layout();detail.AddRow(type);
-            var blend=new DropDown{Width=96};foreach(var b in Ui.Blends)blend.Items.Add(new ListItem{Key=b.Key,Text=b.Name});blend.SelectedKey=l.Blend;
-            var opacity=Ui.Number(0,100,0,55);opacity.Value=l.Opacity;detail.AddRow(ToolUi.Row(new Label{Text="混合"},blend,opacity,new Label{Text="%"},null));
+            var blend=new DropDown{Width=96};foreach(var b in Ui.Blends)blend.Items.Add(new UiListItem{Key=b.Key,Text=b.Name});blend.SelectedKey=l.Blend;
+            var opacity=Ui.Number(0,100,0,55);opacity.Value=l.Opacity;detail.AddRow(ToolUi.Row(new UiLabel{Text="混合"},blend,null));detail.AddRow(ToolUi.Row(new UiLabel{Text="不透明度 %"},opacity,null));
             type.SelectedValueChanged+=(_,_)=>{if(!EventsActive||type.IsDisposed)return;var key=type.SelectedKey??"";l.Kind=key.StartsWith("display:",StringComparison.Ordinal)?"display":key;l.Mode=l.Kind=="display"?Guid.Parse(key[8..]):Guid.Empty;owner.Changed(Row,false);RebuildLayers();};
             enabled.CheckedChanged+=(_,_)=>{if(!EventsActive||enabled.IsDisposed)return;l.Enabled=enabled.Checked==true;owner.Changed(Row,false);};blend.SelectedValueChanged+=(_,_)=>{if(!EventsActive||blend.IsDisposed)return;l.Blend=blend.SelectedKey??"norm";owner.Changed(Row,false);};opacity.ValueChanged+=(_,_)=>{if(!EventsActive||opacity.IsDisposed)return;l.Opacity=(int)opacity.Value;owner.Changed(Row,false);};
             if(l.Kind=="color")
             {
-                var source=new DropDown();source.Items.Add(new ListItem{Key="material",Text="材质等效单色（贴图平均色）"});source.Items.Add(new ListItem{Key="layer",Text="Rhino 图层颜色"});source.SelectedKey=l.ColorSource;
-                detail.AddRow(new Label{Text="颜色来源"});detail.AddRow(source);source.SelectedValueChanged+=(_,_)=>{if(!EventsActive||source.IsDisposed)return;l.ColorSource=source.SelectedKey??"material";owner.Changed(Row,false);};
+                var source=new DropDown{Width=100};source.Items.Add(new UiListItem{Key="material",Text="材质等效单色（贴图平均色）"});source.Items.Add(new UiListItem{Key="layer",Text="Rhino 图层颜色"});source.SelectedKey=l.ColorSource;
+                detail.AddRow(new UiLabel{Text="颜色来源"});detail.AddRow(source);source.SelectedValueChanged+=(_,_)=>{if(!EventsActive||source.IsDisposed)return;l.ColorSource=source.SelectedKey??"material";owner.Changed(Row,false);};
             }
             if(l.Kind is "texture" or "color")
             {
-                var grouping=new DropDown();foreach(var (key,text) in new[]{("material","按材质合并（默认；图层色按颜色）"),("object","按物件分开 · 同一组"),("all","全部合并 · 一张图层")})grouping.Items.Add(new ListItem{Key=key,Text=text});grouping.SelectedKey=l.TextureGrouping;
-                detail.AddRow(new Label{Text="分层方式"});detail.AddRow(grouping);grouping.SelectedValueChanged+=(_,_)=>{if(!EventsActive||grouping.IsDisposed)return;l.TextureGrouping=grouping.SelectedKey??"material";owner.Changed(Row,false);};
+                var grouping=new DropDown{Width=100};foreach(var (key,text) in new[]{("material","按材质合并（默认；图层色按颜色）"),("object","按物件分开 · 同一组"),("all","全部合并 · 一张图层")})grouping.Items.Add(new UiListItem{Key=key,Text=text});grouping.SelectedKey=l.TextureGrouping;
+                detail.AddRow(new UiLabel{Text="分层方式"});detail.AddRow(grouping);grouping.SelectedValueChanged+=(_,_)=>{if(!EventsActive||grouping.IsDisposed)return;l.TextureGrouping=grouping.SelectedKey??"material";owner.Changed(Row,false);};
             }
             if(l.Kind=="plants")
             {
-                var grouping=new DropDown();foreach(var (key,text) in new[]{("individual","单株 · 学名子文件夹"),("species","按学名合并（默认）"),("all","全部植物合并为一层")})grouping.Items.Add(new ListItem{Key=key,Text=text});grouping.SelectedKey=l.PlantGrouping;
+                var grouping=new DropDown{Width=100};foreach(var (key,text) in new[]{("individual","单株 · 学名子文件夹"),("species","按学名合并（默认）"),("all","全部植物合并为一层")})grouping.Items.Add(new UiListItem{Key=key,Text=text});grouping.SelectedKey=l.PlantGrouping;
                 detail.AddRow(grouping);grouping.SelectedValueChanged+=(_,_)=>{if(!EventsActive||grouping.IsDisposed)return;l.PlantGrouping=grouping.SelectedKey??"species";owner.Changed(Row,false);};
             }
-            if(l.Kind=="shadow"){var plantShadows=new CheckBox{Text="包含植物透空投影",Checked=Row.PlantShadows};plantShadows.CheckedChanged+=(_,_)=>{if(!EventsActive||plantShadows.IsDisposed)return;Row.PlantShadows=plantShadows.Checked==true;owner.Changed(Row,false);};detail.AddRow(plantShadows);}
+            if(l.Kind=="shadow")
+            {
+                var plantShadows=new UiCheckBox{Text="包含植物透空投影",Checked=Row.PlantShadows};
+                var separate=new UiCheckBox{Text="分离植物阴影",Checked=Row.SeparatePlantShadows,Enabled=Row.PlantShadows};
+                plantShadows.CheckedChanged+=(_,_)=>{if(!EventsActive||plantShadows.IsDisposed)return;Row.PlantShadows=plantShadows.Checked==true;separate.Enabled=Row.PlantShadows;owner.Changed(Row,false);};
+                separate.CheckedChanged+=(_,_)=>{if(!EventsActive||separate.IsDisposed)return;Row.SeparatePlantShadows=separate.Checked==true;owner.Changed(Row,false);};
+                detail.AddRow(plantShadows);detail.AddRow(new Panel{Padding=new(18,0,0,0),Content=separate});
+                detail.AddRow(ToolUi.Note("分离后放在植物组最底层，沿用阴影通道的混合、透明度和眼睛；未启用植物通道时仍合并导出。"));
+            }
             if(l.Kind=="depth")detail.AddRow(ToolUi.Note("相机方向的线性深度，近白远黑；按可见模型归一化，黑色背景不参与范围。植物按透明轮廓计入。"));
-            var section=new Expander{Header=head,Content=detail,Expanded=l.Expanded};section.ExpandedChanged+=(_,_)=>{if(!EventsActive||section.IsDisposed)return;l.Expanded=section.Expanded;owner.PresentationChanged();};layerSections.Add(section);
-            layout.AddRow(new GroupBox{Content=new Panel{Padding=new(4),Content=section}});
+            var section=new UiExpander{Header=head,Content=detail,Expanded=l.Expanded};section.ExpandedChanged+=(_,_)=>{if(!EventsActive||section.IsDisposed)return;l.Expanded=section.Expanded;owner.PresentationChanged();};layerSections.Add(section);
+            layout.AddRow(new UiGroupBox{Content=new Panel{Padding=new(4),Content=section}});
         }
         var old=layerHost.Content;layerHost.Content=layout;old?.Dispose();}finally{rebuilding=false;}
     }
     private void Move(int i,int d){(Row.Layers[i],Row.Layers[i+d])=(Row.Layers[i+d],Row.Layers[i]);RebuildLayers();owner.Changed(Row,false);}
-    internal void RefreshPreview(){using var b=WorkbenchService.Preview(owner.Document,Row,506);Ui.Picture(image,frame,b,260,150);Loaded=true;}
+    internal void RefreshPreview(){using var b=WorkbenchService.Preview(owner.Document,Row,506);Ui.Picture(image,frame,b,Math.Max(1,frame.Width),Math.Max(1,frame.Height));Loaded=true;}
     public void Dispose(){closed=true;image.Image?.Dispose();Root.Dispose();}
 }
 
@@ -326,28 +346,28 @@ internal sealed class ViewDetails : IDisposable
     internal ViewExportRow Row{get;}
     internal Scrollable Root{get;}
     private readonly ImageView image=new();
-    private readonly PixelLayout frame=new(){Size=new(300,200),BackgroundColor=Color.FromArgb(30,34,39)};
+    private readonly PixelLayout frame=new(){Size=new(160,200),BackgroundColor=Color.FromArgb(30,34,39)};
     private readonly NumericStepper yaw=Ui.Number(-180,180,1),pitch=Ui.Number(-89,89,1),zoom=Ui.Number(.01,100,2),panX=Ui.Number(-1e9,1e9,3),panY=Ui.Number(-1e9,1e9,3),panZ=Ui.Number(-1e9,1e9,3),azimuth=Ui.Number(0,360,1),altitude=Ui.Number(.1,90,1);
-    private readonly CheckBox documentSun=new(){Text="使用文档太阳"};
+    private readonly UiCheckBox documentSun=new(){Text="使用文档太阳"};
     private bool binding;private PointF? drag;
     internal ViewDetails(ExportPanel owner,ViewExportRow row)
     {
-        this.owner=owner;Row=row;frame.Add(image,0,0);
+        this.owner=owner;Row=row;frame.Add(image,0,0);frame.SizeChanged+=(_,_)=>Ui.FitPicture(image,frame);
         image.MouseDown+=(_,e)=>{if(e.Buttons.HasFlag(MouseButtons.Primary))drag=e.Location;};image.MouseUp+=(_,_)=>drag=null;
         image.MouseMove+=(_,e)=>{if(drag is not {} p||!e.Buttons.HasFlag(MouseButtons.Primary))return;row.Camera.Yaw=Math.Clamp(row.Camera.Yaw+(e.Location.X-p.X)*.35,-180,180);row.Camera.Pitch=Math.Clamp(row.Camera.Pitch+(e.Location.Y-p.Y)*.35,-89,89);drag=e.Location;Sync();owner.Changed(row);};
         image.MouseWheel+=(_,e)=>{row.Camera.Zoom=Math.Clamp(row.Camera.Zoom*Math.Pow(1.1,Math.Sign(e.Delta.Height)),.01,100);Sync();owner.Changed(row);};
         foreach(var n in new[]{yaw,pitch,zoom,panX,panY,panZ,azimuth,altitude})n.ValueChanged+=(_,_)=>Apply();documentSun.CheckedChanged+=(_,_)=>Apply();
         var mode=Ui.Modes(row.Mode);mode.SelectedValueChanged+=(_,_)=>{if(Guid.TryParse(mode.SelectedKey,out var id)){row.Mode=id;owner.Changed(row);}};
-        var top=Ui.Layout();top.AddRow(Ui.Button("← 返回全部视图",owner.CloseDetails));top.AddRow(new Label{Text=row.Name,Font=new Font(SystemFont.Bold,13)});top.AddRow(mode);top.AddRow(Ui.Button("刷新预览",()=>owner.Guard(RefreshPreview)));
-        var camera=Ui.Layout();foreach(var item in new[]{("水平旋转 °",yaw),("俯仰 °",pitch),("缩放",zoom),("目标平移 X",panX),("目标平移 Y",panY),("目标平移 Z",panZ)})camera.AddRow(new Label{Text=item.Item1},item.Item2,null);
+        var top=Ui.Layout();top.AddRow(Ui.Button("← 返回全部视图",owner.CloseDetails));top.AddRow(new UiLabel{Text=row.Name,Tag="user-content",Font=new Font(SystemFont.Bold,13)});top.AddRow(mode);top.AddRow(Ui.Button("刷新预览",()=>owner.Guard(RefreshPreview)));
+        var camera=Ui.Layout();foreach(var item in new[]{("水平旋转 °",yaw),("俯仰 °",pitch),("缩放",zoom),("目标平移 X",panX),("目标平移 Y",panY),("目标平移 Z",panZ)})camera.AddRow(new UiLabel{Text=item.Item1},item.Item2,null);
         camera.AddRow(Ui.Button("重置相机",()=>{row.Camera=new();Sync();owner.Changed(row);}));camera.AddRow(Ui.Button("写回 Named View 相机",()=>owner.Guard(()=>{WorkbenchService.WriteBack(owner.Document,row);owner.CloseDetails();owner.RefreshNamedViews();owner.Changed(row);})));
-        var sun=Ui.Layout();sun.AddRow(documentSun);sun.AddRow(new Label{Text="太阳方位 °"},azimuth,null);sun.AddRow(new Label{Text="高度 °"},altitude,null);
+        var sun=Ui.Layout();sun.AddRow(documentSun);sun.AddRow(new UiLabel{Text="太阳方位 °"},azimuth,null);sun.AddRow(new UiLabel{Text="高度 °"},altitude,null);
         var content=Ui.Layout();content.Padding=new(6);content.AddRow(top);content.AddRow(frame);
-        content.AddRow(new Label{Text="拖动旋转，滚轮缩放。相机 / 太阳只用于此视图导出；写回按钮只更新 Named View 相机。",Wrap=WrapMode.Word});content.AddRow(camera);content.AddRow(sun);
-        content.AddRow(new Label{Text="太阳设置同时用于显示模式和独立阴影通道；独立阴影不包含反射 / GI / AO。",Wrap=WrapMode.Word});content.AddRow(null);Root=new Scrollable{Content=content,ExpandContentWidth=true};Sync();
+        content.AddRow(new UiLabel{Text="拖动旋转，滚轮缩放。相机 / 太阳只用于此视图导出；写回按钮只更新 Named View 相机。",Wrap=WrapMode.Word});content.AddRow(camera);content.AddRow(sun);
+        content.AddRow(new UiLabel{Text="太阳设置同时用于显示模式和独立阴影通道；独立阴影不包含反射 / GI / AO。",Wrap=WrapMode.Word});content.AddRow(null);Root=ToolUi.VerticalScroll(content);Sync();
     }
     private void Sync(){binding=true;try{var c=Row.Camera;yaw.Value=c.Yaw;pitch.Value=c.Pitch;zoom.Value=c.Zoom;panX.Value=c.PanX;panY.Value=c.PanY;panZ.Value=c.PanZ;documentSun.Checked=Row.Sun.UseDocument;azimuth.Value=Row.Sun.Azimuth;altitude.Value=Row.Sun.Altitude;azimuth.Enabled=altitude.Enabled=!Row.Sun.UseDocument;}finally{binding=false;}}
     private void Apply(){if(binding)return;var c=Row.Camera;c.Yaw=yaw.Value;c.Pitch=pitch.Value;c.Zoom=zoom.Value;c.PanX=panX.Value;c.PanY=panY.Value;c.PanZ=panZ.Value;Row.Sun.UseDocument=documentSun.Checked==true;Row.Sun.Azimuth=azimuth.Value;Row.Sun.Altitude=altitude.Value;azimuth.Enabled=altitude.Enabled=!Row.Sun.UseDocument;owner.Changed(Row);}
-    internal void RefreshPreview(){using var b=WorkbenchService.Preview(owner.Document,Row,600);Ui.Picture(image,frame,b,300,200);}
+    internal void RefreshPreview(){using var b=WorkbenchService.Preview(owner.Document,Row,600);Ui.Picture(image,frame,b,Math.Max(1,frame.Width),Math.Max(1,frame.Height));}
     public void Dispose(){image.Image?.Dispose();Root.Dispose();}
 }

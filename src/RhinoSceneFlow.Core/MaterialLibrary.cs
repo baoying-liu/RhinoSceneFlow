@@ -13,6 +13,7 @@ public sealed class MaterialAsset
     public string Name { get; set; } = "Material";
     public string Category { get; set; } = "";
     public string[] Tags { get; set; } = [];
+    public Dictionary<string,AssetLocaleText> Localizations {get;set;}=[];
     public double WidthMeters { get; set; } = 1;
     public double HeightMeters { get; set; } = 1;
     public double Roughness { get; set; } = .65;
@@ -28,7 +29,7 @@ public sealed class MaterialAsset
     public Dictionary<string,string> Sha256 { get; set; } = [];
     public void Validate()
     {
-        Category??="";Tags??=[];
+        Category??="";Tags??=[];Localizations??=[];AssetLocalization.Validate(this);
         Randomization??=new();Randomization.Validate();
         Plant?.Validate();
         if(SchemaVersion!=1||Id==Guid.Empty||Revision<1||string.IsNullOrWhiteSpace(Name)||Name.Length>200)throw new ArgumentException("Invalid material identity/name.");

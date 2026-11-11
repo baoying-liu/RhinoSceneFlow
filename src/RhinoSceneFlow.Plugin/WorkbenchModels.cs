@@ -56,6 +56,7 @@ public sealed class ViewExportRow
     public bool LayerSettingsExpanded{get;set;}
     public bool PlantsInitialized{get;set;}
     public bool PlantShadows{get;set;}=true;
+    public bool SeparatePlantShadows{get;set;}=true;
     public CameraAdjustment Camera{get;set;}=new();
     public SunAdjustment Sun{get;set;}=new();
     public ViewExportRow Copy()=>WorkbenchStore.Clone(this);

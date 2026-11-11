@@ -22,6 +22,8 @@ Navigation:
 
 ## Studio and PhotoCraft
 
+- v0.22.14 PSD participation is distinct from PSD visibility and PhotoCraft guide gates. Omitted layerParticipation IDs follow imported effective visibility; validate boolean maps, gate groups, preserve disabled visible pixels and the original PSD. Extract hidden/covered guides from the SAME private PSD copy as masks. Send the numbered, aligned guide sheet as an actual whole-image attachment and expose it in preflight. Explicit roles/locks/history/branch inheritance remain authoritative; never reapply coarse PSD to result-parent/HD inputs. Verify Test-PsdParticipation (pixel oracle + synthetic attachment recorder), test-psd-participation-browser, TaskInputs/Restore, RasterStability, CanvasContext, BoardWorkflow and the real task-flow/restoration browser. Distinguish attached image guidance from hard geometry control and synthetic orchestration from real image model results.
+
 - v0.22.5 task restoration normalizes legacy saved parameters/annotations before returning locked content, restores saved AI group participation while preserving presentation eyes, and computes remaining pending state against the baseline context. Shared canvas edits and the single PhotoCraft slot are not implicitly rolled back by task settings restoration; UI names that boundary and keeps reference disclosure open across deselection/deletion/Undo. Preflight exposes the actual planned output width/height, with whole-input dimensions distinguished from HD and model-native size. Regress Test-TaskRestore, Test-TaskInputs, real test-task-restoration-browser, reference-gallery and task-flow before B deployment. See UX-Audit-2026-11-10.md for scope and failures.
 
 - v0.22.4 PhotoCraft uses a validated SF1 instruction folder with seven required category containers and stable [SF:kind:id] child IDs. Rebuild instructions from the current board on reopen while preserving editable ordinary layers; frame-to-image pixel transforms include outside-image context. Separate the ordinary appearance composite from instructions (the all-layer PSD compatibility image is no longer the appearance return for SF1 projects). Reject missing/duplicate/unknown reserved containers/IDs, unsupported effects/blends and stale content/session/source before committing anything. Concrete instruction deletion syncs to its original annotation/resource; do not infer vectors/text from painted raster edits. Changed special layers remain typed raster instructions with exact positions/alpha; raster edit/protect drives masks with protect last. Edited reference resources retain their source asset and get an independent editable project. UI guideControls gates preserve per-item enabled/visible states: eye is presentation only (exclude it from context signatures), enable changes AI input and obeys locks/busy. Canvas, list and gallery share selection/visibility; source and exports stay clean. Keep single editReference slot outside image backups. Regress Test-GuideLayers, real test-guide-layers-browser, ordinary PhotoCraft roundtrip, reference visibility, context/workflow/task-input tests. Do not claim PhotoCraft prevents folder deletion in its native UI: host return validation rejects it.
@@ -97,6 +99,48 @@ Navigation:
 
 ## Materials, shared library and document lifecycle
 
+- v0.22.18 asset languages: store per-asset localizations with canonical source stamps,
+  tag-key maps and independent CatalogRevision. UI language reads must never launch
+  translation workers, rename original keys, modify geometry/appearance or discard
+  source edits. Material labeling and verified plant resolution emit structured
+  zh/en metadata. Legacy backfill validates the exact source/revision snapshot and
+  commits through the existing library lease/journal. Preserve valid translations,
+  immutable images and scientific identity; retain pending metadata recovery for
+  generated images when classification fails. Include tooltips and contextual
+  captions in native tests instead of ignoring whole user-context labels. Run
+  AssetLocalizationValidation, Test-LibraryLanguages.py, ownership/idle/presentation
+  tests and New/Open/normal-exit regressions. See Asset-Languages.md.
+
+- v0.22.17 caption ownership: all native UI captions use the bound Ui* controls.
+  Business timers write source state through UiCaption; never reintroduce an idle
+  tree translator or infer source from rendered Text. Preferences/Rhino appearance
+  events refresh the shared context. Protect user values and weak document lifetime.
+  Run Test-PresentationIdle.py between real idle periods, plus existing language,
+  icon, layout, preference and lifecycle regressions. See Native-Presentation.md.
+
+- v0.22.16 UI regression gate: assert actual English/short expected captions and
+  actual rendered WPF Image bounds, not only roundtrip equality or outer control
+  widths. Maintain NativeText.json full/short zh/en entries for changed controls;
+  dynamic templates must preserve captured user names and units. Interface choices
+  apply immediately without committing other-section drafts or rebuilding seasonal
+  scene materials. Protect asset values, filenames and scientific names. Run
+  UiText.Validation, Test-PresentationLanguageIcons.py and native presentation /
+  preference regressions. ChatKit locale changes use complete options and preserve
+  composer draft/frame; test the official component and native bridge without
+  generating images. Frame size is not evidence of glyph size.
+
+
+- v0.22.15 presentation: keep full semantic captions separate from rendered
+  abbreviations; never alter editable values or asset/scientific names. Eto WPF
+  Button.Image can clear Text; restore captions after image updates, including
+  getters that normalize empty to null. Width reads measured size, so preserve
+  native requested width rather than a collapsed control's zero. Apply modes in
+  place without recreating document tools. Both-hidden preferences are invalid;
+  native controls repair this pair, API rejects it before persistence. Regress
+  scripts/Test-InterfacePresentation.py (en/zh, all sections, narrow widths) and
+  scripts/Test-InterfacePreferences.py, preserving source model/settings/drafts.
+
+
 - v0.22.7 native UI follows Rhino theme colours. ChatKit uses the official theme API with full options, guards SDK readiness (DOM named properties are not initialized components), matches panel/composer surfaces, and updates without navigation or WebView replacement. Stop/dispose the owned theme timer on close. Standalone fallback follows system media preferences. Regress scripts/Test-ChatThemeBrowser.cjs via Audit-ChatTheme-0227.py, actual WebView SDK rendering, eight-panel layout/actions and document rebinds; do not infer ChatKit appearance from outer CSS alone.
 
 - v0.14 randomization: preserve physical size and pixel density; finite periodic baking is not infinite non-repeating shading. Worker owns file/parameter snapshots only; validate hashes, atomic publication, cancellation, appearance revisions and targets. PBR shares coordinates; rotated normals use UV-up and a finite-difference height-gradient oracle. Structured mode never relocates UV. Old assets default off; generated assets use actual-image AI recommendations. PSD samples real RDK variants but groups by asset/appearance revision. Ship pinned MIT FastNoiseLite license. See docs/Randomization.md.
@@ -141,6 +185,9 @@ Navigation:
 - v0.4 adds a separate CPU z-fail volume backend (`backend: volume`, `RhinoSceneFlowExportShadowVolumePSD`). Keep the legacy ray default explicit; it still has the known offset failure. Preserve closed caps, off-camera casters, far-plane handling, exact shared-edge cancellation and fixed subpixel/top-left coverage. v0.4.1 uses smooth normals to select uncertain curved samples and for optional form shading; actual shadow refinement queries owned source-geometry snapshots. Do not displace points along smooth normals. Respect trims, local double precision and grazing-ray root convergence. See docs/Shadow-Accuracy.md. Validate Test-ShadowAccuracy.py / Verify-ShadowAccuracy.py including partial-coverage boundaries, plus Test-ShadowVolumes.py, Probe-ShadowVolumeMesh.py and Verify-ShadowVolumes.py. Keep v0.4 historical artifacts separate from volumes-v041. Do not claim universal analytic accuracy or hide defects with image cleanup.
 
 ## Named Views, panels and PSD export
+
+- v0.22.10 plant shadow separation defaults true, preserves merged fallback without an enabled Plants pass, and inserts shadow children below all plant/species children in the first enabled plant folder only. Carry each shadow setting's blend/opacity/eye. Do not double darken fully shadowed geometry; residual alpha reconstructs the existing union. Default-normal Plants folders use pass-through so child Multiply reaches lower material passes; compatibility composites must follow the same nesting. Copy layer settings must include PlantShadows and SeparatePlantShadows. Regress Core alpha/nesting/style and independently parse real case PSDs (on/off, no Plants, hidden shadow, all plant grouping modes). Settings is a ninth registered native page, not a dialog; preserve old GUIDs and document-independent drafts, validate before save, and test document lifecycle and narrow layout through normal registered APIs.
+
 
 - v0.22.9: new previews default Rendered; double-click activates the named camera/season, explicit button opens adjustments. Draw PSD eyes as images, never combining Unicode glyphs. Preview-season/follow-preview/multi-season selections are separate from PSD eyes/enables. Plan all output targets before writes and group only identical effective seasonal content for this camera and enabled channels; unused elevation variants must not split identical top views. One view ID may return multiple files, with season suffixes and unchanged collision policy. Native RDK appearance capture restores its exact child parameters, UI view, undo flag and Modified state on failure as well as success. Explicit view activation is a live display change. Seasonal random bakes reuse the existing owned Worker, seeds, aligned PBR maps and physical periods; do not substitute raw maps for randomized ones. Cache identity excludes alias/FollowSeason metadata. Existing complete slots must bypass model calls while allowing missing cache preparation. See Seasons.md and the actual B receipts in Validation.md.
 

@@ -1,4 +1,4 @@
-﻿using System.Diagnostics;
+using System.Diagnostics;
 using System.Drawing.Imaging;
 using System.Runtime.InteropServices;
 using Rhino;
@@ -307,9 +307,11 @@ internal sealed class PreparedWorkbench(WorkbenchPlan plan) : IDisposable
     {
         var row=plan.View;int w=row.Width,h=row.Height;
         using var depth=row.Layers.Any(l=>l.Enabled&&l.Kind=="depth")?new DepthPassBuilder(Staging,w,h):null;
-        DiskPassImage? material=null,shadow=null;
+        DiskPassImage? material=null,shadow=null,plantShadow=null;
+        bool separate=row.SeparatePlantShadows&&row.PlantShadows&&row.Layers.Any(l=>l.Enabled&&l.Kind=="plants");
         if(row.Layers.Any(l=>l.Enabled&&l.Kind=="material")){material=new(Staging,w,h,Reader!.Groups);staged.Add(material);}
         if(row.Layers.Any(l=>l.Enabled&&l.Kind=="shadow")){shadow=new(Staging,w,h,[new("Shadow",new(90,90,90))]);staged.Add(shadow);}
+        if(shadow!=null&&separate){plantShadow=new(Staging,w,h,[new("植物阴影",new(90,90,90))]);staged.Add(plantShadow);}
         if(Textures!=null)foreach(string grouping in row.Layers.Where(l=>l.Enabled&&l.Kind=="texture").Select(l=>l.TextureGrouping).Distinct())
         {
             var empty=TexturedRasterizer.Render(1,1,Reader!.Camera,Textures.Surfaces,Textures.Objects,Array.Empty<TextureTriangle>());
@@ -359,15 +361,27 @@ internal sealed class PreparedWorkbench(WorkbenchPlan plan) : IDisposable
                 if(shadow is not null)
                 {
                     var baseMask=ShadowVolumeRenderer.Render(rw,rh,tile,world,Shadow!,token,Reader.Surfaces!.Evaluator(tile,rw,rh,Shadow!));
-                    IPsdImage mask=row.PlantShadows&&Plants.Length>0?PlantShadows.Add(baseMask,tile,occluders!,Plants,PlantSettings,Light,token):baseMask;
+                    IPsdImage mask=row.PlantShadows&&Plants.Length>0&&!separate?PlantShadows.Add(baseMask,tile,occluders!,Plants,PlantSettings,Light,token):baseMask;
+                    if(plantShadow!=null){var isolated=PlantShadows.Separate(baseMask,tile,occluders!,Plants,PlantSettings,Light,token);plantShadow.WriteTile(left,top,new ImageWindow(isolated,left-x0,top-y0,tw,th),token);}
                     shadow.WriteTile(left,top,new ImageWindow(mask,left-x0,top-y0,tw,th),token);
                     Reader.Surfaces!.ReleaseEvaluators();
                 }
             }
         }
         depth?.Finish(token);
-        var passes=row.Layers.Where(l=>l.Enabled).Select(l=>new StyledPass(l.Kind switch{"plants"=>"植物","texture"=>"材质","material"=>"图层颜色","color"=>l.ColorSource=="layer"?"材质颜色 · 图层颜色":"材质颜色","depth"=>"深度图","shadow"=>"Shadow",_=>ModeNames[l.Mode]},
-            l.Kind switch{"plants"=>new PlantHierarchy(plantPasses[l.PlantGrouping],l.PlantGrouping,PlantRasterizer.Layout(Plants,l.PlantGrouping,Reader!.Camera).Species),"texture"=>texturePasses[l.TextureGrouping],"color"=>colorPasses[(l.ColorSource,l.TextureGrouping)],"material"=>material!,"depth"=>depth!.Image,"shadow"=>shadow!,_=>Display[l.Mode]},l.Blend,(byte)Math.Round(l.Opacity*255.0/100),l.Kind is "material" or "plants"||l.Kind is "texture" or "color"&&l.TextureGrouping!="all",l.Visible)).ToArray();
+        var firstPlants=row.Layers.FirstOrDefault(l=>l.Enabled&&l.Kind=="plants");
+        var passes=row.Layers.Where(l=>l.Enabled).Select(l=>
+        {
+            bool attach=plantShadow!=null&&ReferenceEquals(l,firstPlants);
+            IPsdImage PlantImage()
+            {
+                var foliage=new PlantHierarchy(plantPasses[l.PlantGrouping],l.PlantGrouping,PlantRasterizer.Layout(Plants,l.PlantGrouping,Reader!.Camera).Species);
+                if(!attach)return foliage;
+                return new ConfiguredStack(new[]{new StyledPass("植物",foliage)}.Concat(row.Layers.Where(s=>s.Enabled&&s.Kind=="shadow").Select((s,i)=>new StyledPass(i==0?"植物阴影":"植物阴影 · "+(i+1),plantShadow!,s.Blend,(byte)Math.Round(s.Opacity*255.0/100),Visible:s.Visible))).ToArray());
+            }
+            return new StyledPass(l.Kind switch{"plants"=>"植物","texture"=>"材质","material"=>"图层颜色","color"=>l.ColorSource=="layer"?"材质颜色 · 图层颜色":"材质颜色","depth"=>"深度图","shadow"=>"Shadow",_=>ModeNames[l.Mode]},
+                l.Kind switch{"plants"=>PlantImage(),"texture"=>texturePasses[l.TextureGrouping],"color"=>colorPasses[(l.ColorSource,l.TextureGrouping)],"material"=>material!,"depth"=>depth!.Image,"shadow"=>shadow!,_=>Display[l.Mode]},l.Blend,(byte)Math.Round(l.Opacity*255.0/100),l.Kind is "material" or "plants"||l.Kind is "texture" or "color"&&l.TextureGrouping!="all",l.Visible,PassThrough:attach&&l.Blend=="norm");
+        }).ToArray();
         var image=new ConfiguredStack(passes);Directory.CreateDirectory(Path.GetDirectoryName(plan.Path)!);
         int count=PsdWriter.Save(plan.Path,image,token,plan.Overwrite,true);
         return new(row.Id,row.Name,plan.Path,true,w,h,count,watch.ElapsedMilliseconds,null);

@@ -60,14 +60,16 @@ def font(size):
 def prepare(folder):
     s=read_json(folder/'snapshot.json');n=s['node'];im=opened(s['image']);original=np.array(im);w,h=im.size
     if s.get('parent') and n['params']['blend']<100:im=Image.blend(opened(s['parent']).resize(im.size,Image.Resampling.LANCZOS),im,n['params']['blend']/100)
-    mask=Image.new('L',(w,h),255);p=n['params'];sx=w/n['pose']['width'];sy=h/n['pose']['height']
+    mask=Image.new('L',(w,h),255);p=n['params'];sx=w/n['pose']['width'];sy=h/n['pose']['height'];guides=[]
     if s.get('psd') and s.get('layers'):
         # Original PSD masks are used only on its source node, never reimposed on a generated child.
         from render import prepare as psd_prepare
         psdroot=folder/'psd';temp=psdroot/'runs'/'whole';temp.mkdir(parents=True,exist_ok=True);shutil.copyfile(s['psd'],psdroot/'source.psd')
-        layers=[dict(l,role=p['roles'].get(l['id'],l.get('role','generate'))) for l in s['layers']]
-        layers=[dict(l,role='generate' if l['role']=='structure' else l['role']) for l in layers]
-        with Path(s['psd']).open('rb') as stream:digest=hashlib.file_digest(stream,'sha256').hexdigest()
+        from psd_guides import settings,mask_rows,prepare as prepare_guides
+        selected_layers=settings(s['layers'],p)
+        layers=mask_rows(selected_layers)
+        guides=prepare_guides(folder,psdroot/'source.psd',selected_layers)
+        with (psdroot/'source.psd').open('rb') as stream:digest=hashlib.file_digest(stream,'sha256').hexdigest()
         write_json(temp/'snapshot.json',dict(sourceSha256=digest,layers=layers,canonicalBase=s['image'],edgeGuard=int(p['edgeGuard']),tileSize=1024,tiles=[]))
         psd_prepare(temp);im=opened(temp/'base.png');mask=Image.open(temp/'edit-mask.png').convert('L')
     frame=n['frame'];fx,fy,fr,fb=frame['x'],frame['y'],frame['x']+frame['width'],frame['y']+frame['height']
@@ -131,7 +133,7 @@ def prepare(folder):
         target=Image.new('RGB' if name!='editable' else 'L',(1536,1536),bg);small=image.resize((rw,rh),Image.Resampling.LANCZOS if name!='editable' else Image.Resampling.NEAREST)
         target.paste(small,(ox,oy),small.getchannel('A') if small.mode=='RGBA' else None);target.save(folder/(name+'.png'))
     spatial=context_diagram(folder,s,im,enabled)
-    write_json(folder/'prepared.json',dict(sourceAdjusted=not np.array_equal(original,np.asarray(im)),scope='local' if use_edits else 'whole',spatial=spatial,width=w,height=h,offset=[ox,oy],size=[rw,rh],editablePixels=int(np.count_nonzero(arr)),totalPixels=w*h,notes=notes))
+    write_json(folder/'prepared.json',dict(guides=guides,sourceAdjusted=not np.array_equal(original,np.asarray(im)),scope='local' if use_edits else 'whole',spatial=spatial,width=w,height=h,offset=[ox,oy],size=[rw,rh],editablePixels=int(np.count_nonzero(arr)),totalPixels=w*h,notes=notes))
     for i,r in enumerate(s.get('references',[])):
         ref=opened(r['path']);clip=r['clip'];left=max(0,min(ref.width-1,math.floor(clip[0]*ref.width)));top=max(0,min(ref.height-1,math.floor(clip[1]*ref.height)))
         ref=ref.crop((left,top,max(left+1,min(ref.width,math.ceil(clip[2]*ref.width))),max(top+1,min(ref.height,math.ceil(clip[3]*ref.height)))))

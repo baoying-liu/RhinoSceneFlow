@@ -76,13 +76,13 @@ public sealed class MaterialQuickPanel : Form
     private readonly MaterialChatView chat;
     private bool closed;
     private readonly TextArea prompt=new(){Height=90,Wrap=true,Text="浅暖灰石灰岩，均匀纹理，无接缝"};
-    private readonly Label targetLabel=new(),status=new(){Text="输入描述或选择已有材质。",Wrap=WrapMode.Word,Width=530},referenceLabel=new(){Text="未添加参考图片",Wrap=WrapMode.Word,Width=510};
+    private readonly UiLabel targetLabel=new(),status=new(){Text="输入描述或选择已有材质。",Wrap=WrapMode.Word,Width=530},referenceLabel=new(){Text="未添加参考图片",Wrap=WrapMode.Word,Width=510};
     private readonly ImageView image=new(){Size=new(500,260)};
     private readonly DropDown assets=new(){Width=350},scope=new(){Width=230},mode=new(){Width=180};
     private readonly NumericStepper width=Ui.Number(.001,1e8,2,120),height=Ui.Number(.001,1e8,2,120),rotation=Ui.Number(-360,360,1),offsetU=Ui.Number(-1e12,1e12,2),offsetV=Ui.Number(-1e12,1e12,2);
     private readonly TabControl tabs=new();
     private readonly ProgressBar progress=new(){MinValue=0,MaxValue=100};
-    private readonly Button apply,generate,prepare;
+    private readonly UiButton apply,generate,prepare;
     private readonly UITimer timer=new(){Interval=.15};
     private readonly List<string> references=[];
     private readonly List<string> history=[];
@@ -96,23 +96,23 @@ public sealed class MaterialQuickPanel : Form
     {
         document=doc.RuntimeSerialNumber;Title="RhinoSceneFlow · 给物件上材质";ClientSize=new(580,740);MinimumSize=new(570,690);Padding=new(14);
         width.Value=height.Value=1000;
-        scope.Items.Add(new ListItem{Key="object",Text="应用到该物体"});scope.Items.Add(new ListItem{Key="layer",Text="应用到该物体所在图层"});scope.SelectedIndex=0;
-        foreach(var t in new[]{("auto","自动"),("plane","平面"),("box","箱式"),("cylinder","圆柱侧面"),("xatlas","xatlas 复杂曲面展开")})mode.Items.Add(new ListItem{Key=t.Item1,Text=t.Item2});mode.SelectedIndex=0;
+        scope.Items.Add(new UiListItem{Key="object",Text="应用到该物体"});scope.Items.Add(new UiListItem{Key="layer",Text="应用到该物体所在图层"});scope.SelectedIndex=0;
+        foreach(var t in new[]{("auto","自动"),("plane","平面"),("box","箱式"),("cylinder","圆柱侧面"),("xatlas","xatlas 复杂曲面展开")})mode.Items.Add(new UiListItem{Key=t.Item1,Text=t.Item2});mode.SelectedIndex=0;
         apply=Ui.Button("应用材质",()=>Start(false));generate=Ui.Button("生成材质",Generate);prepare=Ui.Button("计算 / 更新真实世界 UV",()=>Start(true));
         var main=Ui.Layout();main.AddRow(targetLabel);main.AddRow(image);main.AddRow(Row(assets,Ui.Button("刷新",RefreshAssets),null));
         main.AddRow(prompt);main.AddRow(Row(Ui.Button("＋参考图片",AddReferences),Ui.Button("清除图片",()=>{references.Clear();RefreshReferences();}),generate,null));main.AddRow(referenceLabel);
-        var details=Ui.Layout();details.AddRow(new Label{Text="整张贴图代表的物理尺寸（mm）"});details.AddRow(Row(width,new Label{Text="×"},height,null));
-        details.AddRow(new Label{Text="尺寸可从描述确定，但必须由你确认。"});details.AddRow(Row(Ui.Button("保存材质尺寸",SaveSize),null));
-        details.AddRow(new Label{Text="UV 每 1 单位对应 1 米，换材质时复用。"});details.AddRow(Row(new Label{Text="映射"},mode,null));
-        details.AddRow(Row(new Label{Text="旋转 °"},rotation,null));details.AddRow(Row(new Label{Text="偏移 U / V（mm）"},offsetU,offsetV,null));details.AddRow(prepare);details.AddRow(Ui.Button("沿中心线展开管体…",()=>RhinoApp.RunScript("_RhinoSceneFlowTubeUV",false)));
+        var details=Ui.Layout();details.AddRow(new UiLabel{Text="整张贴图代表的物理尺寸（mm）"});details.AddRow(Row(width,new UiLabel{Text="×"},height,null));
+        details.AddRow(new UiLabel{Text="尺寸可从描述确定，但必须由你确认。"});details.AddRow(Row(Ui.Button("保存材质尺寸",SaveSize),null));
+        details.AddRow(new UiLabel{Text="UV 每 1 单位对应 1 米，换材质时复用。"});details.AddRow(Row(new UiLabel{Text="映射"},mode,null));
+        details.AddRow(Row(new UiLabel{Text="旋转 °"},rotation,null));details.AddRow(Row(new UiLabel{Text="偏移 U / V（mm）"},offsetU,offsetV,null));details.AddRow(prepare);details.AddRow(Ui.Button("沿中心线展开管体…",()=>RhinoApp.RunScript("_RhinoSceneFlowTubeUV",false)));
         details.AddRow(Ui.Button("恢复应用前材质与 UV",()=>Guard(()=>{var t=Target();MaterialService.Restore(Doc,t.Objects,t.Layers);SetStatus("已恢复原材质与 UV。");})));
-        details.AddRow(new Label{Text="砖纹 / 木纹等有方向的图案：等径管体优先用“沿中心线展开”，自动分区会留下图案接缝。",Width=510,Wrap=WrapMode.Word});
-        details.AddRow(new Label{Text="这里修改的映射参数通过“计算 / 更新”生效。复杂曲面可能有接缝或拉伸。",Width=510,Wrap=WrapMode.Word});
-        var library=Ui.Layout();library.AddRow(new Label{Text="导入图片、材质属性、分类和材质包管理"});library.AddRow(new Label{Text="图片生成使用本机 Codex 的 ChatGPT 登录；未安装或未登录时会明确提示。",Width=510,Wrap=WrapMode.Word});library.AddRow(Ui.Button("打开完整材质库",()=>MaterialPanelController.Open(Doc)));
+        details.AddRow(new UiLabel{Text="砖纹 / 木纹等有方向的图案：等径管体优先用“沿中心线展开”，自动分区会留下图案接缝。",Width=510,Wrap=WrapMode.Word});
+        details.AddRow(new UiLabel{Text="这里修改的映射参数通过“计算 / 更新”生效。复杂曲面可能有接缝或拉伸。",Width=510,Wrap=WrapMode.Word});
+        var library=Ui.Layout();library.AddRow(new UiLabel{Text="导入图片、材质属性、分类和材质包管理"});library.AddRow(new UiLabel{Text="图片生成使用本机 Codex 的 ChatGPT 登录；未安装或未登录时会明确提示。",Width=510,Wrap=WrapMode.Word});library.AddRow(Ui.Button("打开完整材质库",()=>MaterialPanelController.Open(Doc)));
         chat=new(document,()=> (width.Value/1000,height.Value/1000),id=>{chatJob=id;progress.Indeterminate=true;});
         tabs.Pages.Add(new TabPage{Text="对话生成",Content=chat});tabs.Pages.Add(new TabPage{Text="快捷生成",Content=main});
         Shown+=async(_,_)=>{if(!closed)await chat.StartAsync();};tabs.Pages.Add(new TabPage{Text="尺寸与铺贴",Content=details});tabs.Pages.Add(new TabPage{Text="材质库 / 属性",Content=library});
-        var root=Ui.Layout();root.Add(tabs,true,true);root.AddRow(Row(new Label{Text="应用范围"},scope,null));root.AddRow(progress);root.AddRow(status);root.AddRow(Row(Ui.Button("取消后续步骤",Cancel),null,apply));Content=root;
+        var root=Ui.Layout();root.Add(tabs,true,true);root.AddRow(Row(new UiLabel{Text="应用范围"},scope,null));root.AddRow(progress);root.AddRow(status);root.AddRow(Row(Ui.Button("取消后续步骤",Cancel),null,apply));Content=root;
         assets.SelectedValueChanged+=(_,_)=>{if(!selecting)Guard(()=>{if(Guid.TryParse(assets.SelectedKey,out var id))SelectAsset(id);});};
         timer.Elapsed+=(_,_)=>Tick();timer.Start();SetTargets(ids);RefreshAssets();
         jobId=MaterialGeneration.ActiveJobId;
@@ -139,7 +139,7 @@ public sealed class MaterialQuickPanel : Form
     }
     public void RefreshAssets()
     {
-        selecting=true;try{assets.Items.Clear();foreach(var a in MaterialService.Library.List())assets.Items.Add(new ListItem{Key=a.Id.ToString(),Text=a.Name});if(selected.HasValue)assets.SelectedKey=selected.ToString();}finally{selecting=false;}
+        selecting=true;try{assets.Items.Clear();foreach(var a in MaterialService.Library.List())assets.Items.Add(new UiListItem{Key=a.Id.ToString(),Text=a.Name});if(selected.HasValue)assets.SelectedKey=selected.ToString();}finally{selecting=false;}
     }
     public void SelectAsset(Guid id)
     {

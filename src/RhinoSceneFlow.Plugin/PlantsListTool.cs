@@ -8,10 +8,10 @@ public sealed class PlantsListTool:Panel
 {
     private readonly uint document;
     private readonly GridView list=new(){AllowMultipleSelection=true,Height=400};
-    private readonly TextBox search=new(){PlaceholderText="搜索组合名称或图层"};
-    private readonly Label status=new(){Wrap=WrapMode.Word};
-    private readonly Label empty=ToolUi.Note("当前模型还没有植物组合。到“植物库 · 种植”创建一个组合。");
-    private readonly Button edit,zoom,finish;
+    private readonly UiTextBox search=new(){PlaceholderText="搜索组合名称或图层"};
+    private readonly UiLabel status=new(){Wrap=WrapMode.Word};
+    private readonly UiLabel empty=ToolUi.Note("当前模型还没有植物组合。到“植物库 · 种植”创建一个组合。");
+    private readonly UiButton edit,zoom,finish;
     private readonly UITimer timer=new(){Interval=.35};
     private bool binding,stopped,selectionQueued;private string stamp="",selection="";
     private sealed record Row(Guid Id,string Name,string Layer,string Count,string Status);
@@ -19,12 +19,12 @@ public sealed class PlantsListTool:Panel
     public PlantsListTool(RhinoDoc doc)
     {
         document=doc.RuntimeSerialNumber;
-        list.Columns.Add(new GridColumn{HeaderText="名称",DataCell=new TextBoxCell{Binding=Binding.Property<Row,string>(r=>r.Name)},Width=120});
-        list.Columns.Add(new GridColumn{HeaderText="图层",DataCell=new TextBoxCell{Binding=Binding.Property<Row,string>(r=>r.Layer)},Width=80});
-        list.Columns.Add(new GridColumn{HeaderText="株数",DataCell=new TextBoxCell{Binding=Binding.Property<Row,string>(r=>r.Count)},Width=45});
-        list.Columns.Add(new GridColumn{HeaderText="状态",DataCell=new TextBoxCell{Binding=Binding.Property<Row,string>(r=>r.Status)},Width=90});
+        list.Columns.Add(new UiGridColumn{HeaderText="名称",DataCell=new TextBoxCell{Binding=Binding.Property<Row,string>(r=>r.Name)},Width=120});
+        list.Columns.Add(new UiGridColumn{HeaderText="图层",DataCell=new TextBoxCell{Binding=Binding.Property<Row,string>(r=>r.Layer)},Width=80});
+        list.Columns.Add(new UiGridColumn{HeaderText="株数",DataCell=new TextBoxCell{Binding=Binding.Property<Row,string>(r=>r.Count)},Width=45});
+        list.Columns.Add(new UiGridColumn{HeaderText="状态",DataCell=new TextBoxCell{Binding=Binding.Property<Row,string>(r=>r.Status)},Width=90});
         var menu=new ContextMenu();
-        void Item(string label,Action action){var item=new ButtonMenuItem{Text=label};item.Click+=(_,_)=>Guard(action);menu.Items.Add(item);}
+        void Item(string label,Action action){var item=new UiButtonMenuItem{Text=label};item.Click+=(_,_)=>Guard(action);menu.Items.Add(item);}
         Item("编辑组合",Edit);Item("定位到组合",Zoom);Item("修改名字…",Rename);Item("修改所在图层…",ChangeLayer);
         Item("显示",()=>Manage(visible:true));Item("隐藏",()=>Manage(visible:false));Item("锁定",()=>Manage(locked:true));Item("解锁",()=>Manage(locked:false));list.ContextMenu=menu;
         list.SelectionChanged+=(_,_)=>SelectionChanged();list.CellDoubleClick+=(_,e)=>Guard(()=>EditRow(e.Row));search.TextChanged+=(_,_)=>{stamp="";Refresh();};
@@ -54,7 +54,7 @@ public sealed class PlantsListTool:Panel
     internal void Refresh()
     {
         if(stopped||!Doc.IsAvailable||Doc.IsClosing||Doc.IsOpening||Doc.IsCreating||RhinoApp.InCommand>0)return;
-        var rows=PlantGroups.Objects(Doc).Select(o=>new Row(o.Id,o.Name,Doc.Layers[o.Attributes.LayerIndex].FullPath,PlantGroups.Rows(o).Length.ToString(),(PlantEditing.IsEditing(document,o.Id)?"编辑中 ":"")+(o.IsHidden?"隐藏 ":"")+(o.IsLocked?"锁定 ":"")+(Doc.Layers[o.Attributes.LayerIndex].IsVisible?"":"图层隐藏 ")+(Doc.Layers[o.Attributes.LayerIndex].IsLocked?"图层锁定 ":"")+"自定义 "+PlantGroups.Read(o)!.Individuals.Length)).Where(r=>(r.Name+" "+r.Layer).Contains(search.Text??"",StringComparison.OrdinalIgnoreCase)).ToArray();
+        var rows=PlantGroups.Objects(Doc).Select(o=>new Row(o.Id,o.Name,Doc.Layers[o.Attributes.LayerIndex].FullPath,PlantGroups.Rows(o).Length.ToString(),(PlantEditing.IsEditing(document,o.Id)?WorkspaceAppearance.Text("编辑中")+" ":"")+(o.IsHidden?WorkspaceAppearance.Text("隐藏")+" ":"")+(o.IsLocked?WorkspaceAppearance.Text("锁定")+" ":"")+(Doc.Layers[o.Attributes.LayerIndex].IsVisible?"":WorkspaceAppearance.Text("图层隐藏")+" ")+(Doc.Layers[o.Attributes.LayerIndex].IsLocked?WorkspaceAppearance.Text("图层锁定")+" ":"")+WorkspaceAppearance.Text("自定义")+" "+PlantGroups.Read(o)!.Individuals.Length)).Where(r=>(r.Name+" "+r.Layer).Contains(search.Text??"",StringComparison.OrdinalIgnoreCase)).ToArray();
         string next=string.Join("|",rows.Select(r=>r.ToString()));string chosen=Signature();
         if(next!=stamp||chosen!=selection)
         {
@@ -71,12 +71,12 @@ public sealed class PlantsListTool:Panel
     }
     private void Zoom(){var boxes=Selected().Select(id=>Doc.Objects.FindId(id)!.Geometry.GetBoundingBox(true)).ToArray();if(boxes.Length==0)return;var box=boxes[0];foreach(var b in boxes.Skip(1))box.Union(b);Doc.Views.ActiveView.ActiveViewport.ZoomBoundingBox(box);Doc.Views.Redraw();}
     private string? Prompt(string title,string initial)
-    {using var dialog=new Dialog<bool>{Title=title,Padding=12};var text=new TextBox{Text=initial,Width=280};var ok=new Button{Text="确定"};var cancel=new Button{Text="取消"};ok.Click+=(_,_)=>dialog.Close(true);cancel.Click+=(_,_)=>dialog.Close(false);var layout=Ui.Layout();layout.AddRow(text);layout.AddRow(ok,cancel);dialog.Content=layout;dialog.DefaultButton=ok;dialog.AbortButton=cancel;return dialog.ShowModal(this)?text.Text:null;}
+    {using var dialog=new Dialog<bool>{Title=WorkspaceAppearance.Text(title),Padding=12};var text=new UiTextBox{Text=initial,Width=280};var ok=new UiButton{Text="确定"};var cancel=new UiButton{Text="取消"};ok.Click+=(_,_)=>dialog.Close(true);cancel.Click+=(_,_)=>dialog.Close(false);var layout=Ui.Layout();layout.AddRow(text);layout.AddRow(ok,cancel);dialog.Content=layout;dialog.DefaultButton=ok;dialog.AbortButton=cancel;WorkspaceAppearance.Apply(dialog);return dialog.ShowModal(this)?text.Text:null;}
     private void Rename(){var ids=Selected();if(ids.Length!=1)throw new ArgumentException("选择一个组合修改名字。");var value=Prompt("组合名称",Doc.Objects.FindId(ids[0])!.Name);if(value!=null)Manage(name:value);}
     private void ChangeLayer()
     {
-        var layers=Doc.Layers.Where(l=>!l.IsDeleted).ToArray();using var dialog=new Dialog<bool>{Title="移动到图层",Padding=12};var choices=new DropDown{Width=280};foreach(var l in layers)choices.Items.Add(new ListItem{Key=l.Id.ToString(),Text=l.FullPath});if(layers.Length>0)choices.SelectedIndex=0;
-        var ok=new Button{Text="确定"};var cancel=new Button{Text="取消"};ok.Click+=(_,_)=>dialog.Close(true);cancel.Click+=(_,_)=>dialog.Close(false);var layout=Ui.Layout();layout.AddRow(choices);layout.AddRow(ok,cancel);dialog.Content=layout;dialog.DefaultButton=ok;dialog.AbortButton=cancel;if(dialog.ShowModal(this)&&Guid.TryParse(choices.SelectedKey,out var layer))Manage(layer:layer);
+        var layers=Doc.Layers.Where(l=>!l.IsDeleted).ToArray();using var dialog=new Dialog<bool>{Title=WorkspaceAppearance.Text("移动到图层"),Padding=12};var choices=new DropDown{Width=280};foreach(var l in layers)choices.Items.Add(new UiListItem{Key=l.Id.ToString(),Text=l.FullPath});if(layers.Length>0)choices.SelectedIndex=0;
+        var ok=new UiButton{Text="确定"};var cancel=new UiButton{Text="取消"};ok.Click+=(_,_)=>dialog.Close(true);cancel.Click+=(_,_)=>dialog.Close(false);var layout=Ui.Layout();layout.AddRow(choices);layout.AddRow(ok,cancel);dialog.Content=layout;dialog.DefaultButton=ok;dialog.AbortButton=cancel;WorkspaceAppearance.Apply(dialog);if(dialog.ShowModal(this)&&Guid.TryParse(choices.SelectedKey,out var layer))Manage(layer:layer);
     }
     private void Manage(string? name=null,Guid? layer=null,bool? visible=null,bool? locked=null){Manage(Doc,Selected(),name,layer,visible,locked);stamp="";Refresh();}
     public static object Manage(RhinoDoc doc,Guid[] ids,string? name=null,Guid? layer=null,bool? visible=null,bool? locked=null)

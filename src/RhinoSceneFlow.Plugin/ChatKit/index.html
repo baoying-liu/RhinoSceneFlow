@@ -6,7 +6,20 @@
 const token='__TOKEN__',base='__BASE__';window.chatkitState={ready:false,error:null,thread:null};
 const query=new URLSearchParams(location.search),systemScheme=matchMedia('(prefers-color-scheme: dark)');
 history.replaceState(null,'',location.pathname);
-let hostTheme=query.has('scheme'),theme,chatOptions;
+let hostTheme=query.has('scheme'),theme,chatOptions,language=query.get('language')==='en'?'en':'zh';
+const copy={
+ zh:{locale:'zh-CN',title:'素材对话',greeting:'想创建什么材质或植物？',placeholder:'描述材质或植物，可添加参考图…',material:'清水混凝土',plant:'透明植物',materialPrompt:'生成浅灰清水混凝土，无接缝，纹理均匀',plantPrompt:'生成一株 Acer rubrum 美国红枫的夏季绿叶透明 PNG 素材，先核实物种，优先复用植物库。',error:'ChatKit 加载失败：',network:'无法访问 OpenAI ChatKit 组件，请检查网络。'},
+ en:{locale:'en',title:'Asset chat',greeting:'What material or plant would you like to create?',placeholder:'Describe a material or plant; add reference images…',material:'Exposed concrete',plant:'Transparent plant',materialPrompt:'Generate seamless light-gray exposed concrete with an even texture.',plantPrompt:'Create a transparent PNG of Acer rubrum in summer foliage. Verify the species first and reuse a matching plant asset when available.',error:'ChatKit failed to load: ',network:'Cannot load OpenAI ChatKit. Check the network connection.'}
+};
+function languageOptions(){const t=copy[language];return {locale:t.locale,header:{title:{text:t.title}},startScreen:{greeting:t.greeting,prompts:[{label:t.material,prompt:t.materialPrompt,icon:'sparkle'},{label:t.plant,prompt:t.plantPrompt,icon:'search'}]}};}
+window.sceneFlowSetLanguage=value=>{
+ if(!['en','zh'].includes(value))return;language=value;document.documentElement.lang=copy[language].locale;window.chatkitState.language=language;
+ if(chatOptions&&typeof window.chat?.setOptions==='function'){
+  chatOptions={...chatOptions,...languageOptions(),composer:{...chatOptions.composer,placeholder:copy[language].placeholder}};
+  window.chat.setOptions(chatOptions);
+ }
+};
+window.sceneFlowSetLanguage(language);
 window.sceneFlowSetTheme=value=>{
  if(!value||!['light','dark'].includes(value.colorScheme))return;
  const valid=c=>/^#[0-9a-f]{6}$/i.test(c||'');
@@ -22,18 +35,17 @@ window.sceneFlowSetTheme=value=>{
 };
 window.sceneFlowSetTheme({colorScheme:query.get('scheme')||(systemScheme.matches?'dark':'light'),background:query.get('background'),foreground:query.get('foreground'),inputBackground:query.get('inputBackground')});
 systemScheme.addEventListener('change',e=>{if(!hostTheme)window.sceneFlowSetTheme({colorScheme:e.matches?'dark':'light'});});
-function fail(e){window.chatkitState.error=String(e);const el=document.getElementById('error');el.style.display='block';el.textContent='ChatKit 加载失败：'+e;}
+function fail(e){window.chatkitState.error=String(e);const el=document.getElementById('error');el.style.display='block';el.textContent=copy[language].error+e;}
 customElements.whenDefined('openai-chatkit').then(()=>{
  const chat=document.getElementById('chat');window.chat=chat;
  chat.addEventListener('chatkit.error',e=>fail(e.detail.error?.message??JSON.stringify(e.detail)));
  chat.addEventListener('chatkit.ready',()=>window.chatkitState.ready=true);
  chat.addEventListener('chatkit.thread.change',e=>window.chatkitState.thread=e.detail.threadId);
  chatOptions={api:{url:base+'/chatkit',domainKey:'domain_pk_localhost_dev',fetch:(url,init={})=>{const headers=new Headers(init.headers);headers.set('Authorization','Bearer '+token);return fetch(url,{...init,headers});},uploadStrategy:{type:'direct',uploadUrl:base+'/upload?token='+token}},
-  locale:'zh-CN',theme,header:{title:{text:'素材对话'}},
-  startScreen:{greeting:'想创建什么材质或植物？',prompts:[{label:'清水混凝土',prompt:'生成浅灰清水混凝土，无接缝，纹理均匀',icon:'sparkle'},{label:'透明植物',prompt:'生成一株 Acer rubrum 美国红枫的夏季绿叶透明 PNG 素材，先核实物种，优先复用植物库。',icon:'search'}]},
-  composer:{placeholder:'描述材质或植物，可添加参考图…',attachments:{enabled:true,maxCount:8,maxSize:33554432,accept:{'image/png':['.png'],'image/jpeg':['.jpg','.jpeg']}}},
+  ...languageOptions(),theme,
+  composer:{placeholder:copy[language].placeholder,attachments:{enabled:true,maxCount:8,maxSize:33554432,accept:{'image/png':['.png'],'image/jpeg':['.jpg','.jpeg']}}},
   threadItemActions:{feedback:false,retry:true}};
  chat.setOptions(chatOptions);
 }).catch(fail);
-setTimeout(()=>{if(!window.customElements.get('openai-chatkit'))fail('无法访问 OpenAI ChatKit 组件，请检查网络。');},20000);
+setTimeout(()=>{if(!window.customElements.get('openai-chatkit'))fail(copy[language].network);},20000);
 </script></html>

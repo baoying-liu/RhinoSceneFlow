@@ -2,7 +2,7 @@
 from PIL import Image,ImageDraw
 from pathlib import Path
 root=Path(__file__).resolve().parents[1]/'src/RhinoSceneFlow.Plugin/Resources';root.mkdir(exist_ok=True)
-for name,color in [('Materials','#54b3ad'),('Library','#a28bcb'),('Uv','#73a7df'),('Planting','#81b775'),('Export','#d6a866'),('PlantsList','#6e9663'),('Properties','#7f9aa5'),('PostProduction','#bb809a'),('Workspace','#718790')]:
+for name,color in [('Materials','#54b3ad'),('Library','#a28bcb'),('Uv','#73a7df'),('Planting','#81b775'),('Export','#d6a866'),('PlantsList','#6e9663'),('Properties','#7f9aa5'),('PostProduction','#bb809a'),('Workspace','#718790'),('Settings','#8e929a')]:
  im=Image.new('RGBA',(64,64));d=ImageDraw.Draw(im);d.rounded_rectangle((3,3,61,61),radius=13,fill=color)
  if name=='Materials':
   d.ellipse((14,14,50,50),fill='#f1f4f5');d.pieslice((14,14,50,50),90,270,fill='#24474b');d.ellipse((19,19,29,29),fill='#ffffff')
@@ -23,6 +23,13 @@ for name,color in [('Materials','#54b3ad'),('Library','#a28bcb'),('Uv','#73a7df'
  elif name=='PostProduction':
   d.rounded_rectangle((13,21,50,50),radius=3,outline='white',width=3);d.line((18,44,27,34,35,41,42,34,47,41),fill='white',width=3)
   d.polygon([(45,9),(48,15),(54,18),(48,21),(45,27),(42,21),(36,18),(42,15)],fill='white')
+ elif name=='Settings':
+  import math
+  points=[]
+  for i in range(48):
+   a=i*math.pi/24;radius=24 if i%6 in (1,2,3,4) else 18
+   points.append((32+radius*math.cos(a),32+radius*math.sin(a)))
+  d.polygon(points,fill='white');d.ellipse((22,22,42,42),fill=color);d.ellipse((28,28,36,36),fill='white')
  elif name=='Workspace':
   for x in [14,35]:
    for y in [14,35]:d.rounded_rectangle((x,y,x+15,y+15),radius=3,fill='white')

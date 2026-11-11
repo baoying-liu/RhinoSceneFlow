@@ -1,1 +1,1 @@
-{"name":"sceneflow-studio","private":true,"version":"0.22.9","scripts":{"build":"node build.cjs"},"dependencies":{"konva":"10.9.1","perfect-freehand":"1.2.3","react":"19.3.1","react-dom":"19.3.1","react-konva":"19.3.2"},"devDependencies":{"esbuild":"0.28.2","jsdom":"26.1.0"}}
+{"name":"sceneflow-studio","private":true,"version":"0.22.16","scripts":{"build":"node build.cjs"},"dependencies":{"konva":"10.9.1","perfect-freehand":"1.2.3","react":"19.3.1","react-dom":"19.3.1","react-konva":"19.3.2"},"devDependencies":{"esbuild":"0.28.2","jsdom":"26.1.0"}}

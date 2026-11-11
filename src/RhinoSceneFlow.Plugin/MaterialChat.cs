@@ -1,4 +1,4 @@
-﻿using System.Diagnostics;
+using System.Diagnostics;
 using System.Net;
 using System.Net.Sockets;
 using System.Text.Json;
@@ -192,7 +192,7 @@ internal sealed class MaterialChatView : Panel,IDisposable
 {
     internal readonly Microsoft.Web.WebView2.Wpf.WebView2 Browser=new();
     private readonly MaterialChatHost host;
-    private readonly Label error=new(){Wrap=WrapMode.Word};
+    private readonly UiLabel error=new(){Wrap=WrapMode.Word};
     private readonly UITimer themeTimer=new(){Interval=1};
     private string? appliedTheme;
     internal string? Theme{get;private set;}
@@ -217,9 +217,9 @@ internal sealed class MaterialChatView : Panel,IDisposable
             Browser.CoreWebView2.Settings.AreDevToolsEnabled=false;Browser.CoreWebView2.Settings.AreDefaultContextMenusEnabled=false;
             Browser.CoreWebView2.NavigationCompleted+=async(_,_)=>{appliedTheme=null;await UpdateTheme();};
             var palette=Palette();SetBackground();
-            Browser.Source=new Uri(host.Url+"&scheme="+palette.colorScheme+"&background="+Uri.EscapeDataString(palette.background)+"&foreground="+Uri.EscapeDataString(palette.foreground)+"&inputBackground="+Uri.EscapeDataString(palette.inputBackground));State="ready";themeTimer.Start();
+            Browser.Source=new Uri(host.Url+"&language="+PluginPreferences.Load().ResolvedLanguage+"&scheme="+palette.colorScheme+"&background="+Uri.EscapeDataString(palette.background)+"&foreground="+Uri.EscapeDataString(palette.foreground)+"&inputBackground="+Uri.EscapeDataString(palette.inputBackground));State="ready";themeTimer.Start();
         }
-        catch(Exception e){if(!closed&&!stopped){State=e.Message;error.Text="ChatKit 无法启动："+e.Message+"\n请检查本机 ChatKit 运行环境与网络连接。";Content=error;host.Dispose();}}
+        catch(Exception e){if(!closed&&!stopped){State=e.Message;error.Text=WorkspaceAppearance.Text("ChatKit 无法启动：")+WorkspaceAppearance.Text(e.Message)+"\n"+WorkspaceAppearance.Text("请检查本机 ChatKit 运行环境与网络连接。");Content=error;host.Dispose();}}
     }
     private sealed record ChatPalette(string colorScheme,string background,string foreground,string inputBackground);
     private static ChatPalette Palette()
@@ -237,8 +237,8 @@ internal sealed class MaterialChatView : Panel,IDisposable
     private async Task UpdateTheme()
     {
         if(closed||stopped||Browser.CoreWebView2==null)return;
-        var p=Palette();string json=JsonSerializer.Serialize(p);if(json==appliedTheme)return;
-        try{SetBackground();string result=await Browser.ExecuteScriptAsync("typeof window.sceneFlowSetTheme==='function'?(window.sceneFlowSetTheme("+json+"),true):false");if(!closed&&!stopped&&result=="true")appliedTheme=json;}
+        var p=Palette();string language=PluginPreferences.Load().ResolvedLanguage;string json=JsonSerializer.Serialize(p),key=json+"|"+language;if(key==appliedTheme)return;
+        try{SetBackground();string result=await Browser.ExecuteScriptAsync("typeof window.sceneFlowSetTheme==='function'&&typeof window.sceneFlowSetLanguage==='function'?(window.sceneFlowSetTheme("+json+"),window.sceneFlowSetLanguage("+JsonSerializer.Serialize(language)+"),true):false");if(!closed&&!stopped&&result=="true")appliedTheme=key;}
         catch(InvalidOperationException){}catch(System.Runtime.InteropServices.COMException){}
     }
     internal void Stop(){stopped=true;themeTimer.Stop();host.Dispose();}

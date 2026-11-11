@@ -21,7 +21,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from project import check_psd, write_json, read_json, tiles, MAX_BYTES
 
 HERE = Path(__file__).resolve().parent
-VERSION = '0.22.9'
+VERSION = '0.22.16'
 parser = argparse.ArgumentParser()
 parser.add_argument('--data', required=True)
 parser.add_argument('--codex', default='')

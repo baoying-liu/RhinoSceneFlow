@@ -1,4 +1,16 @@
 ﻿using RhinoSceneFlow.Core;
+if(args.FirstOrDefault()=="--asset-languages"){AssetLocalizationValidation.Run();return;}
+if(args.FirstOrDefault()=="--asset-labels-ai")
+{
+    string directory=Path.GetFullPath("artifacts/localization-02218/model-smoke");
+    var a=new MaterialAsset{Name="粗糙灰石灰石",Category="石材",Tags=["粗糙","自然"],Randomization=new(){Reason="保持石材纹理"}};
+    var answer=await CodexCatalogRunner.RunAsync(directory,"localize","补齐现有素材的中英文资料，不生成图片。",[a],CancellationToken.None);
+    var label=answer.Items.Single();if(label.Id!=a.Id||label.Name!=a.Name||label.Category!=a.Category||!label.Tags.SequenceEqual(a.Tags))throw new Exception("AI changed source fields.");
+    AssetLocalization.SetDraft(a,label.Localizations);if(!AssetLocalization.Complete(a))throw new Exception("AI did not return complete language metadata.");
+    File.WriteAllText(Path.Combine(directory,"verified-labels.json"),System.Text.Json.JsonSerializer.Serialize(a.Localizations,MaterialLibrary.Json));
+    Console.WriteLine("PASS: actual metadata-only AI returned saved zh/en labels: "+AssetLocalization.Name(a,"en"));return;
+}
+
 if(args.FirstOrDefault()=="--seasons"){Directory.CreateDirectory("artifacts/validation");SeasonalValidation.Run("artifacts/validation");return;}
 if(args.FirstOrDefault()=="--channels"){Directory.CreateDirectory("artifacts/validation");ExportChannelsValidation.Run("artifacts/validation");return;}
 
@@ -374,7 +386,7 @@ ExportChannelsValidation.Run(output);
 SeasonalValidation.Run(output);
 await UnwrapValidation.Run(output);
 TubeValidation.Run(output);
-CatalogValidation.Run(output);
+CatalogValidation.Run(output);AssetLocalizationValidation.Run();
 RandomTextureValidation.Run(output);
 PlantLayoutValidation.Run();PlantValidation.Run(output);
 LibraryConcurrencyValidation.Run(output);

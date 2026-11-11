@@ -136,11 +136,12 @@ class BoardApi:
             await self.raster(job,'prepare' if stage=='whole' else 'detail',folder)
             images={k:self.store.put_asset(id,folder/v) for k,v in (dict(input='input.png',context='markup.png',mask='mask.png').items() if stage=='whole' else [])}
             prepared=read_json(folder/'prepared.json') if stage=='whole' else {}
+            if prepared.get('guides'):images['guides']=self.store.put_asset(id,folder/'psd-guides.png')
             job.update(status='completed',stage='Input preview ready')
             actual_input=self.prepared_input(s,folder) if stage=='whole' else s['inputVersion']
             ratio=s['node']['params']['outputSize']/max(actual_input['width'],actual_input['height']) if stage=='detail' else 1
             output=dict(width=max(1,round(actual_input['width']*ratio)),height=max(1,round(actual_input['height']*ratio)))
-            return dict(output=output,node=node,revision=s['revision'],stage=stage,input={**actual_input,'name':s['inputName']},scope=prepared.get('scope'),sourceAdjusted=prepared.get('sourceAdjusted',False),notes=s['inputNotes'],images=images,
+            return dict(guides=prepared.get('guides',[]),output=output,node=node,revision=s['revision'],stage=stage,input={**actual_input,'name':s['inputName']},scope=prepared.get('scope'),sourceAdjusted=prepared.get('sourceAdjusted',False),notes=s['inputNotes'],images=images,
                 annotations=s['node']['annotations'] if stage=='whole' else [],references=[dict(id=r['node']['id'],name=r['node']['name'],clip=r['clip'],editingReference=r.get('editingReference',False)) for r in s['references']] if stage=='whole' else [],
                 editablePixels=prepared.get('editablePixels'),totalPixels=prepared.get('totalPixels'),ready=stage=='detail' or bool(s['node']['params']['prompt'].strip() or s['node']['annotations'] or s['references']),stale=self.store.read(id)['revision']!=s['revision'])
         except BaseException:
@@ -221,12 +222,16 @@ class BoardApi:
                     snapshot['inputVersion']=self.prepared_input(snapshot,folder);write_json(folder/'snapshot.json',snapshot)
                     phase('generating')
                     approach={'faithful':'Polish existing appearance without inventing new design elements.','detail':'Complete plausible missing construction and landscape details within the intended design.','concept':'Explore a coherent design interpretation while respecting the stated design freedom.'}[p['preset']]
+                    images=[folder/'input.png',folder/'markup.png',folder/'editable.png']
+                    if snapshot['references']:images.append(folder/'reference-sheet.png')
+                    guide_index=len(images)+1
+                    if prep.get('guides'):images.append(folder/'psd-guides.png')
                     brief=(f"Preset: {p['preset']}. {approach} Detail completion target: {p['detail']}/100; design freedom: {p['freedom']}/100. These are qualitative instructions, not numeric model strength. "
                         "Keep camera and broad composition. At low freedom preserve major building masses, roof relationships, openings and path layout; add credible frames, edges, material and landscape detail as requested. "
                         "At higher freedom allow design interpretation inside the editable region, never invent unrelated subjects. "
                         "Image 1 is the clean subject and exact output crop. Image 2 is the full consideration-frame diagram at a different scale, containing annotations and reference images in their actual positions. Arrows from a note or reference towards the subject specify where that instruction applies. Text and Label are instructions, never output content. Image 3 is the editable mask: white may change, black must remain. "
-                        "If present, Image 4 is a numbered REFERENCE SHEET only, not extra panels or objects to paste. An edited-target reference is a manually edited/annotated copy aligned with Image 1: interpret its changes and marks as editing guidance, never substitute it as the source or copy instructional scribbles into the result. Return ONE square image preserving Image 1 letterbox and subject placement. No labels, arrows, captions or contact sheet in the result.\n"
-                        +(p['prompt'] or 'Follow the spatial annotations and reference relationships in Image 2.')+'\nSpatial context (positions relative to target image; arrows connect notes/references to intended regions):\n'+json.dumps(prep.get('spatial',{}),ensure_ascii=False)+'\nStructural guides (preserve their intended geometry, redraw appearance): '+', '.join(l['name'] for l in snapshot.get('layers',[]) if p['roles'].get(l['id'])=='structure')+'\nAnnotation instructions:\n'+'\n'.join(prep['notes'])+'\nReference purposes:\n'+'\n'.join(f"Reference item {i+1}: {r['node']['params'].get('referencePurpose','general')} reference — {r['node']['name']}" for i,r in enumerate(snapshot['references'])))
+                        +("Image 4 is a numbered REFERENCE SHEET only, not extra panels or objects to paste. An edited-target reference is a manually edited/annotated copy aligned with Image 1: interpret its changes and marks as editing guidance, never substitute it as the source or copy instructional scribbles into the result. " if snapshot['references'] else "")+"Return ONE square image preserving Image 1 letterbox and subject placement. No labels, arrows, captions or contact sheet in the result.\n"
+                        +(p['prompt'] or 'Follow the spatial annotations and reference relationships in Image 2.')+'\nSpatial context (positions relative to target image; arrows connect notes/references to intended regions):\n'+json.dumps(prep.get('spatial',{}),ensure_ascii=False)+('\nImage '+str(guide_index)+' is the PSD CHANNEL GUIDE SHEET. Each numbered cell covers the SAME full input image at the same camera and proportions. Read these as separate channels, NEVER as output panels, new objects or requested surface colours. Depth gives relative near/far and occlusion; form gives massing/surface folds; material regions give categorical boundaries, not requested albedo; shadow gives lighting direction. This is image guidance, not a hard geometry constraint. Cell manifest: '+json.dumps(prep['guides'],ensure_ascii=False) if prep.get('guides') else '')+'\nAnnotation instructions:\n'+'\n'.join(prep['notes'])+'\nReference purposes:\n'+'\n'.join(f"Reference item {i+1}: {r['node']['params'].get('referencePurpose','general')} reference — {r['node']['name']}" for i,r in enumerate(snapshot['references'])))
                     if (folder/'generated.png').is_file() and (folder/'image-job/receipt.json').is_file():
                         receipt=read_json(folder/'image-job/receipt.json')
                         with (folder/'generated.png').open('rb') as f:digest=hashlib.file_digest(f,'sha256').hexdigest()
@@ -234,7 +239,7 @@ class BoardApi:
                         task['reusedImage']=True
                     else:
                         generated,receipt=await self.generation.image(job,folder/'image-job',brief,
-                            [folder/'input.png',folder/'markup.png',folder/'editable.png']+([folder/'reference-sheet.png'] if snapshot['references'] else []))
+                            images)
                         self.check(job);shutil.copyfile(generated,folder/'generated.png')
                     phase('compositing');await self.raster(job,'finish',folder)
                     report=read_json(folder/'result.json');self.check(job)

@@ -9,7 +9,7 @@ import board_layout as layout
 ASSET = re.compile(r'^[a-f0-9]{64}(?:-preview)?\.(?:png|jpg|webp|psd)$')
 PRESETS = {'faithful':(20,5), 'detail':(65,15), 'concept':(80,55)}
 DEFAULTS = dict(generationStage='whole',editScope='auto',prompt='', preset='detail', detail=65, freedom=15, blend=100, edgeGuard=1,
-                tileSize=1024, overlap=128, outputSize=2048, roles={},referencePurpose='general')
+                tileSize=1024, overlap=128, outputSize=2048, roles={},layerParticipation={},referencePurpose='general')
 
 def ident(value):
     try:
@@ -32,6 +32,8 @@ def params(value):
     for key in ('detail','freedom','blend'):finite(result[key],0,100)
     finite(result['edgeGuard'],0,3)
     if not isinstance(result['roles'],dict) or len(result['roles'])>256 or any(v not in ('generate','structure','preserve','reference','exclude') for v in result['roles'].values()):raise ValueError('Invalid layer roles')
+    participation=result['layerParticipation']
+    if not isinstance(participation,dict) or len(participation)>256 or any(not isinstance(k,str) or len(k)>80 or type(v) is not bool for k,v in participation.items()):raise ValueError('Invalid PSD layer participation')
     from project import tiles
     tiles(1,1,result['tileSize'],result['overlap'])
     if result['outputSize'] not in (1024,2048,4096):raise ValueError('Output size: 1024, 2048 or 4096')

@@ -22,7 +22,7 @@ public static class CatalogService
     public static CatalogJob? LocalizePlants()
     {
         if(stopping||Busy||MaterialChat.Busy||MaterialGeneration.HasActiveWorkers)return null;
-        var library=PlantService.Library;var snapshot=library.List().Where(a=>a.Plant!=null&&new[]{"zh","en"}.Any(k=>!a.Plant.Names.TryGetValue(k,out var name)||string.IsNullOrWhiteSpace(name))).Take(50).ToArray();if(snapshot.Length==0)return null;
+        var library=PlantService.Library;var snapshot=library.List().Where(a=>a.Plant!=null&&!AssetLocalization.Complete(a)&&new[]{"zh","en"}.Any(k=>!a.Plant.Names.TryGetValue(k,out var name)||string.IsNullOrWhiteSpace(name))).Take(50).ToArray();if(snapshot.Length==0)return null;
         var job=new CatalogJob{Count=snapshot.Length,Stage="正在补全植物中英文名称…"};var cancel=new CancellationTokenSource();jobs.Add(job.Id,(job,cancel));
         _=Task.Run(async()=>
         {
@@ -32,6 +32,38 @@ public static class CatalogService
                 if(stopping)return;RhinoApp.InvokeOnUiThread(new Action(()=>
                 {
                     try{cancel.Token.ThrowIfCancellationRequested();if(PlantService.Library.Root!=library.Root)throw new OperationCanceledException("植物库已切换。");PlantNames.Apply(library,snapshot,answer.Names);job.Status="completed";job.Stage="植物名称已更新。";}
+                    catch(Exception ex){job.Status=ex is OperationCanceledException?"cancelled":"failed";job.Error=ex.Message;job.Stage=ex.Message;}
+                }));
+            }
+            catch(Exception ex){if(!stopping)RhinoApp.InvokeOnUiThread(new Action(()=>{job.Status=ex is OperationCanceledException?"cancelled":"failed";job.Error=ex.Message;job.Stage=ex.Message;}));}
+        });return job;
+    }
+    public static CatalogJob? LocalizeAssets(bool plants=false)
+    {
+        if(stopping||Busy||MaterialChat.Busy||MaterialGeneration.HasActiveWorkers)throw new InvalidOperationException("请先完成当前素材任务。");
+        var library=plants?PlantService.Library:MaterialService.Library;
+        var snapshot=library.List().Where(a=>!AssetLocalization.Complete(a)).ToArray();if(snapshot.Length==0)return null;
+        var job=new CatalogJob{Count=snapshot.Length,Stage="正在补齐素材中英文资料…"};var cancel=new CancellationTokenSource();jobs.Add(job.Id,(job,cancel));
+        _=Task.Run(async()=>
+        {
+            try
+            {
+                var labels=new List<CatalogLabel>();int completed=0;
+                foreach(var batch in snapshot.Chunk(20))
+                {
+                    cancel.Token.ThrowIfCancellationRequested();
+                    var answer=await CodexCatalogRunner.RunAsync(Path.Combine(library.Root,"catalog-jobs",job.Id.ToString("N"),completed.ToString()),"localize","补齐素材内部中英文名称、分类、标签和已有建议的译文；原始字段与科学身份保持。",batch,cancel.Token);
+                    labels.AddRange(answer.Items);completed+=batch.Length;
+                    if(stopping)return;int done=completed;RhinoApp.InvokeOnUiThread(new Action(()=>job.Stage=$"正在补齐素材中英文 · {done}/{snapshot.Length}"));
+                }
+                if(stopping)return;RhinoApp.InvokeOnUiThread(new Action(()=>
+                {
+                    try
+                    {
+                        cancel.Token.ThrowIfCancellationRequested();if((plants?PlantService.Library:MaterialService.Library).Root!=library.Root)throw new InvalidOperationException("素材库已切换，请重试。");
+                        AssetLocalization.Apply(library,snapshot,labels.ToArray());job.Status="completed";job.Stage=$"已补齐 {snapshot.Length} 个素材的中英文资料。";
+                        if(plants)PlantTool.PresentationChanged();else SceneFlowWorkspace.RefreshCatalog();
+                    }
                     catch(Exception ex){job.Status=ex is OperationCanceledException?"cancelled":"failed";job.Error=ex.Message;job.Stage=ex.Message;}
                 }));
             }
@@ -65,5 +97,5 @@ public static class CatalogService
         result.Randomization.Validate();result.Randomization.RecommendedMode=result.Randomization.Mode;result.Randomization.Mode="auto";result.Randomization.RecommendedBy="ai";
         return MaterialCatalog.ValidatePlan([asset],result.Items).Single() with{Randomization=result.Randomization};
     }
-    internal static void SetLabel(MaterialAsset asset,CatalogLabel label){asset.Name=label.Name;asset.Category=label.Category;asset.Tags=label.Tags;if(label.Randomization!=null)asset.Randomization=MaterialLibrary.Clone(label.Randomization);}
+    internal static void SetLabel(MaterialAsset asset,CatalogLabel label){asset.Name=label.Name;asset.Category=label.Category;asset.Tags=label.Tags;if(label.Randomization!=null)asset.Randomization=MaterialLibrary.Clone(label.Randomization);if(label.Localizations.Length>0)AssetLocalization.SetDraft(asset,label.Localizations);}
 }

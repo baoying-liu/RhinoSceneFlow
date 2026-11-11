@@ -4,6 +4,12 @@ namespace RhinoSceneFlow.Core;
 public static class PlantShadows
 {
     public static IPsdImage Add(RasterImage original,CameraProjection camera,PlantOccluders receivers,IReadOnlyList<PlantBillboard> plants,BillboardSettings settings,Vec3 toSun,CancellationToken token=default)
+        =>Render(original,camera,receivers,plants,settings,toSun,false,token);
+    /// <summary>Residual cutout coverage, excluding samples already shadowed by geometry.
+    /// Compositing this over the original reproduces the union without double darkening.</summary>
+    public static IPsdImage Separate(RasterImage original,CameraProjection camera,PlantOccluders receivers,IReadOnlyList<PlantBillboard> plants,BillboardSettings settings,Vec3 toSun,CancellationToken token=default)
+        =>Render(original,camera,receivers,plants,settings,toSun,true,token);
+    private static IPsdImage Render(RasterImage original,CameraProjection camera,PlantOccluders receivers,IReadOnlyList<PlantBillboard> plants,BillboardSettings settings,Vec3 toSun,bool separate,CancellationToken token)
     {
         var frames=plants.Select(p=>{var a=p.Axes(camera,settings);return(P:p,R:a.Right,U:a.Up,N:a.Right.Cross(a.Up).Unit);}).ToArray();
         var alpha=new byte[original.Width*original.Height];var sun=toSun.Unit;
@@ -25,7 +31,9 @@ public static class PlantShadows
                     }
                     total+=1-transmitted;
                 }
-                alpha[y*original.Width+x]=(byte)Math.Clamp(Math.Round(total*255/4),0,255);
+                double combined=Math.Clamp(Math.Round(total*255/4),0,255);
+                double basis=original.CompositeChannel(3,x,y);
+                alpha[y*original.Width+x]=(byte)(separate?(basis>=255?0:Math.Clamp(Math.Round((combined-basis)*255/(255-basis)),0,255)):combined);
             }
         });return new Mask(original,alpha);
     }

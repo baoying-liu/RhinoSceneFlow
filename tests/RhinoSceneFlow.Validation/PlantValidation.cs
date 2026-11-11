@@ -33,6 +33,27 @@ internal static class PlantValidation
         var cutout=plants[0] with{Image=new RgbaTexture(2,1,[0,0,0,0,0,255,0,255])};
         var shadow=PlantShadows.Add(empty,camera,floor,[cutout],free,new(0,0,1));
         Check(shadow.LayerAlpha(0,20,32)==0&&shadow.LayerAlpha(0,44,32)==255,"Plant shadow used an opaque rectangle instead of source alpha.");
+        var shadowGroups=new[]{new ColorGroup("Shadow",new(90,90,90))};
+        ClipVertex P(double x,double y)=>new(x,y,.5,1);
+        var existing=FlatRasterizer.Render(64,64,shadowGroups,new[]{new Triangle(P(-.7,-.7),P(.071,-.7),P(.071,.7),0),new Triangle(P(-.7,-.7),P(.071,.7),P(-.7,.7),0)});
+        var combined=PlantShadows.Add(existing,camera,floor,[cutout],free,new(0,0,1));
+        var separated=PlantShadows.Separate(existing,camera,floor,[cutout],free,new(0,0,1));
+        var reconstructed=new ConfiguredStack(new StyledPass("plants only",separated),new StyledPass("geometry",existing));
+        for(int y=0;y<64;y++)for(int x=0;x<64;x++)
+        {
+            Check(Math.Abs(reconstructed.CompositeChannel(3,x,y)-combined.CompositeChannel(3,x,y))<=1,"Separated shadow alpha did not reconstruct the union.");
+            if(existing.CompositeChannel(3,x,y)==255)Check(separated.LayerAlpha(0,x,y)==0,"Plant shadows double-darkened opaque geometry shadows.");
+        }
+        var nested=new ConfiguredStack(new StyledPass("foliage",hierarchy),new StyledPass("Plant shadows",separated,"mul ",137));
+        var nestedStack=new ConfiguredStack(new StyledPass("Plants",nested,Folder:true,PassThrough:true),new StyledPass("Shadow",existing,"mul "),new StyledPass("background",all));
+        var flatStack=new ConfiguredStack(new StyledPass("foliage",hierarchy),new StyledPass("Plant shadows",separated,"mul ",137),new StyledPass("Shadow",existing,"mul "),new StyledPass("background",all));
+        for(int y=0;y<64;y++)for(int x=0;x<64;x++)for(int c=0;c<4;c++)Check(nestedStack.CompositeChannel(c,x,y)==flatStack.CompositeChannel(c,x,y),"Pass-through plant group changed shadow blending.");
+        var nestedRecords=nestedStack.Records();int lastFoliage=nestedRecords.ToList().FindLastIndex(r=>r.Section==0&&r.Name!="Plant shadows"&&r.Name!="Shadow"&&r.Name!="background");
+        Check(nestedRecords[0].Name=="Plants"&&nestedRecords[0].Blend=="pass"&&nestedRecords[lastFoliage+2].Name=="Plant shadows","Plant shadows must follow all scientific-name folders inside Plants.");
+        Check(nestedRecords.Single(r=>r.Name=="Plant shadows").Opacity==137,"Separated shadow style was lost.");
+        PsdWriter.Save(Path.Combine(folder,"plants-separated-shadows.psd"),nestedStack);
+        var hiddenNested=new ConfiguredStack(new StyledPass("Plant shadows",separated,"mul ",Visible:false));
+        Check(hiddenNested.CompositeChannel(3,44,32)==0&&!hiddenNested.Records()[0].Visible,"Hidden plant shadows entered the composite.");
         bool bounded=false;
         try{PlantRasterizer.Render(512,512,camera,Enumerable.Range(0,600).Select(i=>plants[0] with{Id=i.ToString()}).ToArray(),free,blockers,"individual");}catch(InvalidOperationException e) when(e.Message.Contains("128 MiB")){bounded=true;}
         Check(bounded,"Dense individual plant layers were allowed an unbounded allocation.");

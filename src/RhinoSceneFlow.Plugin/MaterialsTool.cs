@@ -1,4 +1,4 @@
-﻿using Eto.Drawing;
+using Eto.Drawing;
 using Eto.Forms;
 using Rhino;
 using RhinoSceneFlow.Core;
@@ -12,22 +12,22 @@ public sealed class MaterialsTool:Panel
     private readonly bool libraryOnly;
     private readonly MaterialActionQueue actions;
     private readonly UITimer poll=new(){Interval=.25};
-    private readonly Label target=new(),status=new(){Text="描述材质，或从材质库中选择。",Wrap=WrapMode.Word},chosen=new(){Text="尚未选择材质",Wrap=WrapMode.Word};
+    private readonly UiLabel target=new(),status=new(){Text="描述材质，或从材质库中选择。",Wrap=WrapMode.Word},chosen=new(){Text="尚未选择材质",Wrap=WrapMode.Word};
     private readonly ProgressBar progress=new(){MaxValue=100};
-    private readonly DropDown scope=new();
-    private readonly CheckBox reuse=new(){Text="优先复用相似的已有材质",Checked=true};
+    private readonly DropDown scope=new(){Width=100};
+    private readonly UiCheckBox reuse=new(){Text="优先复用相似的已有材质",Checked=true};
     private readonly NumericStepper width=Ui.Number(.001,1e8,1,95),height=Ui.Number(.001,1e8,1,95);
     private readonly NumericStepper roughness=Ui.Number(0,1,2,95),metallic=Ui.Number(0,1,2,95);
-    private readonly DropDown randomMode=new(),randomTiles=new();
+    private readonly DropDown randomMode=new(){Width=100},randomTiles=new(){Width=100};
     private readonly NumericStepper randomSeed=Ui.Number(int.MinValue,int.MaxValue,0,110),randomStrength=Ui.Number(0,50,0,85),randomColumns=Ui.Number(1,128,0,65),randomRows=Ui.Number(1,128,0,65),randomOffset=Ui.Number(0,1,2,65);
-    private readonly CheckBox randomRotate=new(){Text="允许旋转（非方形仅 180°）"};
-    private readonly Label randomReason=new(){Wrap=WrapMode.Word,Width=260},randomSummary=new(){Wrap=WrapMode.Word};
+    private readonly UiCheckBox randomRotate=new(){Text="允许旋转（非方形仅 180°）"};
+    private readonly UiLabel randomReason=new(){Wrap=WrapMode.Word},randomSummary=new(){Wrap=WrapMode.Word};
     private readonly Panel randomGrid=new();
-    private readonly Expander randomSettings;
+    private readonly UiExpander randomSettings;
     private readonly Panel candidateHost=new();
     private readonly MaterialShelf? shelf;
-    private readonly Button apply;
-    private readonly Button cancel;
+    private readonly UiButton apply;
+    private readonly UiButton cancel;
     private readonly Control[] appearanceControls;
     private bool plantContext;
     private readonly SeasonalAssetPanel seasonal=new(false);
@@ -41,29 +41,29 @@ public sealed class MaterialsTool:Panel
     public MaterialsTool(RhinoDoc doc,bool libraryOnly=false)
     {
         document=doc.RuntimeSerialNumber;this.libraryOnly=libraryOnly;actions=new(document,(s,p)=>SceneFlowWorkspace.MaterialProgress(document,s,p));
-        width.Value=height.Value=1000;scope.Items.Add(new ListItem{Key="object",Text="应用到当前物件"});scope.Items.Add(new ListItem{Key="layer",Text="应用到物件所在图层"});scope.SelectedIndex=0;
+        width.Value=height.Value=1000;scope.Items.Add(new UiListItem{Key="object",Text="应用到当前物件"});scope.Items.Add(new UiListItem{Key="layer",Text="应用到物件所在图层"});scope.SelectedIndex=0;
         scope.SelectedKey=SceneFlowWorkspace.MaterialScope(document);
         scope.SelectedValueChanged+=(_,_)=>{if(scope.SelectedKey is "object" or "layer")SceneFlowWorkspace.SetMaterialScope(document,scope.SelectedKey);};
-        if(libraryOnly)shelf=new(doc,SelectAsset);
+        if(libraryOnly){shelf=new(doc,SelectAsset);shelf.CatalogChanged+=RefreshPresentation;}
         else chat=new(document,()=>(width.Value/1000,height.Value/1000),id=>{job=lastJob=id;progress.Indeterminate=true;},()=>reuse.Checked==true);
-        var settings=Ui.Layout();settings.AddRow(new Label{Text="整张贴图代表的实际宽 × 高（mm）",Wrap=WrapMode.Word});settings.AddRow(ToolUi.Row(width,new Label{Text="×"},height,null));
-        settings.AddRow(ToolUi.Row(new Label{Text="粗糙度"},roughness,null));settings.AddRow(ToolUi.Row(new Label{Text="金属度"},metallic,null));
+        var settings=Ui.Layout();settings.AddRow(new UiLabel{Text="整张贴图代表的实际宽 × 高（mm）",Wrap=WrapMode.Word});settings.AddRow(ToolUi.Row(new UiLabel{Text="宽度 mm"},width,null));settings.AddRow(ToolUi.Row(new UiLabel{Text="高度 mm"},height,null));
+        settings.AddRow(ToolUi.Row(new UiLabel{Text="粗糙度"},roughness,null));settings.AddRow(ToolUi.Row(new UiLabel{Text="金属度"},metallic,null));
         settings.AddRow(Ui.Button("保存尺寸与外观参数",()=>Guard(()=>{if(Busy)throw new ArgumentException("请先完成当前任务。");if(selectedVersion==null)throw new ArgumentException("先选择材质。");var a=MaterialLibrary.Clone(selectedVersion);a.WidthMeters=width.Value/1000;a.HeightMeters=height.Value/1000;a.Roughness=roughness.Value;a.Metallic=metallic.Value;MaterialService.Library.Update(a);SelectAsset(a.Id);status.Text="尺寸与外观参数已保存，下次应用生效。";})));
         settings.AddRow(Ui.Button("打开 UV 工具",()=>SceneFlowWorkspace.Open("uv")));
-        var advanced=new Expander{Header="尺寸与高级设置",Expanded=false,Content=settings};
-        foreach(var item in new[]{("auto","自动 · 使用 AI 建议"),("off","关闭"),("object","按物件随机"),("stochastic","自然纹理 · 随机平铺"),("macro","大尺度色差"),("structured","保留结构 · 分区色差")})randomMode.Items.Add(new ListItem{Key=item.Item1,Text=item.Item2});
-        foreach(int n in new[]{2,4,8})randomTiles.Items.Add(new ListItem{Key=n.ToString(),Text=$"{n} × {n} 个原图周期"});
-        var grid=Ui.Layout();grid.AddRow(new Label{Text="原图包含的列 × 行（不确定时保持 1 × 1）",Wrap=WrapMode.Word});grid.AddRow(ToolUi.Row(randomColumns,new Label{Text="×"},randomRows,null));grid.AddRow(ToolUi.Row(new Label{Text="错缝比例"},randomOffset,null));randomGrid.Content=grid;
-        var random=Ui.Layout();random.AddRow(randomMode);random.AddRow(randomReason);random.AddRow(ToolUi.Row(new Label{Text="随机种子"},randomSeed,null));random.AddRow(ToolUi.Row(new Label{Text="色差 %"},randomStrength,null));random.AddRow(randomTiles);random.AddRow(randomRotate);random.AddRow(randomGrid);
-        random.AddRow(new Label{Text="保留真实尺寸与原图清晰度；大周期需要更多缓存。按物件模式会为图层内现有物件建立独立外观变体。",Wrap=WrapMode.Word,Width=260});
+        var advanced=new UiExpander{Header="尺寸与高级设置",Expanded=false,Content=settings};
+        foreach(var item in new[]{("auto","自动 · 使用 AI 建议"),("off","关闭"),("object","按物件随机"),("stochastic","自然纹理 · 随机平铺"),("macro","大尺度色差"),("structured","保留结构 · 分区色差")})randomMode.Items.Add(new UiListItem{Key=item.Item1,Text=item.Item2});
+        foreach(int n in new[]{2,4,8})randomTiles.Items.Add(new UiListItem{Key=n.ToString(),Text=$"{n} × {n} 个原图周期"});
+        var grid=Ui.Layout();grid.AddRow(new UiLabel{Text="原图包含的列 × 行（不确定时保持 1 × 1）",Wrap=WrapMode.Word});grid.AddRow(ToolUi.Row(randomColumns,new UiLabel{Text="×"},randomRows,null));grid.AddRow(ToolUi.Row(new UiLabel{Text="错缝比例"},randomOffset,null));randomGrid.Content=grid;
+        var random=Ui.Layout();random.AddRow(randomMode);random.AddRow(randomReason);random.AddRow(ToolUi.Row(new UiLabel{Text="随机种子"},randomSeed,null));random.AddRow(ToolUi.Row(new UiLabel{Text="色差 %"},randomStrength,null));random.AddRow(randomTiles);random.AddRow(randomRotate);random.AddRow(randomGrid);
+        random.AddRow(new UiLabel{Text="保留真实尺寸与原图清晰度；大周期需要更多缓存。按物件模式会为图层内现有物件建立独立外观变体。",Wrap=WrapMode.Word});
         random.AddRow(Ui.Button("保存并预览",()=>Guard(()=>{if(Busy)throw new InvalidOperationException("请先完成当前任务。");SaveRandom();randomPreview=RandomTextureService.Start(Doc,selected!.Value,preview:true).Id;})));
-        randomSettings=new Expander{Header="随机去重复",Expanded=false,Content=new Scrollable{Content=random,ExpandContentWidth=true,Height=260}};randomMode.SelectedValueChanged+=(_,_)=>UpdateRandomSummary();randomMode.SelectedKey="off";randomTiles.SelectedKey="4";randomSeed.Value=42;randomStrength.Value=15;randomColumns.Value=randomRows.Value=1;randomOffset.Value=.5;
+        randomSettings=new UiExpander{Header="随机去重复",Expanded=false,Content=ToolUi.VerticalScroll(random,260)};randomMode.SelectedValueChanged+=(_,_)=>UpdateRandomSummary();randomMode.SelectedKey="off";randomTiles.SelectedKey="4";randomSeed.Value=42;randomStrength.Value=15;randomColumns.Value=randomRows.Value=1;randomOffset.Value=.5;
         var settingsBody=Ui.Layout();settingsBody.AddRow(randomSummary);settingsBody.AddRow(randomSettings);settingsBody.AddRow(advanced);
-        var materialSettings=new Expander{Header="铺贴与外观设置",Expanded=false,Content=new Scrollable{Content=settingsBody,ExpandContentWidth=true,Height=240}};
+        var materialSettings=new UiExpander{Header="铺贴与外观设置",Expanded=false,Content=ToolUi.VerticalScroll(settingsBody,240)};
         appearanceControls=[randomSummary,materialSettings,scope];
         var l=Ui.Layout();l.AddRow(ToolUi.Heading(libraryOnly?"材质库":"AI 素材对话"));l.AddRow(target);
-        if(libraryOnly)l.Add(new Scrollable{Content=shelf!,ExpandContentWidth=true,ExpandContentHeight=false},true,true);
-        else{reuse.Text="优先查找已有素材";l.AddRow(reuse);var fourSeasons=new CheckBox{Text="生成四季版本（默认只生成夏季）",Checked=PluginPreferences.Load().GenerateFourSeasons};fourSeasons.CheckedChanged+=(_,_)=>{var preferences=PluginPreferences.Load();preferences.GenerateFourSeasons=fourSeasons.Checked==true;PluginPreferences.Save(preferences);};l.AddRow(fourSeasons);l.AddRow(ToolUi.Pair(Ui.Button("浏览材质库",()=>ShowLibrary(true)),Ui.Button("浏览植物库",()=>SceneFlowWorkspace.Open("planting"))));l.Add(chat!,true,true);l.AddRow(candidateHost);}
+        if(libraryOnly)l.Add(ToolUi.VerticalScroll(shelf!),true,true);
+        else{reuse.Text="优先查找已有素材";l.AddRow(reuse);var fourSeasons=new UiCheckBox{Text="生成四季版本（默认只生成夏季）",Checked=PluginPreferences.Load().GenerateFourSeasons};fourSeasons.CheckedChanged+=(_,_)=>{var preferences=PluginPreferences.Load();preferences.GenerateFourSeasons=fourSeasons.Checked==true;PluginPreferences.Save(preferences);};l.AddRow(fourSeasons);l.AddRow(ToolUi.Pair(Ui.Button("浏览材质库",()=>ShowLibrary(true)),Ui.Button("浏览植物库",()=>SceneFlowWorkspace.Open("planting"))));l.Add(chat!,true,true);l.AddRow(candidateHost);}
         var application=Ui.Layout();application.AddRow(chosen);application.AddRow(scope);apply=Ui.Button("应用选中材质",Apply);application.AddRow(apply);
         l.AddRow(ToolUi.Section("应用材质",application));l.AddRow(materialSettings);l.AddRow(seasonal);
         progress.Visible=false;cancel=Ui.Button("取消当前任务",Cancel);cancel.Visible=false;
@@ -87,10 +87,22 @@ public sealed class MaterialsTool:Panel
     {
         seasonal.Bind(id);
         plantContext=false;foreach(var control in appearanceControls)control.Visible=true;apply.Text="应用选中材质";
-        var a=MaterialService.Library.Get(id);selected=id;selectedVersion=MaterialLibrary.Clone(a);width.Value=a.WidthMeters*1000;height.Value=a.HeightMeters*1000;roughness.Value=a.Roughness;metallic.Value=a.Metallic;chosen.Text=a.Name+" · "+a.Category;status.Text="材质已选中；点击应用即可。";
-        var r=a.Randomization;randomMode.SelectedKey=r.Mode;randomTiles.SelectedKey=r.Tiles.ToString();randomSeed.Value=r.Seed;randomStrength.Value=r.Strength*100;randomRotate.Checked=r.Rotate;randomColumns.Value=r.Columns;randomRows.Value=r.Rows;randomOffset.Value=r.RowOffset;randomReason.Text=(r.RecommendedBy=="ai"?"AI 建议：":"")+r.Reason;UpdateRandomSummary();
+        var a=MaterialService.Library.Get(id);selected=id;selectedVersion=MaterialLibrary.Clone(a);width.Value=a.WidthMeters*1000;height.Value=a.HeightMeters*1000;roughness.Value=a.Roughness;metallic.Value=a.Metallic;chosen.Tag="user-content";chosen.Text=CatalogDisplay.Name(a)+" · "+CatalogDisplay.Category(a);status.Text="材质已选中；点击应用即可。";
+        var r=a.Randomization;randomMode.SelectedKey=r.Mode;randomTiles.SelectedKey=r.Tiles.ToString();randomSeed.Value=r.Seed;randomStrength.Value=r.Strength*100;randomRotate.Checked=r.Rotate;randomColumns.Value=r.Columns;randomRows.Value=r.Rows;randomOffset.Value=r.RowOffset;randomReason.Tag="user-content";randomReason.Text=(r.RecommendedBy=="ai"?WorkspaceAppearance.Text("AI 建议："):"")+CatalogDisplay.Reason(a);UpdateRandomSummary();
         if(shelf!=null){shelf.Refresh();shelf.Select(id,false);}
     }
+    internal void RefreshPresentation()
+    {
+        if(closed)return;
+        if(!plantContext&&selectedVersion is {} snapshot)
+        {
+            var a=snapshot;try{a=MaterialService.Library.Get(snapshot.Id);}catch(FileNotFoundException){}
+            chosen.Text=CatalogDisplay.Name(a)+" · "+CatalogDisplay.Category(a);
+            randomReason.Text=(a.Randomization.RecommendedBy=="ai"?WorkspaceAppearance.Text("AI 建议："):"")+CatalogDisplay.Reason(a);
+        }
+        shelf?.RefreshPresentation();
+    }
+    internal void ReloadCatalog(){shelf?.Refresh();RefreshPresentation();}
     public void Configure(bool? reuseSimilar=null,string? applyScope=null)
     {
         if(Busy)throw new InvalidOperationException("当前任务尚未完成。");
@@ -119,12 +131,12 @@ public sealed class MaterialsTool:Panel
             if(!job.HasValue)return;var j=MaterialChat.Get(job.Value);status.Text=j.Stage;
             if(j.Status=="running")return;job=null;progress.Indeterminate=false;
             plantContext=j.Kind=="plant";foreach(var control in appearanceControls)control.Visible=!plantContext;apply.Text=plantContext?"打开植物库与种植":"应用选中材质";
-            if(plantContext)chosen.Text="植物素材 · 在植物库中选择并种植";
+            if(plantContext){chosen.Tag=null;chosen.Text="植物素材 · 在植物库中选择并种植";}
             if(j.Material.HasValue)SelectAsset(j.Material.Value);
             if(j.Plant.HasValue){PlantService.Selected[document]=j.Plant.Value;SceneFlowWorkspace.Planting?.Refresh();SceneFlowWorkspace.Planting?.Select(j.Plant.Value);}
             var list=Ui.Layout();foreach(var match in j.Matches){var a=MaterialService.Library.Get(match.Id);list.AddRow(Ui.Button(a.Name+" · "+match.Reason,()=>Guard(()=>SelectAsset(a.Id))));}
             foreach(var match in j.PlantMatches){var a=PlantService.Library.Get(match.Id);list.AddRow(Ui.Button(a.Name+" · "+a.Plant!.ScientificName+" · "+match.Reason,()=>Guard(()=>{PlantService.Selected[document]=a.Id;SceneFlowWorkspace.Open("planting");SceneFlowWorkspace.Planting?.Select(a.Id);})));}
-            candidateHost.Content=j.Matches.Length+j.PlantMatches.Length>0?new Expander{Header="找到可复用素材 · 选择后应用／种植",Expanded=true,Content=list}:null;
+            candidateHost.Content=j.Matches.Length+j.PlantMatches.Length>0?new UiExpander{Header="找到可复用素材 · 选择后应用／种植",Expanded=true,Content=list}:null;
         });
     }
     public object GetState()=>new{open=!closed,page=libraryOnly?"library":"materials",document,selected,job,lastJob,randomPreview,randomization=selectedVersion?.Randomization,chatKit=chat?.State,chatTheme=chat?.Theme,busy=Busy,scope=scope.SelectedKey,reuseSimilar=reuse.Checked,shelf=shelf?.GetState(),status=status.Text};
@@ -148,11 +160,11 @@ public sealed class MaterialShelf:Panel
 {
     private readonly uint document;
     private readonly Action<Guid> select;
-    private readonly TextBox search=new(){PlaceholderText="搜索名称、分类或标签"},name=new(),categoryEdit=new(),tagsEdit=new();
-    private readonly DropDown category=new(),tag=new();
+    private readonly UiTextBox search=new(){PlaceholderText="搜索名称、分类或标签"},name=new(),categoryEdit=new(),tagsEdit=new();
+    private readonly DropDown category=new(){Width=100},tag=new(){Width=100};
     private readonly GridView list=new(){ShowHeader=false,AllowMultipleSelection=false,Height=230};
-    private readonly ImageView preview=new(){Size=new(260,180)};
-    private readonly Label details=new(){Wrap=WrapMode.Word},status=new(){Wrap=WrapMode.Word};
+    private readonly ImageView preview=new(){Size=new(160,160)};
+    private readonly UiLabel details=new(){Wrap=WrapMode.Word},status=new(){Wrap=WrapMode.Word};
     private readonly Panel inspector=new();
     private readonly UITimer poll=new(){Interval=.5};
     private readonly Dictionary<Guid,Bitmap> swatches=[];
@@ -163,15 +175,19 @@ public sealed class MaterialShelf:Panel
     private string catalogStamp="";
     private DateTime nextRefresh;
     private object[][] rows=[];
+    private MaterialAsset? described;
+    private string displayLanguage="";
+    private readonly List<string> previewNotes=[];
+    internal event Action? CatalogChanged;
     public Guid? SelectedAsset=>selected;
     public MaterialShelf(RhinoDoc doc,Action<Guid> select)
     {
-        document=doc.RuntimeSerialNumber;this.select=select;
-        list.Columns.Add(new GridColumn{DataCell=new ImageViewCell(0),Width=36});list.Columns.Add(new GridColumn{DataCell=new TextBoxCell(1),Width=220});
+        document=doc.RuntimeSerialNumber;this.select=select;category.Tag=tag.Tag="catalog-values";
+        list.Columns.Add(new UiGridColumn{DataCell=new ImageViewCell(0),Width=36});list.Columns.Add(new UiGridColumn{DataCell=new TextBoxCell(1),Width=220});
         var refresh=Ui.Button("↻",Refresh,32);refresh.ToolTip="刷新材质库";
-        var l=Ui.Layout();l.AddRow(new TableLayout{Spacing=new(6,0),Rows={new TableRow(new TableCell(search,true),refresh)}});l.AddRow(new Label{Text="分类"});l.AddRow(category);l.AddRow(new Label{Text="标签"});l.AddRow(tag);l.AddRow(list);l.AddRow(details);l.AddRow(status);l.AddRow(inspector);
+        var l=Ui.Layout();l.AddRow(new TableLayout{Spacing=new(6,0),Rows={new TableRow(new TableCell(search,true),refresh)}});l.AddRow(new UiLabel{Text="分类"});l.AddRow(category);l.AddRow(new UiLabel{Text="标签"});l.AddRow(tag);l.AddRow(list);l.AddRow(details);l.AddRow(status);l.AddRow(inspector);
         BuildInspector();inspector.Visible=false;
-        var advanced=Ui.Layout();advanced.AddRow(Ui.Button("导入图片…",Import));advanced.AddRow(Ui.Button("AI 整理名称、分类与标签",()=>Guard(()=>{organize=CatalogService.Organize().Id;status.Text="正在整体优化分类、标签与名称…";})));advanced.AddRow(Ui.Button("切换材质库文件夹…",()=>Guard(()=>{using var dialog=new SelectFolderDialog{Directory=MaterialService.Library.Root};if(dialog.ShowDialog(this)==DialogResult.Ok){SceneFlowPlugin.Instance.MaterialDirectory=dialog.Directory;Refresh();}})));advanced.AddRow(ToolUi.Note("尺寸、外观与随机去重复可在下方“铺贴与外观设置”调整。"));l.AddRow(new Expander{Header="库管理",Content=advanced});Content=l;
+        var advanced=Ui.Layout();advanced.AddRow(Ui.Button("导入图片…",Import));advanced.AddRow(Ui.Button("AI 整理名称、分类与标签",()=>Guard(()=>{organize=CatalogService.Organize().Id;status.Text="正在整体优化分类、标签与名称…";})));advanced.AddRow(Ui.Button("补齐素材中英文资料",()=>Guard(()=>{var job=CatalogService.LocalizeAssets();if(job!=null)organize=job.Id;else status.Text="素材中英文资料已齐全。";})));advanced.AddRow(Ui.Button("取消资料任务",()=>{if(organize.HasValue)CatalogService.Cancel(organize.Value);}));advanced.AddRow(Ui.Button("切换材质库文件夹…",()=>Guard(()=>{using var dialog=new SelectFolderDialog{Directory=MaterialService.Library.Root};if(dialog.ShowDialog(this)==DialogResult.Ok){SceneFlowPlugin.Instance.MaterialDirectory=dialog.Directory;Refresh();}})));advanced.AddRow(ToolUi.Note("尺寸、外观与随机去重复可在下方“铺贴与外观设置”调整。"));l.AddRow(new UiExpander{Header="库管理",Content=advanced});Content=l;
         search.TextChanged+=(_,_)=>Filter();category.SelectedValueChanged+=(_,_)=>{if(!binding){FillTags();Filter();}};tag.SelectedValueChanged+=(_,_)=>{if(!binding)Filter();};
         list.SelectionChanged+=(_,_)=>{if(!binding&&list.SelectedRow>=0&&list.SelectedRow<rows.Length)Guard(()=>Select((Guid)rows[list.SelectedRow][2]));};
         poll.Elapsed+=(_,_)=>Guard(()=>{if(stopped)return;if(DateTime.UtcNow>=nextRefresh){nextRefresh=DateTime.UtcNow.AddSeconds(2);var assets=MaterialService.Library.List();if(Stamp(assets)!=catalogStamp)Refresh();}if(organize==null)return;var j=CatalogService.Get(organize.Value);status.Text=j.Stage;if(j.Status!="running"){organize=null;if(j.Status=="completed")Refresh();}});poll.Start();Refresh();
@@ -180,16 +196,33 @@ public sealed class MaterialShelf:Panel
     private void Guard(Action a){if(closed)return;try{a();}catch(Exception e){status.Text=e.Message;}}
     public void Refresh()
     {
-        if(closed)return;catalog=MaterialService.Library.List();catalogStamp=Stamp(catalog);nextRefresh=DateTime.UtcNow.AddSeconds(2);binding=true;try{string old=category.SelectedKey??"";category.Items.Clear();category.Items.Add(new ListItem{Key="",Text="所有分类"});foreach(var c in catalog.Select(a=>a.Category).Where(c=>c.Length>0).Distinct().Order())category.Items.Add(new ListItem{Key=c,Text=c});category.SelectedKey=old;if(category.SelectedIndex<0)category.SelectedIndex=0;}finally{binding=false;}FillTags();Filter();
+        if(closed)return;catalog=MaterialService.Library.List();catalogStamp=Stamp(catalog);nextRefresh=DateTime.UtcNow.AddSeconds(2);binding=true;try{string old=category.SelectedKey??"";category.Items.Clear();category.Items.Add(new UiListItem{Key="",Text="所有分类"});foreach(var group in catalog.Where(a=>a.Category.Length>0).GroupBy(a=>a.Category).OrderBy(g=>g.Key))category.Items.Add(new UiListItem{Key=group.Key,Localize=key=>CatalogDisplay.SharedCategory(group,key),Text=group.Key});category.SelectedKey=old;if(category.SelectedIndex<0)category.SelectedIndex=0;}finally{binding=false;}FillTags();Filter();
+        if(described!=null&&catalog.FirstOrDefault(a=>a.Id==described.Id) is {} current&&current.Revision==described.Revision){described=current;if(organize==null)Describe();}
+        CatalogChanged?.Invoke();
     }
     private void FillTags()
     {
-        binding=true;try{string old=tag.SelectedKey??"";tag.Items.Clear();tag.Items.Add(new ListItem{Key="",Text="所有标签"});foreach(var t in MaterialCatalog.Filter(catalog,category:category.SelectedKey??"").SelectMany(a=>a.Tags).Distinct().Order())tag.Items.Add(new ListItem{Key=t,Text=t});tag.SelectedKey=old;if(tag.SelectedIndex<0)tag.SelectedIndex=0;}finally{binding=false;}
+        binding=true;try{string old=tag.SelectedKey??"";tag.Items.Clear();tag.Items.Add(new UiListItem{Key="",Text="所有标签"});foreach(var t in MaterialCatalog.Filter(catalog,category:category.SelectedKey??"").SelectMany(a=>a.Tags).Distinct().Order())tag.Items.Add(new UiListItem{Key=t,Localize=key=>CatalogDisplay.SharedTag(catalog.Where(a=>a.Tags.Contains(key)),key),Text=t});tag.SelectedKey=old;if(tag.SelectedIndex<0)tag.SelectedIndex=0;}finally{binding=false;}
     }
     private void Filter()=>Guard(()=>
     {
-        binding=true;try{rows=MaterialCatalog.Filter(catalog,search.Text,category.SelectedKey??"",tag.SelectedKey??"").Select(a=>new object[]{Swatch(a),a.Name+"\n"+a.Category,a.Id}).ToArray();list.DataStore=rows;list.SelectedRow=selected.HasValue?Array.FindIndex(rows,r=>(Guid)r[2]==selected.Value):-1;details.Text=$"{rows.Length} 个材质";}finally{binding=false;}
+        binding=true;try{displayLanguage=UiPresentation.Preferences.ResolvedLanguage;rows=MaterialCatalog.Filter(catalog,"",category.SelectedKey??"",tag.SelectedKey??"").Where(a=>AssetLocalization.Matches(a,search.Text??"",UiPresentation.Preferences.ResolvedLanguage)).Select(a=>new object[]{Swatch(a),CatalogDisplay.Name(a)+"\n"+CatalogDisplay.Category(a),a.Id}).ToArray();list.DataStore=rows;list.SelectedRow=selected.HasValue?Array.FindIndex(rows,r=>(Guid)r[2]==selected.Value):-1;details.Text=$"{rows.Length} 个材质";}finally{binding=false;}
     });
+    internal void RefreshPresentation()
+    {
+        if(closed||displayLanguage==UiPresentation.Preferences.ResolvedLanguage)return;
+        displayLanguage=UiPresentation.Preferences.ResolvedLanguage;var assets=catalog.ToDictionary(a=>a.Id);
+        for(int i=0;i<rows.Length;i++)if(assets.TryGetValue((Guid)rows[i][2],out var a))rows[i][1]=CatalogDisplay.Name(a)+"\n"+CatalogDisplay.Category(a);
+        list.ReloadData(Enumerable.Range(0,rows.Length));
+        if(organize==null&&described!=null)Describe();
+    }
+    private void Describe()
+    {
+        if(described is not {} a)return;
+        status.Text=$"{a.WidthMeters:G4} × {a.HeightMeters:G4} m · {string.Join(" · ",a.Tags.Select(t=>CatalogDisplay.Tag(a,t)))}";
+        // Explicit notes are interface messages, not authored catalog metadata.
+        foreach(var note in previewNotes)status.Append("\n"+WorkspaceAppearance.Text(note));
+    }
     private Bitmap Swatch(MaterialAsset asset)
     {
         if(swatches.TryGetValue(asset.Id,out var value))return value;
@@ -203,16 +236,16 @@ public sealed class MaterialShelf:Panel
         binding=true;try{list.SelectedRow=Array.FindIndex(rows,r=>(Guid)r[2]==id);}finally{binding=false;}
         using(var original=new System.Drawing.Bitmap(MaterialService.Library.MapPath(a,"baseColor")))
         using(var thumb=new System.Drawing.Bitmap(original,260,180)){var old=preview.Image;preview.Image=Ui.Bitmap(thumb);old?.Dispose();}
-        inspector.Visible=true;status.Text=$"{a.WidthMeters:G4} × {a.HeightMeters:G4} m · {string.Join(" · ",a.Tags)}";
-        try{using var sphere=NativeMaterialPreview.Render(a);var old=preview.Image;preview.Image=Ui.Bitmap(sphere);old?.Dispose();}catch(Exception e){status.Text+="\n"+e.Message;}
-        if(a.Randomization.ResolvedMode!="off"&&RandomTextureService.TryResolve(MaterialService.Library,a,Guid.Empty)==null)status.Text+="\n随机缓存尚未准备，球体暂显示原图。";
+        inspector.Visible=true;described=a;previewNotes.Clear();Describe();
+        try{using var sphere=NativeMaterialPreview.Render(a);var old=preview.Image;preview.Image=Ui.Bitmap(sphere);old?.Dispose();}catch(Exception e){previewNotes.Add(e.Message);Describe();}
+        if(a.Randomization.ResolvedMode!="off"&&RandomTextureService.TryResolve(MaterialService.Library,a,Guid.Empty)==null){previewNotes.Add("随机缓存尚未准备，球体暂显示原图。");Describe();}
     }
     private void BuildInspector()
     {
         var edit=Ui.Layout();edit.AddRow(preview);edit.AddRow(Ui.Button("查看球体上的效果",()=>Guard(()=>{if(selected==null)return;using var b=NativeMaterialPreview.Render(MaterialService.Library.Get(selected.Value));var old=preview.Image;preview.Image=Ui.Bitmap(b);old?.Dispose();status.Text="Rhino 原生着色球体预览 · 示意铺贴效果。";})));
-        var fields=Ui.Layout();fields.AddRow(new Label{Text="名称"});fields.AddRow(name);fields.AddRow(new Label{Text="分类"});fields.AddRow(categoryEdit);fields.AddRow(new Label{Text="标签（逗号分隔）"});fields.AddRow(tagsEdit);
+        var fields=Ui.Layout();fields.AddRow(new UiLabel{Text="原始名称"});fields.AddRow(name);fields.AddRow(new UiLabel{Text="原始分类"});fields.AddRow(categoryEdit);fields.AddRow(new UiLabel{Text="原始标签（逗号分隔）"});fields.AddRow(tagsEdit);
         fields.AddRow(Ui.Button("保存属性",()=>Guard(()=>{if(selected==null)return;MaterialService.Library.UpdateLabels(selected.Value,name.Text,categoryEdit.Text,tagsEdit.Text.Split([',','，',';','；'],StringSplitOptions.RemoveEmptyEntries),selectedRevision);Refresh();Select(selected.Value);status.Text="分类、名称与标签已更新。";})));
-        edit.AddRow(new Expander{Header="编辑名称、分类与标签",Content=fields});inspector.Content=edit;
+        fields.AddRow(ToolUi.Note("显示译名随界面语言切换；修改原始内容后可重新补齐译名。"));edit.AddRow(new UiExpander{Header="编辑名称、分类与标签",Content=fields});inspector.Content=edit;
     }
     private void Import()=>Guard(()=>
     {

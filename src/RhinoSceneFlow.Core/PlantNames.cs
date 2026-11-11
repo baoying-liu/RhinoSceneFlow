@@ -4,7 +4,9 @@ public static class PlantNames
 {
     public static string Display(MaterialAsset asset,string language)
     {
-        var p=asset.Plant??throw new ArgumentException("Not a plant.");string key=language.StartsWith("zh",StringComparison.OrdinalIgnoreCase)?"zh":"en";
+        var p=asset.Plant??throw new ArgumentException("Not a plant.");
+        if(AssetLocalization.TranslatedName(asset,language) is {} translated)return translated;
+        string key=language.StartsWith("zh",StringComparison.OrdinalIgnoreCase)?"zh":"en";
         if(p.Names.TryGetValue(key,out var value)&&!string.IsNullOrWhiteSpace(value))return value;
         bool han=asset.Name.Any(c=>c is >= '\u3400' and <= '\u9fff');
         return (key=="zh"&&han)||(key=="en"&&!han)?asset.Name:p.ScientificName;

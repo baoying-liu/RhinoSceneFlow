@@ -71,3 +71,33 @@
 4. 最后拆分前端控制器，保持文件兼容。验证至少包含原 PSD→第一稿、结果→子级、结果→同级、原输入变化后逐级更新、归档跳过、高清、取消重试、导出所见像素一致性。
 
 以上为审计与设计建议，未宣称这些 UI 重构已经完成。以用户确认的流程为准，不删除既有保护机制，也不为了“简单”牺牲溯源。
+
+
+## 2026-11-11 · 极地/深度等导出通道的实际参与情况（审计，不修改生图链）
+
+检查0.22.11实际运行链和本机16份画板（15份含PSD图层），读取最近5次真实整图任务的request.json，附件都只有input.png、markup.png、editable.png，没有独立极地或深度图；这只是已有执行证据，没有重新调用图像模型。代码路径和0.22.12本次改动后的生图链相同。
+
+1. project.prepare给可见像素层默认generate，分组和隐藏层默认reference，不按Depth/Arctic名称赋予深度语义。旧小案例中的Arctic和Shadow是可见generate层。
+2. 整图generation_snapshot仅在有效输入仍是原始PSD时附带原PSD/图层；后代以已生成父图为输入时不再默默套原PSD蒙版。board_render.prepare依据角色生成可改/保护蒙版，但render.prepare跳过layer.is_visible()==false的层。因此隐藏Depth即使把角色改成structure也不会变成图像条件。
+3. board_render.prepare把structure角色映为generate；board_api._run整图仅在文本中列出结构层名字，真正发送input（可见合成）、markup（空间标注图）、editable（蒙版），有手动参考时另加reference-sheet。PSD的reference角色不是“自动提取为参考图”的实现。可见reference层也会消耗底层可见覆盖量，可能压掉可改蒙版，不能把此标签解释成模型已看见独立通道。
+4. 极地等显示模式仅在可见合成中有贡献时能间接影响AI；放在不透明材质下通常只剩未覆盖部分（如白背景）。把深度图眼睛打开，可能只是让灰度图覆盖输入彩色画面，不等价于接入深度引导。
+5. 高清阶段从已批准整图结果创建扁平detail.psd。每块发送局部输入、整体输入、共享风格图、可改蒙版；structure.png虽被复制，未放入self.image附件列表，仅供quality中结构漂移等诊断。没有原始Rhino深度条件、相机矩阵或可调深度控制接口。
+
+可复现A/B：在隔离96×64合成PSD中改变隐藏Depth内容，并改变被不透明材质盖住的Arctic像素，两份PSD哈希不同，但input.png/markup.png/editable.png三个实际输入逐字节一致。把Depth改可见后输入合成发生变化。测试调用当前project.prepare/board_render.prepare，不模拟生图成功，不改变真实画板/PSD。证据artifacts/climate-guides-02212/{board-layers,actual-request-audit}.json和guide-input-ab/verified.json，modelCalls=0。
+
+建议下一步将“外观输入、结构参考、可改范围”分开：外观用材质/植物可见合成；极地作为体块/面转折的语义结构参考；深度作为前后/遮挡/地形关系参考；材质颜色/物件ID用于选区与保护蒙版；阴影用于光向参考。AI参与开关必须独立于PSD眼睛，不应靠打开深度层污染输入。可用一张明确标识的结构参考板容纳同机位Arctic+Depth，附坐标/近白远黑/背景说明，在生成前检查页展示真正送出的内容。
+
+首轮基于Rhino输入时可较强使用结构参考；已生成子图/高清阶段应绑定对应输入版本及机位，若AI已改造体块，旧Rhino通道可能失配，需提示重新选择参考或降低约束，不能静默强套原蒙版。现有执行器只提供图像与文字，额外参考是软引导，不是已经实现的几何硬约束。先验证真实A/B的结构保持和细节补全效果，再宣称生图质量提升；原有质量检查也不是几何准确性证明。本轮不擅自接入这些新图像条件，等待讨论确定语义。
+
+
+### 2026-11-11 follow-up - 0.22.14
+
+The previously audited missing independent channel path is now implemented for
+whole-image tasks with a direct PSD input. PSD participation defaults to imported
+effective visibility and can enable hidden channels independently. Typed channel
+pixels, a numbered sheet and purpose/coordinate metadata are sent as an actual
+additional image attachment; preflight can display it. Existing result-parent/HD
+anchor rules remain unchanged. The 480x360 real Hillside six-channel export was
+independently parsed; colour, depth, Arctic and shadow sheets were visible and
+its clean input pixels stayed exact. Synthetic orchestration recorded the actual
+attachment path and prompt; no new real AI image quality claim is made.

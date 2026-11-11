@@ -28,17 +28,17 @@ public sealed class MaterialPanel : Form
     private const int PreviewWidth=320,PreviewHeight=200;
     private readonly uint document;
     private readonly ListBox list=new(){Width=245};
-    private readonly TextBox search=new(){PlaceholderText="名称 / 分类 / 标签"},name=new(){Text="新材质"},category=new(),tags=new();
+    private readonly UiTextBox search=new(){PlaceholderText="名称 / 分类 / 标签"},name=new(){Text="新材质"},category=new(),tags=new();
     private readonly NumericStepper width=Ui.Number(.001,1e8,2,110),height=Ui.Number(.001,1e8,2,110),roughness=Ui.Number(0,1,2),metallic=Ui.Number(0,1,2);
-    private readonly Dictionary<string,TextBox> maps=MaterialLibrary.Slots.ToDictionary(k=>k,_=>new TextBox());
+    private readonly Dictionary<string,UiTextBox> maps=MaterialLibrary.Slots.ToDictionary(k=>k,_=>new UiTextBox());
     private readonly ImageView image=new(){Size=new(PreviewWidth,PreviewHeight)};
-    private readonly CheckBox repeat=new(){Text="3×3 重复预览",Checked=true};
-    private readonly Label physical=new(),status=new(){Text="就绪",Wrap=WrapMode.Word,Width=980},directory=new(){Wrap=WrapMode.Word,Width=850};
+    private readonly UiCheckBox repeat=new(){Text="3×3 重复预览",Checked=true};
+    private readonly UiLabel physical=new(),status=new(){Text="就绪",Wrap=WrapMode.Word,Width=980},directory=new(){Wrap=WrapMode.Word,Width=850};
     private readonly DropDown mode=new(){Width=160},axis=new(){Width=100},alignment=new(){Width=170},target=new(){Width=150},layer=new(){Width=280};
     private readonly NumericStepper rotation=Ui.Number(-360,360,1),offsetU=Ui.Number(-1e12,1e12,2),offsetV=Ui.Number(-1e12,1e12,2);
     private readonly NumericStepper originX=Ui.Number(-1e12,1e12,2),originY=Ui.Number(-1e12,1e12,2),originZ=Ui.Number(-1e12,1e12,2);
     private readonly TextArea prompt=new(){Height=65,Wrap=true};
-    private readonly Label generation=new(){Text="使用本机 Codex 登录生成图片，完成后自动入库。也可直接导入图片。",Wrap=WrapMode.Word};
+    private readonly UiLabel generation=new(){Text="使用本机 Codex 登录生成图片，完成后自动入库。也可直接导入图片。",Wrap=WrapMode.Word};
     private readonly UITimer poll=new(){Interval=2};
     private MaterialAsset[] assets=[];
     private Guid? selected,lastJob;
@@ -53,27 +53,27 @@ public sealed class MaterialPanel : Form
         Fill(mode,[("auto","自动选择"),("plane","平面"),("box","箱式 / 分面投影"),("cylinder","圆柱侧面")]);
         Fill(axis,[("auto","自动"),("x","X"),("y","Y"),("z","Z")]);Fill(alignment,[("continuous","连续铺贴 / 共用原点"),("object","以每个物件为起点")]);
         Fill(target,[("objects","当前选中对象"),("layer","指定图层现有对象")]);RefreshLayers();
-        var left=Ui.Layout();left.Width=245;left.AddRow(new Label{Text="材质库",Font=new Font(SystemFont.Bold,14)});left.AddRow(search);left.Add(list,true,true);
+        var left=Ui.Layout();left.Width=245;left.AddRow(new UiLabel{Text="材质库",Font=new Font(SystemFont.Bold,14)});left.AddRow(search);left.Add(list,true,true);
         left.AddRow(Row(Ui.Button("刷新",RefreshLibrary),Ui.Button("新建 / 清空",New),null));
-        var edit=Ui.Layout();edit.Width=380;edit.AddRow(new Label{Text="整张贴图代表的物理尺寸",Font=new Font(SystemFont.Bold,12)});
+        var edit=Ui.Layout();edit.Width=380;edit.AddRow(new UiLabel{Text="整张贴图代表的物理尺寸",Font=new Font(SystemFont.Bold,12)});
         edit.AddRow(Row(Field("名称"),name));edit.AddRow(Row(Field("分类"),category));edit.AddRow(Row(Field("标签（逗号分隔）"),tags));
-        edit.AddRow(Row(Field("宽 × 高（mm）"),width,new Label{Text="×"},height));
+        edit.AddRow(Row(Field("宽 × 高（mm）"),width,new UiLabel{Text="×"},height));
         edit.AddRow(Row(Field("粗糙度 / 金属度"),roughness,metallic));
         foreach(var slot in MaterialLibrary.Slots)
         {var key=slot;edit.AddRow(Row(Field(slot=="baseColor"?"Base Color *":slot),maps[slot],Ui.Button("选择…",()=>ChooseImage(key),56)));}
         edit.AddRow(Row(Ui.Button("导入为新材质",ImportCurrent),Ui.Button("保存尺寸 / 参数",SaveCurrent),null));
         edit.AddRow(Row(Ui.Button("导出材质包…",ExportPackage),Ui.Button("导入材质包…",ImportPackage),null));
-        var preview=Ui.Layout();preview.Width=320;preview.AddRow(image);preview.AddRow(repeat);preview.AddRow(physical);preview.AddRow(new Label{Text="棋盘整张对应此处宽高；重复预览用于检查接缝。",Wrap=WrapMode.Word,Width=320});
+        var preview=Ui.Layout();preview.Width=320;preview.AddRow(image);preview.AddRow(repeat);preview.AddRow(physical);preview.AddRow(new UiLabel{Text="棋盘整张对应此处宽高；重复预览用于检查接缝。",Wrap=WrapMode.Word,Width=320});
         var upper=Ui.Layout();upper.AddRow(edit,preview);
-        var mapping=Ui.Layout();mapping.AddRow(new Label{Text="赋材质与映射",Font=new Font(SystemFont.Bold,12)});
-        mapping.AddRow(Row(new Label{Text="目标"},target,layer,Ui.Button("刷新图层",RefreshLayers),null));
-        mapping.AddRow(Row(new Label{Text="映射"},mode,new Label{Text="轴向"},axis,alignment,null));
-        mapping.AddRow(Row(new Label{Text="旋转 °"},rotation,new Label{Text="偏移 U / V（mm）"},offsetU,offsetV,null));
-        mapping.AddRow(Row(new Label{Text="平面 / 箱式原点（mm）"},originX,originY,originZ,null));
+        var mapping=Ui.Layout();mapping.AddRow(new UiLabel{Text="赋材质与映射",Font=new Font(SystemFont.Bold,12)});
+        mapping.AddRow(Row(new UiLabel{Text="目标"},target,layer,Ui.Button("刷新图层",RefreshLayers),null));
+        mapping.AddRow(Row(new UiLabel{Text="映射"},mode,new UiLabel{Text="轴向"},axis,alignment,null));
+        mapping.AddRow(Row(new UiLabel{Text="旋转 °"},rotation,new UiLabel{Text="偏移 U / V（mm）"},offsetU,offsetV,null));
+        mapping.AddRow(Row(new UiLabel{Text="平面 / 箱式原点（mm）"},originX,originY,originZ,null));
         mapping.AddRow(Row(Ui.Button("检查应用范围",()=>Apply(false,true)),Ui.Button("应用尺寸棋盘格",()=>Apply(true,false)),Ui.Button("应用材质",()=>Apply(false,false)),null));
         mapping.AddRow(Row(Ui.Button("重新映射 / 同步尺寸",Remap),Ui.Button("恢复应用前材质与映射",Restore),null));
-        mapping.AddRow(new Label{Text="移动 / 缩放、改变单位、图层新增物件后，请重新映射或再次应用。块实例暂不支持。",Wrap=WrapMode.Word,Width=700});
-        var ai=Ui.Layout();ai.AddRow(new Label{Text="AI 生成描述",Font=new Font(SystemFont.Bold,12)});ai.AddRow(prompt);ai.AddRow(Row(Ui.Button("生成材质",RequestGeneration),Ui.Button("取消等待任务",CancelGeneration),null));ai.AddRow(generation);
+        mapping.AddRow(new UiLabel{Text="移动 / 缩放、改变单位、图层新增物件后，请重新映射或再次应用。块实例暂不支持。",Wrap=WrapMode.Word,Width=700});
+        var ai=Ui.Layout();ai.AddRow(new UiLabel{Text="AI 生成描述",Font=new Font(SystemFont.Bold,12)});ai.AddRow(prompt);ai.AddRow(Row(Ui.Button("生成材质",RequestGeneration),Ui.Button("取消等待任务",CancelGeneration),null));ai.AddRow(generation);
         var right=Ui.Layout();right.Width=730;right.AddRow(upper);right.AddRow(mapping);right.AddRow(ai);right.AddRow(null);
         var content=Ui.Layout();content.AddRow(left,new Scrollable{Content=right,ExpandContentWidth=true});
         var root=Ui.Layout();root.Add(content,true,true);root.AddRow(Row(directory,Ui.Button("切换材质库…",ChangeLibrary),null));root.AddRow(status);Content=root;
@@ -85,14 +85,14 @@ public sealed class MaterialPanel : Form
     }
     private void OnDocumentClosed(object? sender,DocumentEventArgs e){if(e.Document.RuntimeSerialNumber==document)Close();}
     private void Guard(Action action){try{action();}catch(Exception ex){status.Text=ex.Message;}}
-    private static Label Field(string text)=>new(){Text=text,Width=120};
+    private static UiLabel Field(string text)=>new(){Text=text,Width=120};
     private static TableLayout Row(params Control?[] controls)=>new(){Spacing=new(6,4),Rows={new TableRow(controls.Select(c=>new TableCell(c,c==null)).ToArray())}};
-    private static void Fill(DropDown drop,(string Key,string Label)[] items){foreach(var i in items)drop.Items.Add(new ListItem{Key=i.Key,Text=i.Label});drop.SelectedIndex=0;}
+    private static void Fill(DropDown drop,(string Key,string UiLabel)[] items){foreach(var i in items)drop.Items.Add(new UiListItem{Key=i.Key,Text=i.UiLabel});drop.SelectedIndex=0;}
     public void RefreshLibrary()
     {
-        binding=true;try{assets=MaterialService.Library.List(search.Text);list.Items.Clear();foreach(var a in assets)list.Items.Add(new ListItem{Key=a.Id.ToString(),Text=a.Name});if(selected.HasValue)list.SelectedKey=selected.ToString();directory.Text=MaterialService.Library.Root;}finally{binding=false;}
+        binding=true;try{assets=MaterialService.Library.List(search.Text);list.Items.Clear();foreach(var a in assets)list.Items.Add(new UiListItem{Key=a.Id.ToString(),Text=a.Name});if(selected.HasValue)list.SelectedKey=selected.ToString();directory.Text=MaterialService.Library.Root;}finally{binding=false;}
     }
-    private void RefreshLayers(){string? key=layer.SelectedKey;layer.Items.Clear();foreach(var l in Doc.Layers.Where(l=>!l.IsDeleted&&!l.IsReference))layer.Items.Add(new ListItem{Key=l.Id.ToString(),Text=l.FullPath});if(key!=null)layer.SelectedKey=key;if(layer.SelectedIndex<0&&layer.Items.Count>0)layer.SelectedIndex=0;}
+    private void RefreshLayers(){string? key=layer.SelectedKey;layer.Items.Clear();foreach(var l in Doc.Layers.Where(l=>!l.IsDeleted&&!l.IsReference))layer.Items.Add(new UiListItem{Key=l.Id.ToString(),Text=l.FullPath});if(key!=null)layer.SelectedKey=key;if(layer.SelectedIndex<0&&layer.Items.Count>0)layer.SelectedIndex=0;}
     public void Select(Guid id)
     {
         var a=MaterialService.Library.Get(id);selected=id;selectedVersion=MaterialLibrary.Clone(a);binding=true;

@@ -1,6 +1,6 @@
 # 原厂 Rhino-MCP-Platform 接入
 
-当前工作区为 v0.22.9：八个原生停靠工具 `materials | library | uv | planting | export | plantsList | properties | post`。下面带版本的章节记录功能引入时间；旧版页面数量不代表当前状态。所有调用仍经原厂 Platform。
+当前工作区为 v0.22.18：九个原生停靠工具 `materials | library | uv | planting | export | plantsList | properties | post | settings`。下面带版本的章节记录功能引入时间；旧版页面数量不代表当前状态。所有调用仍经原厂 Platform。
 
 ## v0.22.8 视图、通道与显示状态
 
@@ -40,9 +40,9 @@ Web 生成前检查 `/api/boards/{id}/nodes/{node}/preflight` 新增 `output:{wi
 
 | operation | 参数与返回 |
 | --- | --- |
-| `material_workspace_open` | `page:materials\|library\|uv\|planting\|export\|plantsList\|properties\|post`，默认 materials；当前返回八个原生 panelId、dockBars、工具状态；v0.13.2 工具的 `error` 字段记录文档重建错误，正常为 null |
+| `material_workspace_open` | `page:materials\|library\|uv\|planting\|export\|plantsList\|properties\|post\|settings`，默认 materials；当前返回九个原生 panelId、dockBars、工具状态；v0.13.2 工具的 `error` 字段记录文档重建错误，正常为 null |
 | `material_workspace_status` | 只读；材质状态包含 selected、job、lastJob、scope、reuseSimilar、shelf；0.22.7 增加只读 chatTheme（light / dark）；0.22.6 的 tools.post.details 另含 fileCount、selectedPath、canImport、busy，便于检查后期导入入口 |
-| `material_workspace_group` | 显式将八个工具组合进材质面板所在原生容器 |
+| `material_workspace_group` | 显式将九个工具组合进材质面板所在原生容器（工作区顶部 ⋯ 菜单中的同名布局操作；不组合模型对象） |
 | `material_shelf_open` | `visible?:bool`，默认 true 打开独立材质库工具；false 切换 AI 工具 |
 | `material_tool_select` | `assetId`，`page?:materials\|library`，默认 materials；同步两个工具的待应用材质 |
 | `material_tool_settings` | `page?:materials\|library`、`scope?:object\|layer`、`reuseSimilar?:bool`；应用范围在两个工具间同步 |
@@ -404,3 +404,51 @@ v0.22 白板补丁：board-preferences 增加 autoLocate:boolean（默认true）
 - `plant_instances` 保留地面 position，新增 displayPosition、heightMeters、orientation，避免把抬升后的平面显示位置／矩形尺寸当成种植位置／树高。
 
 MCP 继续使用原厂 Platform。数据和交互详见 [季节素材](Seasons.md)。
+
+
+### 0.22.10 设置工具与植物阴影
+
+- material_workspace_open page新增settings，独立第九页；RhinoSceneFlowSettings命令和plugin_settings_open都导航到该页。plugin_settings_open现在立即返回工作区状态，不再等待模态窗口关闭。
+- configure_view settings新增separatePlantShadows（默认true），与plantShadows独立持久化；workbench_settings和panel_status可读取。只有plantShadows=true且同时启用植物/阴影通道时分离；否则按既有合并/禁用语义输出。图层复制粘贴包含这两个选项。
+- 分离影层在首个植物Group最底部，按每个启用阴影条目复制其混合/不透明度/眼睛状态；其余植物通道不重复插入影层。默认正常植物Group使用pass-through避免阴影乘法隔离。详见Workbench.md。
+
+
+0.22.12 plugin_settings新增climateMode:species|project（默认species），climate仅为自定义项目地区；project必须非空，最长300字符。旧climate-only请求继续迁移：默认句子/空值→species，其他原文→project。只传climateMode:species可保留并忽略隐藏自填内容。内部生成说明不序列化为UI数据。设置页state新增climateMode、locationVisible；不改变任何AI后期输入接口。
+
+
+#### 0.22.14 PSD participation (existing Web JSON routes)
+
+Board node `params.layerParticipation` is a maximum-256-entry `{layerId: bool}`
+map. Omitted IDs default to the PSD row's effective visibility; parent switches
+also gate descendants. Existing `params.roles` overrides remain supported.
+Defaults/reset use empty maps; these are task configuration and participate in
+board history, pending state, restoration and branch inheritance.
+
+Existing `POST /api/boards/{id}/nodes/{node}/preflight` additionally returns
+`guides: [{kind,title,instruction,layers:[{id,name}],width,height,number,cell,
+imageBounds}]` and, only when present, `images.guides` (a board-owned PNG asset).
+Guides come from the same PSD snapshot as the mask. Generation uses that PNG as
+an actual image attachment, not just layer names in a text prompt. Call through
+`postproduction_request` as before; no new MCP listener/route is introduced.
+
+
+Native UI presentation (0.22.15): `plugin_settings.settings` additionally accepts
+`textMode: full|short|none` (default full), `showIcons: bool` (default true), and
+`essentialTextMode: short|full` (default short). Rejects `none` + `false` before
+saving. These are global native-panel preferences; they do not change user data
+or independent Studio content. Existing preference snapshots without these keys
+retain the default presentation.
+
+
+0.22.16: plugin_settings keeps the same JSON schema. Valid preferences now apply
+immediately to already-open native tools. The Settings Interface selectors also
+persist immediately; generation and plant-display settings keep their own draft /
+Save behavior. Textual UI messages may localize/abbreviate; use typed IDs/status
+fields for automation. Style changes preserve model and library metadata.
+
+## v0.22.18 素材内部多语言资料
+
+- `material_catalog_localize {}` / `plant_catalog_localize {}`：只补齐缺失或失效的中英文名称、分类、标签及已有建议；返回 `{job}`，资料齐全时 `job:null`。不生成图片、不改原始字段、尺寸、科学身份或贴图。
+- 复用 `material_catalog_status {jobId}` 和 `material_catalog_cancel {jobId}`。完整快照校验后一次性提交；只增加 CatalogRevision，保留有效译文并拒绝并发覆盖。
+- `material_library` / `plant_library` 的素材 JSON 增加可选 `localizations`；旧包与旧素材仍可读取。分类/标签筛选继续使用原始键；搜索也匹配已保存的多语言显示文字。
+- 切换 `plugin_settings.language` 只读取本地译文，不触发补齐任务。详见 Asset-Languages.md。

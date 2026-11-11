@@ -11,7 +11,7 @@ internal static class PlantApi
     private static int Int(JsonElement r,string key,int fallback)=>(int)Number(r,key,fallback);
     private static bool Mirror(JsonElement r)=>!r.TryGetProperty("mirror",out var m)||m.GetBoolean();
     private static RhinoDoc Doc(JsonElement r){var d=RhinoDoc.FromRuntimeSerialNumber(r.GetProperty("document").GetUInt32())??throw new ArgumentException("文档不存在。");NamedViewExportService.RequireActive(d);return d;}
-    internal static readonly string[] Operations=["plant_edit_transform","plant_edit_cancel","plant_edit_pick","plant_loose_update","plant_list_select","plant_group_manage","plant_edit_enter","plant_edit_exit","plant_edit_status","plant_individual_update","plant_ui_settings","plant_localize_names","plant_group_create","plant_group_update","plant_group_state","plant_group_list","plant_group_manual","plant_library","plant_import","plant_update","plant_select","plant_place","plant_scatter","plant_settings","plant_instances","plant_organize"];
+    internal static readonly string[] Operations=["plant_edit_transform","plant_edit_cancel","plant_edit_pick","plant_loose_update","plant_list_select","plant_group_manage","plant_edit_enter","plant_edit_exit","plant_edit_status","plant_individual_update","plant_ui_settings","plant_localize_names","plant_catalog_localize","plant_group_create","plant_group_update","plant_group_state","plant_group_list","plant_group_manual","plant_library","plant_import","plant_update","plant_select","plant_place","plant_scatter","plant_settings","plant_instances","plant_organize"];
     internal static object Execute(string op,JsonElement r)=>op switch
     {
         "plant_edit_transform"=>EditTransform(Doc(r),r),
@@ -34,6 +34,7 @@ internal static class PlantApi
         "plant_instances"=>new{objects=PlantService.Drawables(Doc(r),Doc(r).Views.ActiveView.ActiveViewport).Select(o=>new{id=o.Billboard.Id,owner=o.Object.Id,manual=o.Manual,position=o.Billboard.GroundAnchor,displayPosition=o.Billboard.Anchor,heightMeters=o.Billboard.TreeHeight*RhinoMath.UnitScale(Doc(r).ModelUnitSystem,UnitSystem.Meters),orientation=o.Billboard.IsPlan?"plan":"elevation",scaleWidth=o.Billboard.Width}).ToArray()},
         "plant_organize"=>CatalogService.Organize(true),
         "plant_ui_settings"=>Preferences(r),
+        "plant_catalog_localize"=>new{job=CatalogService.LocalizeAssets(true)},
         "plant_localize_names"=>new{job=CatalogService.LocalizePlants()},
         "plant_group_create"=>new{id=PlantGroups.Create(Doc(r),Read<PlantGroupSpec>(r,"spec"))},
         "plant_group_update"=>UpdateGroup(Doc(r),r),

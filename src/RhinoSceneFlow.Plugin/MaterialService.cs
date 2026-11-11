@@ -1,4 +1,4 @@
-﻿using System.Drawing;
+using System.Drawing;
 using System.Text.Json;
 using Rhino;
 using Rhino.DocObjects;

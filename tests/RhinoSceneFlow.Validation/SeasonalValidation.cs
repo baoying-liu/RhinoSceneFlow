@@ -7,6 +7,18 @@ internal static class SeasonalValidation
         string image=Path.Combine(folder,"image.png");File.WriteAllBytes(image,[1,2,3,4]);
         var asset=library.Import(new MaterialAsset{Name="Season specimen"},new Dictionary<string,string>{{"baseColor",image}});
         void Check(bool value,string message){if(!value)throw new Exception(message);}
+        var climate=ClimateContext.Resolve(null,"依照已核实物种的适生气候");
+        Check(climate.Mode=="species"&&climate.Location==""&&climate.Instruction==ClimateContext.SpeciesInstruction,"Legacy default must become a language-neutral choice.");
+        Check(ClimateContext.Resolve(null,"Use species' native climate").Mode=="species","English legacy default was treated as a project location.");
+        const string custom="  Miami / 迈阿密，Florida  ";
+        climate=ClimateContext.Resolve(null,custom);Check(climate.Mode=="project"&&climate.Location==custom&&climate.Instruction.Contains(custom),"Custom location must migrate without translation or trimming.");
+        Check(ClimateContext.Resolve("species",custom).Location==custom,"Switching modes lost the stored custom location.");
+        Check(ClimateContext.Resolve("species",custom).Instruction==ClimateContext.SpeciesInstruction,"Hidden custom location affected species-mode generation.");
+        Check(ClimateContext.Resolve("project",new string('x',300)).Metadata.Length==300,"Climate metadata overflowed the asset limit.");
+        foreach(var invalid in new[]{("project"," "),("unknown","Miami"),("species",new string('x',301))})
+        {
+            try{ClimateContext.Resolve(invalid.Item1,invalid.Item2);throw new Exception("Invalid climate preference accepted.");}catch(ArgumentException){}
+        }
         Check(Seasons.Slot(asset,"winter")=="baseColor"&&asset.Seasonal.FollowSeason,"Legacy/missing fallback.");
         int revision=asset.Revision;asset=library.AddSeason(asset.Id,revision,"summer",true,image,crownWidthMeters:5);
         try{library.AddSeason(asset.Id,revision,"winter",false,image);throw new Exception("Stale commit accepted.");}catch(InvalidOperationException){}

@@ -25,6 +25,7 @@ public sealed class PlantAiAnswer
     public CatalogMatch[] Matches {get;set;}=[];
     public CatalogLabel[] Items {get;set;}=[];
     public PlantNameLabel[] Names {get;set;}=[];
+    public AssetLocaleLabel[] Localizations {get;set;}=[];
     public bool Seasonal{get;set;}
     public double CrownWidthMeters{get;set;}=3;
     public SeasonAlias[] SeasonPlan{get;set;}=[];
@@ -52,6 +53,8 @@ public static class CodexPlantAgent
         }
         properties["matches"]=Obj(new(){{"id","string"},{"score","number"},{"reason","string"}});
         properties["items"]=Obj(new(){{"id","string"},{"name","string"},{"category","string"},{"tags","array"}});
+        properties["localizations"]=AssetLocalization.LabelsSchema();
+        var localizedItem=properties["items"]!["items"]!;localizedItem["properties"]!["localizations"]=AssetLocalization.LabelsSchema();localizedItem["required"]!.AsArray().Add("localizations");
         properties["names"]=Obj(new(){{"id","string"},{"zh","string"},{"en","string"}});
         properties["seasonPlan"]=Obj(new(){{"season","string"},{"sourceSeason","string"},{"reason","string"}});
         var schema=new JsonObject{["type"]="object",["additionalProperties"]=false,["required"]=new JsonArray(properties.Select(p=>(JsonNode?)JsonValue.Create(p.Key)).ToArray()),["properties"]=properties};
@@ -69,7 +72,7 @@ public static class CodexPlantAgent
             organize: no tools. Return each supplied ID exactly once in items, normalize Chinese names/categories/tags across the whole library, keeping real distinctions. Category should be the existing verified family, not invented taxonomy. Never change scientificName/family/genus/cultivar/sources/size/images, never delete or merge assets. 1..80 char names, 1..40 category, 1..8 tags each<=24 chars. Other arrays empty.
             For resolve also provide nameZh and nameEn: concise Chinese and English display names for the exact verified taxon and depicted variant. Preserve the immutable Latin scientificName separately. No planting recommendations in display names.
             localize: no tools or generation. Return every supplied asset ID exactly once in names with zh and en display labels (1..100 chars). Translate the EXISTING asset label and its variant/season qualifiers into Chinese and English, using the existing scientific identity as context. Do not re-identify species or invent cultivar names. Keep synthetic/test qualifiers. If a vernacular name is uncertain, use the existing Latin scientific name instead of inventing one. Preserve existing nonempty plant.names.zh/en labels. Other arrays empty. Never change scientific identity, sources, images, tags, dimensions or spacing.
-            """+"\nSOURCE POLICY for resolve: also accept Singapore NParks (nparks.gov.sg), Missouri Botanical Garden's plantfinder.mobot.org, and University of Florida IFAS (ifas.ufl.edu). Prefer a specific accessible HTML species page that you actually open and that names BOTH the exact scientificName and family. For tropical species, actively search NParks as well as Kew. PDF-only sources and search snippets cannot satisfy the local page verifier. If one site is unavailable, try another supported official source for the SAME species; do not substitute an unrelated taxon.\nOPERATION: "+operation+"\nREQUEST: "+request+"\nCATALOG: "+JsonSerializer.Serialize(assets.Select(a=>new{a.Id,a.Name,a.Category,a.Tags,a.Plant}),MaterialLibrary.Json);
+            """+"\n"+AssetLocalization.Prompt+"\nFor resolve: put two localized entries in the ROOT localizations array, with tags aligned to the root tags and category corresponding to the verified family. Root localizations is [] for all other operations; organize items each include localizations.\nSOURCE POLICY for resolve: also accept Singapore NParks (nparks.gov.sg), Missouri Botanical Garden's plantfinder.mobot.org, and University of Florida IFAS (ifas.ufl.edu). Prefer a specific accessible HTML species page that you actually open and that names BOTH the exact scientificName and family. For tropical species, actively search NParks as well as Kew. PDF-only sources and search snippets cannot satisfy the local page verifier. If one site is unavailable, try another supported official source for the SAME species; do not substitute an unrelated taxon.\nOPERATION: "+operation+"\nREQUEST: "+request+"\nCATALOG: "+JsonSerializer.Serialize(assets.Select(a=>new{a.Id,a.Name,a.Category,a.Tags,a.Plant,a.Localizations}),MaterialLibrary.Json);
         using var timeout=CancellationTokenSource.CreateLinkedTokenSource(cancel);timeout.CancelAfter(TimeSpan.FromMinutes(5));var token=timeout.Token;
         using var child=new Process{StartInfo=CodexImageRunner.StartInfo(exe,args,directory)};child.Start();
         void Stop(){try{if(!child.HasExited)child.Kill(true);}catch(InvalidOperationException){}catch(System.ComponentModel.Win32Exception){}}
@@ -110,6 +113,7 @@ public static class CodexPlantAgent
                 if(verified.Length==0)throw new InvalidDataException("暂时无法读取能核实该植物学名和科名的官方页面，尚未生成图片。已尝试其他检索来源；请稍后重试或提供可访问的植物资料链接。详情见 source-checks.json。");
                 foreach(var bad in answer.Sources.Except(verified))answer.Evidence=answer.Evidence.Replace(bad,"（该链接未验证，已移除）",StringComparison.Ordinal);
                 answer.Sources=verified;
+                AssetLocalization.ValidateLabels(new MaterialAsset{Name=answer.Name.Length>0?answer.Name:answer.ScientificName,Category=answer.Family,Tags=answer.Tags,Randomization=new(){Reason=""}},answer.Localizations);
             }
             if(answer.Matches.Any(m=>!assets.Any(a=>a.Id==m.Id)||!double.IsFinite(m.Score)))throw new InvalidDataException("植物库匹配 ID 无效。");
             answer.Matches=answer.Matches.Where(m=>m.Score>=.85&&m.Score<=1).DistinctBy(m=>m.Id).Take(6).ToArray();return answer;
