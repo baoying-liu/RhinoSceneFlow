@@ -11,3 +11,7 @@ artifacts/
 **/node_modules/
 .playwright-cli/
 output/playwright/
+media/tutorial-en/public/case/
+media/tutorial-en/public/recordings/
+media/tutorial-en/public/voice/
+media/tutorial-en/out/

@@ -1,0 +1,7 @@
+Read naturally in English, in a quiet room. No background music or other voices.
+Target: 15–25 seconds; WAV or M4A is suitable. This is a reference recording,
+not the complete video narration. Do not place the reference audio in Git.
+
+Hello, I'm Baoying Liu. In this walkthrough, we'll take a simple Rhino model
+through materials, planting, layered export, and AI postproduction. The goal is
+to keep the model editable and make every image easy to compare and refine.

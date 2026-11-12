@@ -1,0 +1,126 @@
+{
+  "project": "SceneFlow — from Rhino to a reviewable image",
+  "status": "Editorial draft. Screen recordings and cloned narration are not yet produced.",
+  "language": "en",
+  "uiLanguage": "en",
+  "targetSeconds": 1380,
+  "maximumSeconds": 1800,
+  "case": "Hillside Retreat",
+  "versionToRecord": "0.23.2 development preview, sandbox B only",
+  "captureRules": [
+    "Show the real English full-text interface. Verify every label against the installed build.",
+    "Use a copy of the example. Preserve its original model, PSDs and boards.",
+    "MCP may prepare and reset scenes, but tutorial actions must correspond to the visible user workflow.",
+    "Record the owned Rhino/browser window only. Hide account details, desktop notifications, tokens and personal paths.",
+    "Keep difficult operations at readable speed. Label accelerated waiting periods and separate recorded results from live operations.",
+    "Do not imply that a draft, simulated task or previous result is a newly completed generation.",
+    "Reveal important controls with short holds, restrained zooms and English captions. Reserve large effects for chapter boundaries.",
+    "Capture and inspect a small real AI trial before a complete whole-image and HD run. Review drift rather than promising perfect preservation."
+  ],
+  "chapters": [
+    {
+      "id": "intro", "start": 0, "duration": 60, "priority": "high",
+      "title": "One model. One connected workflow.",
+      "shots": ["Finished-case reveal", "Viewport/AI wipe", "Four-stage workflow diagram"],
+      "narration": "Hi, I'm Baoying Liu. This is SceneFlow, an open-source workflow for Rhino. It connects AI-assisted materials, physical-scale UVs, editable planting, layered PSD export, and a visual workspace for AI postproduction. In this walkthrough, we will use one hillside retreat from beginning to end. We will start with a simple model, add materials and vegetation, prepare views, export useful image layers, and develop a finished image. The aim is not just to generate a picture. It is to keep the inputs understandable, the model editable, and each result easy to compare with the design that produced it."
+    },
+    {
+      "id": "setup", "start": 60, "duration": 90, "priority": "medium",
+      "title": "Find the tools and prepare the case",
+      "shots": ["Open docked tools with RhinoSceneFlow", "Settings: English/full text, environment check", "Case copy, units, layer organization"],
+      "narration": "Open SceneFlow with the RhinoSceneFlow command. The tools can sit beside your Rhino viewport, so the model remains the center of the workflow. For this demonstration, the interface is set to English with full labels. Settings also provides connection and environment checks. Being signed in is different from having access to a particular AI model: generation still depends on your own supported account and quota. This is preview software, so work on a copy of your project. Our example contains a small building, sloping terrain, paths, and several material regions. Check the model units first. Physical texture scale is only meaningful when the document units are correct. We will focus on the common workflow rather than every advanced setting."
+    },
+    {
+      "id": "material-reuse", "start": 150, "duration": 110, "priority": "high",
+      "title": "Describe a material and reuse the library",
+      "shots": ["Select facade", "AI Assets prompt and optional image reference", "Reuse search, material library filters", "Apply scope: object/layer"],
+      "prompt": "Weathered vertical cedar cladding, subtle grey-brown variation, matte finish, seamless texture. Use a believable physical coverage size for architectural cladding.",
+      "narration": "Select the facade objects and open AI Assets. Describe the surface you want, including its pattern, finish, and intended use. A reference image can help communicate a particular appearance. Existing-asset reuse is useful here: if the library already contains a suitable material, apply it instead of generating another near-duplicate. The material library stores assets locally for use across Rhino documents. Search by name, category, or tags, then inspect the preview. Choose whether to apply the material to the current objects or their layers. These scopes matter. An object assignment affects the selected objects; a layer assignment follows the layer's material relationship. Keep your selection visible and check the target before applying. The demonstration will use wood for the facade, a restrained mineral finish for the roof, glass, and a natural ground surface."
+    },
+    {
+      "id": "uv", "start": 260, "duration": 100, "priority": "high",
+      "title": "Make texture scale believable",
+      "shots": ["Dedicated UV tool", "Physical size comparison close-up", "Automatic UV preparation during apply", "Complex-surface inset, avoid full technical detour"],
+      "narration": "Texture resolution and physical coverage are different things. A high-resolution image can still look wrong if a small patch of material is stretched across an entire building. SceneFlow prepares physical-scale UVs before applying a material when the object has not been prepared already. You can also run UV preparation separately. Look closely at the facade and compare the texture pattern with a known dimension in the model. Change the material coverage when the pattern is too large or too small, then inspect more than one face. Complex geometry may require an atlas-based unwrap, and any automatic method still deserves visual inspection around seams, tight bends, and narrow faces. The point of the automation is to reduce setup work while keeping scale and mapping available for review."
+    },
+    {
+      "id": "material-variation", "start": 360, "duration": 60, "priority": "medium",
+      "title": "Reduce visible repetition",
+      "shots": ["Repeated ground texture close-up", "Randomization enabled and seed changed", "Return to complete model"],
+      "narration": "Large repeated surfaces often reveal the texture tile. SceneFlow provides variation controls, with defaults chosen for the material type and manual adjustments available. A natural ground surface can tolerate different variation from a structured brick or board pattern. Keep the structural pattern readable, and use variation to soften repetition rather than hide a bad source texture. Change a seed only when you want a different arrangement. We will keep the effect restrained so the material remains believable at both close and distant views."
+    },
+    {
+      "id": "plant-assets", "start": 420, "duration": 70, "priority": "high",
+      "title": "Build a reusable planting palette",
+      "shots": ["AI Assets plant description", "Species identity and reuse result", "Plant library thumbnails and palette"],
+      "narration": "Plant creation uses the same AI conversation. Describe a real species, or describe the conditions and appearance you need so the workflow can identify a suitable real plant first. SceneFlow checks the library before creating a new transparent asset. The Latin name gives the plant a stable identity, while local names, categories, and tags make the library easier to browse. Add the plants you want to a planting palette. A mixed palette lets you control the relative contribution and spacing of each species. The library contains reusable plant assets; Plants List manages the placed groups in the current model. Keeping those two roles separate makes the workflow easier to understand."
+    },
+    {
+      "id": "plant-layout", "start": 490, "duration": 90, "priority": "high",
+      "title": "Place plants on real terrain",
+      "shots": ["Select trimmed terrain carrier", "Density, layout seed, size range, mirror", "Avoidance object and clearance", "Continuous point placement"],
+      "narration": "Select the terrain as the carrier and create the group. Surface and mesh support is important on a landscape model: plants should follow the terrain height and respect trimmed boundaries and holes. Density controls the amount of planting, while species spacing can limit how many plants fit. Layout, size, and mirror seeds have separate roles. Changing size variation should not be treated as the same operation as generating a new layout. Add avoidance objects when plants must stay clear of buildings or other geometry. Clearance currently protects the placement anchor, not the full crown volume, so inspect the result. Use continuous point placement for deliberate additions. These manual plants belong to the group and participate in its settings and counts, with their own behavior when the layout seed changes."
+    },
+    {
+      "id": "plant-edit", "start": 580, "duration": 80, "priority": "high",
+      "title": "Edit the group, then adjust individual plants",
+      "shots": ["Plants List selection synchronized with viewport", "Enter isolated group edit", "Move, scale, mirror, change one plant", "Custom override and exit", "Top-view/elevation seasonal overview"],
+      "narration": "Select the group in Plants List or in the viewport. Enter group editing when you need to adjust individual plants without selecting the surrounding model. Move, scale, mirror, or change the type of a single plant. A custom override lets that plant stop following the corresponding group defaults; turn the override off to return to the group behavior. Exit editing before returning to the larger model. Camera-follow settings control whether the asset rotates around the vertical axis, faces the camera more freely, or switches to a plan image at high viewing angles. Seasonal assets are stored as variants of the same plant identity, rather than filling the library with duplicate entries. We will show the settings briefly and keep the main demonstration in one consistent season."
+    },
+    {
+      "id": "views", "start": 660, "duration": 70, "priority": "high",
+      "title": "Prepare views for output",
+      "shots": ["Named View cards", "Create/rename view", "Double-click preview to activate view", "Resolution preset, copy/paste, refresh"],
+      "narration": "Open PSD View Export. Named Views provide the link between a Rhino camera and an output image. Give each view a clear name, check its preview, and choose an output resolution. A useful set for this case includes an axonometric view, an arrival perspective, and a plan. Double-clicking a preview activates its view, so framing can be checked in the viewport. Refresh after camera, lighting, material, or season changes. Resolution presets help with common sizes, and copy and paste reduces repeated setup across views. The exported filename follows the view identity and season rules, so descriptive names also keep the output folder organized."
+    },
+    {
+      "id": "psd", "start": 730, "duration": 100, "priority": "high",
+      "title": "Export useful layers, not just a flattened image",
+      "shots": ["Expand PSD layer settings", "Plant grouping and separated shadow", "Textures/material colors grouping", "Visibility vs export inclusion", "Arctic/depth guide layers"],
+      "narration": "Each view can contain several output channels. Materials preserve texture appearance. Plants can be grouped by species, kept separate, or merged more broadly. Plant shadows can be separated into the plant group, which makes later adjustments more convenient. Shadows, Arctic display and depth serve different purposes. Arctic helps explain massing and surface form; depth provides a guide to distance and occlusion. Material colors can identify regions without showing the texture pattern. Do not confuse whether a layer is exported with whether it is initially visible in Photoshop. The eye controls the PSD's initial visibility, while export inclusion determines whether the layer is written. Arrange the layers from top to bottom, choose grouping and blending, then keep less frequently used guides hidden if they would obscure the working composite."
+    },
+    {
+      "id": "export", "start": 830, "duration": 40, "priority": "medium",
+      "title": "Export and confirm completion",
+      "shots": ["Batch export folder", "Progress and final paths", "Open actual PSD/layer stack"],
+      "narration": "Choose the export folder and start the batch. Watch the task status and final file paths instead of clicking Export again while a task is still running. The workflow keeps an export receipt, which helps distinguish a completed file from a lost or interrupted response. Open one PSD and inspect its dimensions, layers, plant edges and shadows before exporting a larger set."
+    },
+    {
+      "id": "studio-input", "start": 870, "duration": 70, "priority": "high",
+      "title": "Bring the PSD into the AI workspace",
+      "shots": ["Open Web Studio from Rhino", "Import exported PSD", "List/canvas switch and cross-location", "Per-layer participation"],
+      "narration": "Open the Web Studio and import the exported PSD. The list view emphasizes settings and comparison; the canvas emphasizes spatial references and visual iteration. They are two views of the same project, not two copies of the images. Use the locate commands to move between them without losing track of the selected image. Inspect the PSD layers in the settings. Visible layers participate by default, but guide layers can be enabled deliberately. A depth image or Arctic image is only useful to the AI when it is actually included in the task inputs. Keep visual display and generation participation separate when deciding what the model should consider."
+    },
+    {
+      "id": "whole-image", "start": 940, "duration": 80, "priority": "high",
+      "title": "Establish the whole image first",
+      "shots": ["Create child draft", "Prompt, detail and freedom", "Input review", "Whole generation; explicitly accelerated wait", "Wipe comparison"],
+      "prompt": "Refine this exact hillside retreat into a calm architectural landscape visualization. Keep the camera, building masses, roof shapes, openings, terrain outline and tree locations. Improve natural material detail, daylight and planting integration. Keep the white background empty. Do not add people, signs or new buildings.",
+      "narration": "Start by establishing a whole-image direction. Create a child draft from the input and write a focused description of the intended appearance. Detail completion and design freedom influence the request and processing behavior; they are not exact guarantees that a generative model will preserve geometry. Review the task inputs, then generate. We will shorten the waiting period in the recording and label that clearly. Compare the result with its input using the divider. Inspect the roof silhouette, openings, paths and planting positions before judging only the atmosphere. A beautiful variation may still be a poor match to the design. Correct the direction at this stage before spending time on high-resolution refinement."
+    },
+    {
+      "id": "canvas", "start": 1020, "duration": 100, "priority": "high",
+      "title": "Make visual instructions understandable",
+      "shots": ["Canvas parent/child connections", "Unlock result and apply parent if needed", "Text, arrow and reference asset", "Resize consideration frame", "Reference gallery selection", "Optional PhotoCraft reference layer"],
+      "narration": "The canvas makes revision more concrete. Each image has a consideration frame. Place the relevant text, arrows, region marks and reference images inside that frame so they become part of that image's instructions. Resources outside it remain on the board without automatically belonging to the task. An arrow can connect a material reference to the facade it should affect, and a short note can explain the change. Keep the instruction unambiguous: identify what changes, where it changes, and what stays. Completed results are locked until you unlock them for editing. A new child can start as a draft, and applying the parent gives you a visual base for annotations. PhotoCraft is available for more detailed image editing; its returned reference layers remain distinct from the untouched source."
+    },
+    {
+      "id": "lineage", "start": 1120, "duration": 65, "priority": "high",
+      "title": "Keep alternatives and their sources traceable",
+      "shots": ["Create child vs sibling", "Update and lock", "Yellow/purple state explanation", "Backups, undo, one failure recovery"],
+      "narration": "A child develops the selected image. A sibling uses that image's parent as input while carrying over the selected image's settings, which is useful for exploring alternatives from a common starting point. Updating an unlocked result revises that result within the version and backup rules. Pending edits and changed upstream inputs have different states; saved settings do not mean a new image has already been generated. Use the input review and history to understand which source version produced a result. Undo helps with reversible board edits. Image backups are a separate recovery mechanism, so do not treat an undo action as a promise that an old generated image will be recreated."
+    },
+    {
+      "id": "hd", "start": 1185, "duration": 75, "priority": "high",
+      "title": "Refine to high resolution and inspect the result",
+      "shots": ["Choose approved whole result", "HD size and tile/context overlay", "Failed-tile state and targeted retry", "Seam/geometry inspection", "Download PNG and inspect real dimensions"],
+      "narration": "Once the overall image works, move to high-resolution refinement. This is a separate step from whole-image exploration. Tiles use surrounding context and shared inputs, but a generative model can still introduce inconsistent edges or structural drift. Inspect the current tile and retry a failed region instead of repeating the entire job. The main task should show which tile is being retried. When the job completes, inspect seams, colors, roof lines, alpha edges and any protected regions. Download the final PNG and verify its actual dimensions. An upscaled preview is not evidence of a genuine completed high-resolution output. Keep the original PSD and board so the result remains traceable after delivery."
+    },
+    {
+      "id": "recap", "start": 1260, "duration": 120, "priority": "medium",
+      "title": "What to use first, and what to check",
+      "shots": ["Case overview and final files", "Four-stage recap", "Three practical checks", "Repository and preview label"],
+      "narration": "That is the complete workflow: prepare the model, apply materials at a believable physical scale, add editable planting, export informative layers, and develop the image through traceable AI iterations. Start with a small number of materials and one view. Check that flow before building a large batch. Reuse assets when they fit, keep plant groups editable, and establish a whole-image direction before high-resolution work. Three checks are especially valuable. First, verify the selection, units and material scope before applying. Second, inspect the PSD rather than assuming every useful channel is visible or included in generation. Third, compare AI results against the design, especially around geometry and occlusion. SceneFlow is currently preview software. Use project copies, keep backups, and expect account access, network conditions and model availability to affect the AI steps. The repository contains the installation guide and current limitations. Thanks for watching."
+    }
+  ]
+}
