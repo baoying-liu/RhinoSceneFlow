@@ -1,6 +1,6 @@
 # Code signing policy
 
-Status: proposed SignPath Foundation application, not submitted or approved.
+Status: SignPath Foundation application submitted on 2026-11-12; review pending.
 No currently published SceneFlow artifact is claimed to be foundation-signed.
 
 ## Responsibility
@@ -30,8 +30,10 @@ No repository secret, account token or private key belongs in distributed files.
 - Rhino is proprietary host software and is not bundled. WebView2's Microsoft
   redistributable/SDK libraries are proprietary dependencies that must be disclosed
   for eligibility review; do not assume the system-library exception applies.
-- The owner must accept provider terms and approve the application. Any contact
-  details or provider account forms must be supplied through the provider directly.
+- The owner approved the application, required terms and personal-data processing.
+  Contact details were supplied only through the provider form and are not recorded
+  in the public repository. The form displayed a submission confirmation; this is
+  not evidence of approval, certificate issuance or signing access.
 - A signed release and its own project identity must be verified before enabling
   automatic installation. Do not replace the publisher pin with a broad trust of
   every package signed by a shared foundation certificate.

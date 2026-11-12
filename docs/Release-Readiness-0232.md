@@ -7,8 +7,9 @@ then explicitly deferred paid signing while alternatives are investigated.
 ## Signing decision
 
 No usable personal code-signing certificate/private key was found in this build
-machine's CurrentUser or LocalMachine certificate stores. No paid resource or
-third-party signing application has been created.
+machine's CurrentUser or LocalMachine certificate stores. No paid signing resource
+has been created. The free SignPath application was submitted on 2026-11-12 and
+its receipt was confirmed in the browser; approval and signing access are pending.
 
 - Azure Artifact Signing supports US individual developers. It requires the
   owner's Azure subscription and personal identity validation. Basic is currently
@@ -19,7 +20,8 @@ third-party signing application has been created.
   using the Foundation as certificate publisher. The owner accepted evaluating
   this route and explicitly selected MIT for original code, now in LICENSE.
   Eligibility, dependency exceptions, verified build provenance, MFA and provider
-  approval remain unresolved. The application has not been submitted.
+  approval remain unresolved. The owner completed the required submission CAPTCHA;
+  the form confirmed receipt, but there is no approval or certificate yet.
   [Conditions](https://signpath.org/terms).
 - OSSign currently reports applications suspended due to its backlog.
   [Provider status](https://ossign.org/).

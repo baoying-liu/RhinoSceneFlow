@@ -49,8 +49,8 @@ OpenAI, Microsoft and the PhotoCraft authors.
 
 ## Code signing policy
 
-The published preview remains unsigned. Free foundation signing is being evaluated;
-no sponsorship or approval has been granted. See the [signing policy and application
+The published preview remains unsigned. An application for free foundation signing
+has been submitted; no sponsorship or approval has been granted. See the [signing policy and application
 readiness](docs/Code-Signing-Policy.md) and [privacy policy](docs/Privacy.md).
 
 ## Build

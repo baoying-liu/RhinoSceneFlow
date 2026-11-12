@@ -1,6 +1,7 @@
 # SignPath Foundation application draft
 
-Not submitted. This document does not claim provider approval or sponsorship.
+Submitted on 2026-11-12; review pending. This document preserves the application
+notes and does not claim provider approval or sponsorship.
 Use the owner's own contact details in the provider form, never repository secrets.
 
 ## Project
@@ -57,7 +58,7 @@ trust checks remain disabled for unsigned packages.
 - Supply the preferred personal name/contact email directly in the provider form.
 - Review provider terms, requested permissions and the actual application fields.
 - Verify hosted build evidence, product/version metadata and privacy opt-outs.
-- Approve the final application text. No application has been sent automatically.
+- Approve the final application text (completed by the owner before submission).
 
 ## Actual form preparation (2026-11-12)
 
@@ -68,7 +69,12 @@ repository, release, privacy and build links are included. The reputation answer
 explicitly says the project is early-stage, without a large user base or claimed
 independent media coverage; public history and build evidence are linked.
 
-The owner confirmed GitHub 2FA. Personal first name, last name, notification email,
-explicit approval of the required terms/data-processing consent and submission
-authorization are still pending. Optional marketing consent remains unchecked.
-No personal details are to be committed here. The form has not been submitted.
+The owner confirmed GitHub 2FA, supplied the required contact details, and explicitly
+approved the terms, personal-data processing and application submission. Automation
+left optional marketing consent unchecked. The owner personally completed the
+provider's CAPTCHA and submission. The confirmation page was then independently
+observed displaying "Form submitted" and a thank-you message. No application number
+was displayed in that confirmation. No contact details are committed here.
+
+This confirms receipt of the application, not approval or certificate issuance.
+No software signature, stable release or paid signing resource was created.
