@@ -9,6 +9,11 @@ New-Item -ItemType Directory -Force -Path $out | Out-Null
 $key='HKCU:\Software\McNeel\Rhinoceros\8.0\Plug-ins\8b902013-73dd-4227-b45b-896f6a33f134'
 function Registration { if(Test-Path -LiteralPath $key){return (Get-ItemProperty -LiteralPath $key).FileName};return $null }
 $before=Registration
+foreach($relative in @('LICENSE','Privacy.md')){
+    $source=if($relative -eq 'LICENSE'){Join-Path $root 'LICENSE'}else{Join-Path $root 'docs/Privacy.md'}
+    $staged=Join-Path $output ('payload/'+$relative)
+    if(-not(Test-Path -LiteralPath $staged) -or (Get-FileHash -LiteralPath $staged).Hash -ne (Get-FileHash -LiteralPath $source).Hash){throw "Missing or stale release document: $relative"}
+}
 foreach($relative in @('THIRD-PARTY-NOTICES.md','Getting-Started.md','Notices/dotnet/LICENSE.txt','Notices/dotnet/THIRD-PARTY-NOTICES.txt','Notices/libvips/LICENSE.txt','Notices/libvips/THIRD-PARTY-NOTICES.md','Notices/libvips/SOURCES.md')){
     if(-not(Test-Path -LiteralPath (Join-Path $output "payload/$relative"))){throw "Missing public distribution notice: $relative"}
 }

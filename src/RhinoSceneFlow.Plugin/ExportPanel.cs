@@ -38,9 +38,11 @@ public sealed class ExportPanel : Panel
     private readonly UITimer namedViews=new(){Interval=1};
     private ViewDetails? detail;
     private CancellationTokenSource? cancellation;
+    private readonly UiLabel exportPhase=new(){Wrap=WrapMode.Word,Visible=false};
     private bool busy,shown,documentClosed,closed;
     internal bool ClosedForUpdates=>closed;
     public BatchReport? LastReport{get;private set;}
+    public Guid? LastJobId{get;private set;}
     public bool IsExporting=>busy;
     internal RhinoDoc Document=>RhinoDoc.FromRuntimeSerialNumber(document)??throw new InvalidOperationException("文档已关闭。");
     public IReadOnlyList<ViewExportRow> Views=>rows;
@@ -60,7 +62,7 @@ public sealed class ExportPanel : Panel
         var output=Ui.Layout();output.AddRow(folder);output.AddRow(browse);
         var actions=Ui.Layout();actions.AddRow(status);actions.AddRow(cancel);actions.AddRow(export);
         var root=Ui.Layout();root.AddRow(new TableLayout{Spacing=new(6,0),Rows={new TableRow(new TableCell(ToolUi.Heading("PSD · 视图导出"),true),add,refresh)}});
-        root.AddRow(newView);root.AddRow(tools);root.Add(body,true,true);root.AddRow(ToolUi.Section("输出文件夹",output));root.AddRow(progress);root.AddRow(actions);root.AddRow(new UiExpander{Header="导出日志",Content=log});Content=root;
+        root.AddRow(newView);root.AddRow(tools);root.Add(body,true,true);root.AddRow(ToolUi.Section("输出文件夹",output));root.AddRow(progress);root.AddRow(exportPhase);root.AddRow(actions);root.AddRow(new UiExpander{Header="导出日志",Content=log});Content=root;
         export.Click+=async(_,_)=>await StartExport();cancel.Click+=(_,_)=>{cancellation?.Cancel();status.Text="正在取消…";};
         previews.Elapsed+=(_,_)=>{if(closed)return;if(busy||queue.Count==0){previews.Stop();return;}var id=queue.Dequeue();if(cards.TryGetValue(id,out var card))Guard(card.RefreshPreview);};
         save.Elapsed+=(_,_)=>{if(closed)return;save.Stop();Guard(()=>WorkbenchStore.Save(Document,rows));};
@@ -157,25 +159,40 @@ public sealed class ExportPanel : Panel
         {
             var plan=WorkbenchService.Plan(Document,rows,folder.Text,Collision);WorkbenchStore.Save(Document,rows);SceneFlowPlugin.Instance.ExportDirectory=Path.GetFullPath(folder.Text);
             cancellation?.Dispose();cancellation=new();var token=cancellation.Token;var results=new List<BatchFileResult>();
-            busy=true;tools.Enabled=body.Enabled=folder.Enabled=export.Enabled=false;cancel.Enabled=cancel.Visible=progress.Visible=true;previews.Stop();detailTimer.Stop();progress.MaxValue=plan.Length;progress.Value=0;log.Text="";
+            busy=true;exportPhase.Visible=true;tools.Enabled=body.Enabled=folder.Enabled=export.Enabled=false;cancel.Enabled=cancel.Visible=progress.Visible=true;previews.Stop();detailTimer.Stop();progress.MaxValue=plan.Length;progress.Value=0;log.Text="";
             try
             {
-                foreach(var item in plan)
+                var id=ExportJobs.Start(Document,()=>plan,Guid.NewGuid(),"panel");LastJobId=id;LastReport=null;
+                int displayed=0;
+                while(true)
                 {
-                    token.ThrowIfCancellationRequested();
-                    var r=await OnUi(()=>{token.ThrowIfCancellationRequested();if(closed||documentClosed)throw new OperationCanceledException(token);status.Text=$"正在导出 {item.View.Name} · 捕获 / 计算 / 写入";var row=rows.First(v=>v.Id==item.View.Id);row.Status="导出中…";cards[row.Id].SyncStatus();return row;});BatchFileResult result;
-                    try{using var prepared=await OnUi(()=>WorkbenchService.Prepare(Document,item,token));result=await Task.Run(()=>prepared.Write(token),token);}
-                    catch(OperationCanceledException){throw;}
-                    catch(Exception ex){result=new(r.Id,r.Name,item.Path,false,r.Width,r.Height,0,0,ex.Message);}
-                    results.Add(result);
-                    await OnUi(()=>{if(documentClosed||IsDisposed)return true;r.Status=result.Ok?"已导出":"失败";cards[r.Id].SyncStatus();progress.Value=results.Count;log.Append((result.Ok?result.Path:r.Name+"："+result.Error)+Environment.NewLine,true);return true;});
+                    await Task.Delay(120);
+                    if(token.IsCancellationRequested)ExportJobs.Cancel(id);
+                    var state=JsonSerializer.SerializeToElement(ExportJobs.State(id),MaterialLibrary.Json);
+                    var files=JsonSerializer.Deserialize<BatchFileResult[]>(state.GetProperty("files").GetRawText(),MaterialLibrary.Json)!;
+                    results.Clear();results.AddRange(files);
+                    await OnUi(()=>
+                    {
+                        if(documentClosed||IsDisposed)return true;
+                        string phase=state.GetProperty("stage").GetString()??"";
+                        phase=phase switch{"capturing"=>"正在捕获视图","writing"=>"正在写入 PSD","queued"=>"导出排队中","completed"=>"已完成","partial"=>"部分完成","failed"=>"失败","cancelled"=>"已取消",_=>phase};
+                        exportPhase.Text=phase;status.Text=string.Format("导出任务 {0} | {1} / {2}",id.ToString("N")[..8],files.Length,plan.Length);
+                        progress.Value=files.Length;
+                        foreach(var file in files.Skip(displayed)){if(cards.TryGetValue(file.ViewId,out var card)){card.Row.Status=file.Ok?"已导出":"失败";card.SyncStatus();}log.Append((file.Ok?file.Path:file.Name+": "+file.Error)+Environment.NewLine,true);}
+                        displayed=files.Length;return true;
+                    });
+                    if(state.GetProperty("terminal").GetBoolean())
+                    {
+                        LastReport=JsonSerializer.Deserialize<BatchReport>(state.GetProperty("report").GetRawText(),MaterialLibrary.Json);
+                        if(state.GetProperty("status").GetString()=="failed"&&files.Length==0)throw new InvalidOperationException(state.GetProperty("error").GetString()??WorkspaceAppearance.Text("失败"));
+                        break;
+                    }
                 }
-                LastReport=new(results.ToArray(),false);
             }
             catch(OperationCanceledException){LastReport=new(results.ToArray(),true);}
             finally
             {
-                await OnUi(()=>{busy=false;if(documentClosed||IsDisposed)return true;tools.Enabled=body.Enabled=folder.Enabled=export.Enabled=true;cancel.Enabled=cancel.Visible=progress.Visible=false;
+                await OnUi(()=>{busy=false;exportPhase.Visible=false;if(documentClosed||IsDisposed)return true;tools.Enabled=body.Enabled=folder.Enabled=export.Enabled=true;cancel.Enabled=cancel.Visible=progress.Visible=false;
                     foreach(var r in rows.Where(r=>r.Status=="导出中…")){r.Status="已取消";cards[r.Id].SyncStatus();}
                     status.Text=$"{(LastReport?.Cancelled==true?"已取消":"完成")} · 成功 {results.Count(r=>r.Ok)} / 失败 {results.Count(r=>!r.Ok)}";if(queue.Count>0)previews.Start();return true;});
             }
@@ -183,7 +200,7 @@ public sealed class ExportPanel : Panel
         catch(OperationCanceledException){if(!closed&&!IsDisposed)status.Text="已取消，未写入文件。";}
         catch(Exception ex){if(!closed&&!IsDisposed)status.Text=ex.Message;}
     }
-    public object GetState()=>new{document,busy,visible=Visible,directory=folder.Text,status=status.Text,detail=detail?.Row.Id,views=rows.ToArray(),
+    public object GetState()=>new{document,busy,exportJob=LastJobId,visible=Visible,directory=folder.Text,status=status.Text,detail=detail?.Row.Id,views=rows.ToArray(),
         previews=cards.Values.Select(c=>new{id=c.Row.Id,loaded=c.Loaded}).ToArray(),displayModes=WorkbenchService.Modes().Select(m=>new{id=m.Id,name=m.LocalName}).ToArray(),lastReport=LastReport};
 }
 

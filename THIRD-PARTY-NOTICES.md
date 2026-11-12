@@ -25,7 +25,6 @@ PhotoCraft embedding integration. SceneFlow does not restrict the rights granted
 by third-party licenses, including debugging modifications to LGPL libraries.
 Replacement library binaries must be ABI-compatible; use a separate test copy.
 
-No open-source license for SceneFlow's own original code has been selected for
-this first public preview. No MIT/Apache license is implicitly applied to the
-original project merely by publishing the repository. This does not affect the
-explicit licenses on third-party files above.
+SceneFlow's own original code is licensed under the [MIT License](LICENSE).
+This grant does not replace or relicense the third-party components above.
+Earlier preview artifacts retain the licensing notices shipped with them.

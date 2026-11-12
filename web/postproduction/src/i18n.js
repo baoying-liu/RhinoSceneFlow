@@ -53,3 +53,6 @@ Object.assign(strings['zh-CN'],{plannedOutput:'本次输出尺寸',wholeKeepsSiz
 
 Object.assign(strings.en,{loadingBoard:'Opening board…'});
 Object.assign(strings['zh-CN'],{loadingBoard:'正在切换画板…'});
+
+Object.assign(strings.en,{retrying:'Retrying tile'});
+Object.assign(strings['zh-CN'],{retrying:'正在重试分块'});

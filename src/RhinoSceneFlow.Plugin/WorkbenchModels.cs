@@ -97,20 +97,39 @@ public sealed class ViewExportRow
 internal static class WorkbenchStore
 {
     internal static readonly JsonSerializerOptions Json=new(){PropertyNamingPolicy=JsonNamingPolicy.CamelCase,PropertyNameCaseInsensitive=true,WriteIndented=true};
+    private static readonly Dictionary<uint,ViewExportRow[]> session=[];
+    static WorkbenchStore()
+    {
+        RhinoDoc.CloseDocument+=(_,e)=>session.Remove(e.Document.RuntimeSerialNumber);
+        RhinoDoc.EndSaveDocument+=(_,e)=>
+        {
+            if(e.ExportSelected||string.IsNullOrWhiteSpace(e.FileName)||!e.FileName.EndsWith(".3dm",StringComparison.OrdinalIgnoreCase)||!session.TryGetValue(e.Document.RuntimeSerialNumber,out var rows))return;
+            try{Write(PathForKey(System.IO.Path.GetFullPath(e.FileName).ToUpperInvariant()),rows);}
+            catch(Exception error){System.Diagnostics.Debug.WriteLine("SceneFlow settings save: "+error.Message);}
+        };
+    }
     internal static T Clone<T>(T value)=>JsonSerializer.Deserialize<T>(JsonSerializer.Serialize(value,Json),Json)!;
     private static string PathFor(RhinoDoc doc)
     {
         string key=string.IsNullOrWhiteSpace(doc.Path)?"unsaved-"+Environment.ProcessId+"-"+doc.RuntimeSerialNumber:System.IO.Path.GetFullPath(doc.Path).ToUpperInvariant();
-        return System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"RhinoSceneFlow","workbench",Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(key)))+".json");
+        return PathForKey(key);
     }
+    private static string PathForKey(string key)=>System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"RhinoSceneFlow","workbench",Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(key)))+".json");
     internal static ViewExportRow[] Load(RhinoDoc doc)
     {
-        string path=PathFor(doc);if(!File.Exists(path))return [];
-        return JsonSerializer.Deserialize<ViewExportRow[]>(File.ReadAllText(path),Json)??[];
+        if(session.TryGetValue(doc.RuntimeSerialNumber,out var cached))return Clone(cached);
+        string path=PathFor(doc);var rows=File.Exists(path)?JsonSerializer.Deserialize<ViewExportRow[]>(File.ReadAllText(path),Json)??[]:[];
+        session[doc.RuntimeSerialNumber]=Clone(rows);return rows;
     }
     internal static void Save(RhinoDoc doc,IEnumerable<ViewExportRow> rows)
     {
-        string path=PathFor(doc);Directory.CreateDirectory(System.IO.Path.GetDirectoryName(path)!);
-        string temporary=path+".tmp";File.WriteAllText(temporary,JsonSerializer.Serialize(rows,Json));File.Move(temporary,path,true);
+        var snapshot=Clone(rows.ToArray());Write(PathFor(doc),snapshot);session[doc.RuntimeSerialNumber]=snapshot;
+    }
+    private static void Write(string path,ViewExportRow[] rows)
+    {
+        Directory.CreateDirectory(System.IO.Path.GetDirectoryName(path)!);
+        string temporary=path+"."+Guid.NewGuid().ToString("N")+".tmp";
+        try{File.WriteAllText(temporary,JsonSerializer.Serialize(rows,Json));File.Move(temporary,path,true);}
+        finally{if(File.Exists(temporary))File.Delete(temporary);}
     }
 }

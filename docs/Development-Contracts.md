@@ -254,3 +254,21 @@ Navigation:
 - 2026-10-28 UV audit: current v0.11 native custom-mesh remapping is NOT accepted for directional tiled materials. B trefoil fixture was inward (-1 / negative volume); fix generator and assert outward. Native SetTextureCoordinates on shared vertices disagreed with atlas on 23633/76800 faces; full per-face unweld gave zero gradient disagreement, but changes normals too. Preserve split UV directly in rendering topology with original smooth normals; do not assume seamCheck handles custom mapping (SDK only promises Box/Sphere/Cylinder). Test brick/grid native viewport versus exact atlas, not only random albedo and area/stretch. Keep user source/material untouched during diagnosis; do not auto-flip open surfaces or blindly reverse nested shells. See latest Validation audit.
 
 - v0.12 overrides the v0.11 custom-projection path: native RenderMeshProvider owns UI-thread snapshots, channel 1 SurfaceParameters, seam mesh in an unused high channel, WorldUvRecord v2 with both hashes. Preserve original geometry; normalize only owned single-closed-shell render snapshots; no blind open/multi-shell flip. Tube UV requires an explicit equal-radius centerline, has physical arc-length/circumference coordinates and explicit periodic seams. Do not call it globally seamless / isometric. Native provider callback never traverses live geometry. Retire snapshots then dispose; native material copies retain texture repeats. Test material_uv_renderer objectId reports actual pipeline UV / normal errors. Check unrelated channel preservation, cancel / stale guide / stale mapping / restore / 3dm reopen. Save reload fixtures with UpdateDocumentPath=true, SuppressDialogBoxes=true and confirm Modified=false; default WriteFile options do not reliably do so. Reopen may reset HTTP; check PID / document identity before treating it as a crash. See UV-Continuity.md.
+
+
+## 0.23.2 development acceptance additions
+
+- Keep avoidance objects separate from carriers. Respect trims; geometry mode uses
+  closed-solid/3D surface tests, footprint mode is explicit. Existing manual/custom
+  conflicts are retained/reported. Never rebuild obstacle meshes for every individual
+  move. Regress core geometry and actual B Trim/Brep/Mesh, reference edits, Undo and Save/Open.
+- Asynchronous export uses caller-generated request IDs, durable planned targets and
+  final receipts, one shared panel/MCP owner, UI-thread capture and owned worker writes.
+  Replays cannot duplicate writes; cancellation is cooperative; interrupted saved
+  jobs are reported, never auto-resumed. Preserve output settings across first Save/Save As
+  without marking the model modified. Regress Test-ExclusionsExports through original MCP.
+- Board review retries bind to their child generation job. Keep current tile and running
+  state visible, release busy state on cancellation, publish successful completion once,
+  and retain quality gates. Regress Test-ReviewTaskSync and actual browser progress labels.
+- No publication, production install or update-feed change is implied by this development
+  version. The existing unsigned public preview still cannot auto-install updates.

@@ -1,0 +1,50 @@
+name: Candidate build (unsigned)
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: windows-2022
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
+        with:
+          dotnet-version: '8.0.x'
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '22'
+      - name: Build and validate source
+        shell: powershell
+        run: |
+          $ErrorActionPreference='Stop'
+          $sdk=& ./scripts/Prepare-CiRhinoSdk.ps1
+          npm ci --prefix web/postproduction
+          if($LASTEXITCODE -ne 0){throw 'Web dependency restore failed.'}
+          ./scripts/Build.ps1 -RhinoSystem $sdk
+      - name: Build and inspect installer (no installation)
+        shell: powershell
+        run: |
+          $ErrorActionPreference='Stop'
+          ./scripts/Build-Installer.ps1 -BuildPython (Get-Command python.exe).Source
+          $version=([xml](Get-Content Directory.Build.props -Raw)).Project.PropertyGroup.Version
+          ./scripts/Test-Installer.ps1 -Version $version
+          $py="artifacts/installer/$version/payload/Runtime/Scripts/python.exe"
+          foreach($test in @('Test-BoardWorkflow.py','Test-TaskInputs.py','Test-PostProductionRaster.py','Test-ReviewTaskSync.py')){
+            & $py -I -X utf8 "scripts/$test"
+            if($LASTEXITCODE -ne 0){throw "Release runtime failed: $test"}
+          }
+      - name: Retain candidate and provenance
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: sceneflow-unsigned-candidate
+          retention-days: 14
+          if-no-files-found: error
+          path: |
+            artifacts/installer/*/SceneFlow-Setup-*-win-x64.exe
+            artifacts/installer/*/SceneFlow-*-win-x64.msi
+            artifacts/installer/*/receipt.json
+            artifacts/installer/*/payload/Runtime/requirements-lock.txt
+            artifacts/installer/*/payload/Runtime/wheel-provenance.json
+            artifacts/installer-tests/*/installer-verified.json

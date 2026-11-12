@@ -43,10 +43,15 @@ read the [installation guide and limitations](docs/Getting-Started.md).
 - [Third-party notices and licensing status](THIRD-PARTY-NOTICES.md) · [Security/privacy](SECURITY.md)
 - [Development validation evidence](docs/Validation.md) · [Historical README](docs/README-History.md)
 
-No open-source license has yet been selected for SceneFlow's own original code.
-Publishing source is not an implicit MIT/Apache grant. Third-party components retain
-their explicit licenses and notices. SceneFlow is independent of McNeel, OpenAI,
-Microsoft and the PhotoCraft authors.
+SceneFlow's original code is licensed under [MIT](LICENSE). Third-party components
+retain their explicit licenses and notices. SceneFlow is independent of McNeel,
+OpenAI, Microsoft and the PhotoCraft authors.
+
+## Code signing policy
+
+The published preview remains unsigned. Free foundation signing is being evaluated;
+no sponsorship or approval has been granted. See the [signing policy and application
+readiness](docs/Code-Signing-Policy.md) and [privacy policy](docs/Privacy.md).
 
 ## Build
 
@@ -59,10 +64,14 @@ npm ci
 cd ../..
 ./scripts/Build.ps1
 ./scripts/Build-Installer.ps1
-./scripts/Test-Installer.ps1 -Version 0.23.1
+./scripts/Test-Installer.ps1 -Version 0.23.2
 ```
 
-The installer also needs the pinned embedded Python archive, pip wheel and runtime
-inputs described in [Release-Installer.md](docs/Release-Installer.md) and its staging
-script. They are build artifacts, not user authentication or personal libraries.
+The installer staging script fetches the hash-pinned embedded Python and pip
+inputs when absent. Building the pyvips wrapper needs a development Python
+interpreter; pass `-BuildPython <python.exe>` to Build-Installer.ps1 if the local
+SceneFlow development venv is absent. See [Release-Installer.md](docs/Release-Installer.md).
+The manually dispatched candidate-build workflow uses hash-pinned official Rhino
+SDK references; it does not install Rhino, sign files or publish releases.
+These are build artifacts, not user authentication or personal libraries.
 A normal code build does not install into or restart a running Rhino session.

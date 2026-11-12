@@ -3358,5 +3358,209 @@
     "en": "Chat could not start. Check again in Settings. ",
     "shortZh": "聊天未能启动，请在设置中重新检测。 ",
     "shortEn": "Chat could not start. Check again in Settings. "
+  },
+  {
+    "zh": "种植排除区域",
+    "en": "Planting exclusion zones",
+    "shortZh": "种植排除区域",
+    "shortEn": "Exclusions"
+  },
+  {
+    "zh": "选择排除物件或闭合区域",
+    "en": "Select exclusion objects or closed regions",
+    "shortZh": "选择排除物件或闭合区域",
+    "shortEn": "Select zones"
+  },
+  {
+    "zh": "清空排除区域",
+    "en": "Clear exclusion zones",
+    "shortZh": "清空排除区域",
+    "shortEn": "Clear zones"
+  },
+  {
+    "zh": "退让距离 m",
+    "en": "Clearance (m)",
+    "shortZh": "退让距离 m",
+    "shortEn": "Clearance m"
+  },
+  {
+    "zh": "排除物件",
+    "en": "Exclusion objects",
+    "shortZh": "排除物件",
+    "shortEn": "Exclusions"
+  },
+  {
+    "zh": "手工植物排除冲突",
+    "en": "Manual plants inside exclusion zones (preserved)",
+    "shortZh": "手工植物排除冲突",
+    "shortEn": "Manual conflicts"
+  },
+  {
+    "zh": "排除物件已删除",
+    "en": "Deleted exclusion objects (no longer blocking)",
+    "shortZh": "排除物件已删除",
+    "shortEn": "Missing zones"
+  },
+  {
+    "zh": "该位置在排除区域内，请选择其他位置。",
+    "en": "This position is inside an exclusion zone. Choose another position.",
+    "shortZh": "该位置在排除区域内，请选择其他位置。",
+    "shortEn": "Inside exclusion zone"
+  },
+  {
+    "zh": "按世界 XY 投影避开步道和建筑。已有手工植物保留并提示冲突。",
+    "en": "Avoid paths and buildings by world-XY footprint. Existing manual plants are retained with conflict warnings.",
+    "shortZh": "按世界 XY 投影避开步道和建筑。已有手工植物保留并提示冲突。",
+    "shortEn": "World XY; keep manual plants"
+  },
+  {
+    "zh": "导出任务",
+    "en": "Export job",
+    "shortZh": "导出",
+    "shortEn": "Export"
+  },
+  {
+    "zh": "默认按几何体避让；闭合曲线作为 XY 排除区域。已有手工植物保留并提示冲突。",
+    "en": "Use actual geometry by default; closed curves define XY exclusion regions. Existing manual plants are retained with conflict warnings.",
+    "shortZh": "默认按几何体避让；闭合曲线作为 XY 排除区域。已有手工植物保留并提示冲突。",
+    "shortEn": "Geometry; keep manual plants"
+  },
+  {
+    "zh": "按几何体避让",
+    "en": "Avoid actual geometry",
+    "shortZh": "按几何体避让",
+    "shortEn": "Geometry"
+  },
+  {
+    "zh": "按投影区域排除",
+    "en": "Exclude projected regions",
+    "shortZh": "按投影区域排除",
+    "shortEn": "Footprints"
+  },
+  {
+    "zh": "正在捕获视图",
+    "en": "Capturing view",
+    "shortZh": "正在捕获视图",
+    "shortEn": "Capturing"
+  },
+  {
+    "zh": "正在写入 PSD",
+    "en": "Writing PSD",
+    "shortZh": "正在写入 PSD",
+    "shortEn": "Writing"
+  },
+  {
+    "zh": "导出排队中",
+    "en": "Export queued",
+    "shortZh": "导出排队中",
+    "shortEn": "Queued"
+  },
+  {
+    "zh": "默认按几何体避让；闭合曲线作为 XY 排除区域。检查植物基点与安全距离，非精确树冠碰撞。已有手工植物保留并提示冲突。",
+    "en": "Avoid actual geometry; closed curves define XY regions. Checks plant anchors and clearance, not exact canopy collisions. Existing manual plants are retained with conflict warnings.",
+    "shortZh": "基点避让；保留手工植物",
+    "shortEn": "Anchor clearance; keep manual plants"
+  },
+  {
+    "zh": "排除物件：{0}",
+    "en": "Exclusion objects: {0}",
+    "shortZh": "排除物件：{0}",
+    "shortEn": "Exclusion objects: {0}"
+  },
+  {
+    "zh": "手工植物排除冲突（已保留）：{0}",
+    "en": "Manual plants inside exclusions (preserved): {0}",
+    "shortZh": "手工植物排除冲突（已保留）：{0}",
+    "shortEn": "Manual plants inside exclusions (preserved): {0}"
+  },
+  {
+    "zh": "排除物件已删除：{0}",
+    "en": "Deleted exclusion objects: {0}",
+    "shortZh": "排除物件已删除：{0}",
+    "shortEn": "Deleted exclusion objects: {0}"
+  },
+  {
+    "zh": "导出任务 {0} | {1} / {2}",
+    "en": "Export job {0} | {1} / {2}",
+    "shortZh": "导出任务 {0} | {1} / {2}",
+    "shortEn": "Export job {0} | {1} / {2}"
+  },
+  {
+    "zh": "已有导出任务在运行，请等待完成或取消。",
+    "en": "An export is already running. Wait for completion or cancel it.",
+    "shortZh": "已有导出任务在运行，请等待完成或取消。",
+    "shortEn": "An export is already running. Wait for completion or cancel it."
+  },
+  {
+    "zh": "避让对象必须互不重复且不能是承载面（最多256个）。",
+    "en": "Exclusions must be distinct objects other than the carrier (maximum 256).",
+    "shortZh": "避让对象必须互不重复且不能是承载面（最多256个）。",
+    "shortEn": "Exclusions must be distinct objects other than the carrier (maximum 256)."
+  },
+  {
+    "zh": "避让模式需为 geometry 或 footprint。",
+    "en": "Exclusion mode: geometry | footprint.",
+    "shortZh": "避让模式需为 geometry 或 footprint。",
+    "shortEn": "Exclusion mode: geometry | footprint."
+  },
+  {
+    "zh": "避让距离无效。",
+    "en": "Invalid exclusion clearance.",
+    "shortZh": "避让距离无效。",
+    "shortEn": "Invalid exclusion clearance."
+  },
+  {
+    "zh": "植物不能用作避让对象。",
+    "en": "Plants cannot be used as exclusion objects.",
+    "shortZh": "植物不能用作避让对象。",
+    "shortEn": "Plants cannot be used as exclusion objects."
+  },
+  {
+    "zh": "排除曲线必须是闭合平面曲线。",
+    "en": "Exclusion curves must be closed and planar.",
+    "shortZh": "排除曲线必须是闭合平面曲线。",
+    "shortEn": "Exclusion curves must be closed and planar."
+  },
+  {
+    "zh": "避让对象需为曲面、Brep、Mesh、挤出体或闭合平面曲线。",
+    "en": "Exclusion objects must be surfaces, Breps, Meshes, extrusions or closed planar curves.",
+    "shortZh": "避让对象需为曲面、Brep、Mesh、挤出体或闭合平面曲线。",
+    "shortEn": "Exclusion objects must be surfaces, Breps, Meshes, extrusions or closed planar curves."
+  },
+  {
+    "zh": "无法网格化排除边界。",
+    "en": "Cannot mesh the exclusion boundary.",
+    "shortZh": "无法网格化排除边界。",
+    "shortEn": "Cannot mesh the exclusion boundary."
+  },
+  {
+    "zh": "避让网格过大。",
+    "en": "Exclusion mesh is too large.",
+    "shortZh": "避让网格过大。",
+    "shortEn": "Exclusion mesh is too large."
+  },
+  {
+    "zh": "排除区域或安全距离无效。",
+    "en": "Invalid exclusion footprint or clearance.",
+    "shortZh": "排除区域或安全距离无效。",
+    "shortEn": "Invalid exclusion footprint or clearance."
+  },
+  {
+    "zh": "排除坐标无效。",
+    "en": "Invalid exclusion coordinates.",
+    "shortZh": "排除坐标无效。",
+    "shortEn": "Invalid exclusion coordinates."
+  },
+  {
+    "zh": "排除变换无效。",
+    "en": "Invalid exclusion transform.",
+    "shortZh": "排除变换无效。",
+    "shortEn": "Invalid exclusion transform."
+  },
+  {
+    "zh": "部分完成",
+    "en": "Partially completed",
+    "shortZh": "部分完成",
+    "shortEn": "Partial"
   }
 ]

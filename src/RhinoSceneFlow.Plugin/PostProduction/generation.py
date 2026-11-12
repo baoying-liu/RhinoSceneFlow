@@ -77,7 +77,7 @@ class Engine:
             raise HTTPException(409,'当前项目正在处理或取消，请稍候。')
 
     def launch(self,ident,state):
-        job=self.api['new_job'](ident,'generation');state['job']=job['id'];state['status']='queued'
+        job=self.api['new_job'](ident,'generation');state['job']=job['id'];state['status']='queued';state['stage']='Queued'
         folder=self.folder(ident,state['id']);self.save(folder,state)
         task=asyncio.create_task(self.work(job,state));task.project=ident;task.job=job['id'];self.active[state['id']]=task
         return dict(run=state['id'],job=job['id'])
@@ -208,7 +208,7 @@ VISUAL BRIEF:\n'''+prompt
                 if any(t['status']=='completed' for t in state['tiles']):await self.fuse(job,folder,state)
                 for index,tile in enumerate(state['tiles']):
                     if tile['status'] in ('completed','review','skipped'):continue
-                    self.check(job);tile['attempt']+=1;tile.update(status='running',error=None)
+                    self.check(job);tile['attempt']+=1;tile.update(status='running',error=None);state['activeTile']=tile['id']
                     stage(f'正在生成分块 {index+1}/{total} · 图块 {tile["id"]}')
                     source_dir=folder/('tile-'+str(tile['id']))
                     attempt=source_dir/('attempt-'+str(tile['attempt']));attempt.mkdir(exist_ok=True)
@@ -243,7 +243,7 @@ VISUAL BRIEF:\n'''+prompt
             state.update(status='cancelled',stage='已取消，完成的分块已保留');job.update(status='cancelled',stage=state['stage'])
         except Exception as error:
             state.update(status='failed',stage=str(error));job.update(status='failed',stage=str(error))
-        finally:self.save(folder,state)
+        finally:state['activeTile']=None;self.save(folder,state)
 
     async def resume(self,ident,run):
         self.idle(ident);state=self.state(ident,run)
@@ -258,7 +258,8 @@ VISUAL BRIEF:\n'''+prompt
         tile=next((t for t in state['tiles'] if t['id']==tile_id),None)
         if tile is None or tile['status'] not in ('failed','review'):
             raise ValueError('请选择失败或待检查的图块重试。')
-        tile.update(status='pending',image=None,error=None)
+        tile.update(status='pending',image=None,error=None,acceptedByUser=False);tile.pop('quality',None)
+        state['activeTile']=tile_id;state['output']=None
         return self.launch(ident,state)
 
     async def accept(self,ident,run,tile_id):
@@ -267,14 +268,17 @@ VISUAL BRIEF:\n'''+prompt
         if tile is None or tile['status']!='review':raise ValueError('此分块不在待检查状态。')
         tile.update(status='completed',acceptedByUser=True)
         job=self.api['new_job'](ident,'generation')
+        state.update(job=job['id'],status='queued',activeTile=None,stage='Queued merge');self.save(self.folder(ident,run),state)
         async def accepted():
             try:
+                state.update(status='running',stage='Merging approved tiles');self.save(self.folder(ident,run),state)
                 job.update(status='running',stage='正在合并已确认图块')
                 await self.fuse(job,self.folder(ident,run),state)
                 state.update(status='review' if (state.get('output') or {}).get('needsReview') else 'completed' if all(t['status'] in ('completed','skipped') for t in state['tiles']) else 'partial',stage='已合并确认的图块')
                 self.save(self.folder(ident,run),state);job.update(status='completed',stage=state['stage'])
-            except asyncio.CancelledError:job.update(status='cancelled',stage='合并已取消')
-            except Exception as error:job.update(status='failed',stage=str(error))
+            except asyncio.CancelledError:state.update(status='cancelled',stage='Merge cancelled');job.update(status='cancelled',stage='合并已取消')
+            except Exception as error:state.update(status='failed',stage=str(error));job.update(status='failed',stage=str(error))
+            finally:self.save(self.folder(ident,run),state)
         task=asyncio.create_task(accepted());task.project=ident;task.job=job['id'];self.active[run]=task
         return dict(run=run,job=job['id'])
 

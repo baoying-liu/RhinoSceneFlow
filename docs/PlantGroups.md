@@ -39,3 +39,37 @@ Layout Seed 只影响自动候选位置／植物种类；Size Seed 和 Mirror Se
 PSD 继续使用原植物通道，单株／按学名／全部合并及阴影规则不变。种植代理排除在非植物材质和阴影接收几何之外。
 
 验证入口：`PlantLayoutValidation`、`Test-PlantGroups.py` / `Check-PlantGroups.py` / `Advance-PlantGroups.py`。B 的真实结果以 Validation.md / Sandbox-B.md 为准。
+
+
+## 0.23.2 development: avoidance objects and exclusion regions
+
+This development build is tested only in sandbox B; it is not a published release.
+
+The planting carrier remains a Surface, Brep or Mesh. Trimmed Breps/Surface objects
+are meshed with Rhino's trimming boundaries; holes are not filled for sampling.
+A separate `PlantGroupSpec.exclusionObjects` GUID array (maximum 256) references
+avoidance geometry. `exclusionClearanceMeters` is a nonnegative metre distance.
+`exclusionMode` is `geometry` by default, or explicitly `footprint`.
+
+- Geometry mode uses the existing geometry3Sharp acceleration library with owned
+  triangle snapshots: inside tests for closed solids, and 3D surface distance for
+  open geometry. References may be Breps, surfaces, Meshes or extrusions.
+- Closed planar curves define XY exclusion regions. Footprint mode explicitly
+  projects all selected geometry into world XY. This is not the default for
+  multilayer/overhead/roof geometry. Trim holes in supplied Breps/Meshes remain holes.
+- These tests concern plant placement anchors and safety distance, not precise
+  trunk/foliage volumes. Increase clearance for canopy separation. Surface distances
+  follow Rhino's render-mesh approximation, not exact NURBS distance evaluation.
+- Existing manual/custom specimens are retained and reported as conflicts; new
+  manual points inside an exclusion are rejected without ending continuous placement.
+- Reference geometry changes/deletion invalidate layout caches. Deleted references
+  stop blocking and are reported. Clearances use metres across document units.
+- Target density retains its existing definition against carrier mesh area;
+  exclusions/spacing can limit achieved count. Exclusions never override spacing.
+- Layout workers build owned acceleration data without Rhino SDK access. Single-plant
+  edits validate references without rebuilding all obstacle meshes; cached queries
+  preserve the existing immediate editing path.
+
+The planting/properties tool provides selection, clear, clearance and mode controls
+in a collapsed exclusion section. APIs reuse `plant_group_create` / `plant_group_update`
+and return `exclusionConflicts` / `missingExclusions` from `plant_group_state`.

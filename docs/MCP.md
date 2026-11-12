@@ -471,3 +471,38 @@ Through the existing original Platform `run_python` -> `McpApi.Execute` only:
 
 Installer/update mutation is deliberately not exposed by MCP. Sandbox production
 updates are rejected in code. See [Release-Installer.md](Release-Installer.md).
+
+
+## 0.23.2 development: durable export jobs (sandbox B validation)
+
+Prefer `export_workbench_start` over the retained synchronous `export_workbench`.
+The caller generates a UUID **before submission**, then uses it as `requestId`:
+
+```json
+{"apiVersion":1,"operation":"export_workbench_start","document":123,"directory":"C:\\Exports","requestId":"4d707694-fd1c-4554-bf41-9456fcbb4389","collision":"number"}
+```
+
+Optional `views` is an array of Named View GUIDs; explicit IDs override the inclusion
+checkbox for this request. No IDs means use the configured included views.
+The response contains `jobId` (equal to requestId), `status`, `stage`, `targets`,
+`files`, `terminal`, and `receipt`. Planned paths/dimensions are persisted before
+capture; files become successful only after writing returns successfully.
+
+- Poll `export_job_status` with `jobId`; no document argument is needed.
+- `export_job_cancel` requests cooperative cancellation; poll to terminal.
+- `export_jobs` lists current-host jobs for a document.
+- Repeating a semantically identical request in the current host returns its job,
+  not a second write. JSON formatting/property order and view order do not matter.
+  Reusing the ID with different directory/view/collision arguments is rejected.
+- On response loss, query the caller-generated ID rather than guessing from files.
+- After host restart, query the saved receipt by ID. A nonterminal saved job is
+  reported as `interrupted`; it is never silently re-executed. Inspect planned and
+  completed paths before intentionally creating a new request.
+- The panel and asynchronous MCP path share one job service, output receipts and
+  concurrency guard. Rhino capture/disposal stays on UI; raster writing uses owned
+  snapshots on a worker. The legacy synchronous API remains for compatibility and
+  is not the preferred transport for a long export.
+
+Plant group specs additionally accept `exclusionObjects`, `exclusionClearanceMeters`
+and `exclusionMode: geometry | footprint`. State reports retained manual conflicts
+and missing references. See PlantGroups.md for geometry/anchor limitations.

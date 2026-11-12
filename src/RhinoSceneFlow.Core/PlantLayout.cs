@@ -42,7 +42,7 @@ public sealed record LayoutTriangle(Vec3 A,Vec3 B,Vec3 C);
 public sealed record LayoutEdge(Vec3 A,Vec3 B);
 public sealed record LayoutManual(string Id,Guid Asset,Vec3 Position,bool Detached=false,double? CustomScale=null,bool? CustomMirror=null,double? SpacingMeters=null);
 public sealed record LayoutPlant(string Id,Guid Asset,Vec3 Position,bool Manual,double Scale,bool Mirror,bool Detached=false);
-public sealed record PlantLayoutResult(LayoutPlant[] Plants,int Target,int Attempts,bool Limited,double Area);
+public sealed record PlantLayoutResult(LayoutPlant[] Plants,int Target,int Attempts,bool Limited,double Area,int ExclusionConflicts=0);
 
 /// <summary>Owned metre-space snapshots only. Stable streams for layout, scale and mirror.</summary>
 public static class PlantLayout
@@ -52,7 +52,7 @@ public static class PlantLayout
         ulong h=14695981039346656037UL^(uint)seed;foreach(char c in id){h^=c;h*=1099511628211UL;}h^=h>>30;h*=0xbf58476d1ce4e5b9UL;h^=h>>27;h*=0x94d049bb133111ebUL;return h^(h>>31);
     }
     public static double Random(string id,int seed)=>(Hash(id,seed)>>11)*(1.0/(1UL<<53));
-    public static PlantLayoutResult Generate(LayoutTriangle[] triangles,LayoutEdge[] edges,PlantPaletteItem[] palette,LayoutManual[] manual,PlantLayoutSettings settings,CancellationToken cancel=default,IReadOnlySet<string>? excluded=null)
+    public static PlantLayoutResult Generate(LayoutTriangle[] triangles,LayoutEdge[] edges,PlantPaletteItem[] palette,LayoutManual[] manual,PlantLayoutSettings settings,CancellationToken cancel=default,IReadOnlySet<string>? excluded=null,PlantExclusions? exclusions=null)
     {
         settings.Validate();if(palette.Length is <1 or >64||palette.Any(p=>p.Asset==Guid.Empty||!double.IsFinite(p.Weight)||p.Weight<=0||!double.IsFinite(p.SpacingMeters)||p.SpacingMeters<0||p.SpacingMeters>1000)||palette.Select(p=>p.Asset).Distinct().Count()!=palette.Length)throw new ArgumentException("植物组合需为 1–64 种，间距和比重必须有效。");
         if(manual.Length>10000||triangles.Length>2_000_000||edges.Length>200000)throw new ArgumentException("种植快照过大。");
@@ -79,10 +79,11 @@ public static class PlantLayout
             double u=Math.Sqrt(random.NextDouble()),v=random.NextDouble();var t=triangles[ti];var p=t.A+(t.B-t.A)*(u*(1-v))+(t.C-t.A)*(u*v);
             int pi=Array.BinarySearch(weights,random.NextDouble()*totalWeight);if(pi<0)pi=~pi;pi=Math.Min(pi,palette.Length-1);var entry=palette[pi];double edge=Edge(p);
             if(settings.EdgeDensity&&random.NextDouble()>edge)continue;
+            if(exclusions?.Contains(p)==true)continue;
             bool valid=true;if(!settings.OverrideSpacing){var k=Key(p);for(int x=-1;x<=1&&valid;x++)for(int y=-1;y<=1&&valid;y++)for(int z=-1;z<=1&&valid;z++)if(cells.TryGetValue((k.X+x,k.Y+y,k.Z+z),out var near))foreach(var other in near)if((p-other.P).Length<(entry.SpacingMeters+other.S)*.5){valid=false;break;}}
             if(!valid)continue;string id="auto:"+attempt;if(excluded?.Contains(id)==true)continue;result.Add(Make(id,entry.Asset,p,false,false,edge));AddCell(p,entry.SpacingMeters);
         }
-        return new(result.ToArray(),target,attempts,result.Count<target,area);
+        return new(result.ToArray(),target,attempts,result.Count<target,area,manual.Count(m=>exclusions?.Contains(m.Position)==true));
     }
 
     // Bounding tree avoids scanning every boundary segment for every rejected candidate.

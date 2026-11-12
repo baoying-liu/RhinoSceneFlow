@@ -40,16 +40,22 @@ class BoardApi:
         result=[{**t,'imported':True, 'status':'interrupted' if t['status'] in ('running','queued') else t['status']} for t in self.store.read(id).get('history',[])]
         for p in (self.store.folder(id)/'tasks').glob('*/task.json'):
             t=read_json(p)
-            if t['status'] in ('queued','running') and (t['job'] not in self.active or self.active[t['job']].done()):t.update(status='interrupted',phase='interrupted')
-            if t['status'] in ('review','failed') and t.get('project') and t.get('run'):
+            if t['status'] in ('queued','running') and not t.get('reviewJob') and (t['job'] not in self.active or self.active[t['job']].done()):t.update(status='interrupted',phase='interrupted')
+            if (t['status'] in ('review','failed') or t.get('reviewJob')) and t.get('project') and t.get('run'):
                 state=self.generation.state(t['project'],t['run'])
+                if t.get('reviewJob'):
+                    running=state['status'] in ('queued','running')
+                    t.update(status='running' if running else 'review' if state['status'] in ('partial','review') else state['status'],phase='retrying' if running else 'review' if state['status'] in ('partial','review') else state['status'],activeTile=state.get('activeTile'),reviewStage=state.get('stage'))
                 if state['status']=='completed' and state.get('output'):
                     snapshot=read_json(p.parent/'snapshot.json');n=snapshot['node'];o=state['output'];src=self.generation.folder(t['project'],t['run'])
                     existing=next((r for r in self.store.read(id)['nodes'] if (r.get('source') or {}).get('task')==t['id']),None)
                     if existing:node=existing
                     elif 'inputVersion' in snapshot:node=self.store.publish(id,t['node'],self.store.put_asset(id,src/o['image']),self.store.put_asset(id,src/o['preview']),o['width'],o['height'],'detail',dict(task=t['id'],projectId=t['project'],runId=t['run']),snapshot)
                     else:node=self.store.append(id,self.store.put_asset(id,src/o['image']),self.store.put_asset(id,src/o['preview']),o['width'],o['height'],Path(n['name']).stem+' · HD.png',parent=n['id'],stage='detail',settings=n['params'],source=dict(task=t['id'],projectId=t['project'],runId=t['run']))
-                    t.update(status='completed',phase='completed',result=node['id']);write_json(p,t)
+                    t.update(status='completed',phase='completed',result=node['id']);t.pop('reviewJob',None);t.pop('activeTile',None);write_json(p,t)
+                elif t.get('reviewJob'):
+                    if t['status'] in ('failed','cancelled','interrupted'):t.pop('reviewJob',None);t.pop('activeTile',None)
+                    write_json(p,t)
             result.append(t)
         b=self.store.read(id);changed=False
         for n in b['nodes']:
@@ -365,10 +371,14 @@ def register(app,root,api,generation):
     async def recompose(id:str,task:str,body:dict):return await board.recompose(id,task,body)
     @router.post('/api/boards/{id}/tasks/{task}/review')
     async def review_action(id:str,task:str,body:dict):
-        t=read_json(store.folder(id)/'tasks'/ident(task)/'task.json');action=body.get('action')
-        if action=='accept':return await generation.accept(t['project'],t['run'],body['tile'])
-        if action=='retry':return await generation.retry(t['project'],t['run'],body['tile'])
-        if action=='resume':return await generation.resume(t['project'],t['run'])
+        path=store.folder(id)/'tasks'/ident(task)/'task.json';t=read_json(path);action=body.get('action')
+        if t['status'] not in ('review','failed','interrupted','running'):raise HTTPException(409,'This task is no longer under review')
+        if action in ('accept','retry','resume'):
+            if action=='accept':result=await generation.accept(t['project'],t['run'],body['tile'])
+            elif action=='retry':result=await generation.retry(t['project'],t['run'],body['tile'])
+            else:result=await generation.resume(t['project'],t['run'])
+            t.update(reviewJob=result['job'],job=result['job'],status='running',phase='retrying',activeTile=body.get('tile'));write_json(path,t)
+            return result
         if action=='acceptOutput':return await generation.accept_output(t['project'],t['run'],body.get('fusionId'))
         raise ValueError('action: accept | retry | resume')
     @router.post('/api/boards/{id}/generate')

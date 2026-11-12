@@ -902,3 +902,18 @@ browser-preserving recovery and actual ChatKit readiness passed. Saved Monet cas
 restored with 70 objects, unmodified. No credential mutation, image generation,
 production deployment or mouse control. See Validation.md for controlled-failure
 and transient test observations.
+
+## Office B workflow validation — 2026-11-12 — 0.23.2 development
+
+Office B ID `1cee488700ad42f59492743cc4a2a3fe`, management MCP 19540.
+Final prepared deployment `20261112-154252-d0456630592d424ab4517d2a7535b9d1`,
+loaded PID 63256 through test job `49e2043ad9d74e94a6bc27e37b3923db`.
+Original Platform monitor and live PID were checked; final exclusion-cache code
+was loaded. Trimmed Brep/Mesh avoidance, geometry edits, native Undo/Redo,
+asynchronous PSD export, replay/cancel/durable receipts and first-save dimensions
+passed. Owned demonstration model:
+`artifacts/rhino-B/exclusions0232/Avoidance-0232.3dm`.
+Full evidence and synthetic-browser limitations are recorded in Validation.md.
+Rhino update prompts required the user's No responses during orderly restarts;
+no process was forcibly killed. No production registration, publication, user
+mouse control, credentials or real AI image generation was involved.

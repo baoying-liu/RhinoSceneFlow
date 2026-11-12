@@ -1087,3 +1087,71 @@ final 6,912-row installer extraction checks are recorded in
 [Public-Release-Audit.md](Public-Release-Audit.md). No production installation,
 clean-machine maintenance acceptance, fresh account login or new model call was
 performed. The public distribution is an unsigned manual-install Pre-release.
+
+## 2026-11-12 office B workflow fixes — 0.23.2 development
+
+- Final manager build `20c7fe1db4ba4296a11859b193fd0800` prepared deployment
+  `20261112-154252-d0456630592d424ab4517d2a7535b9d1`; test job
+  `49e2043ad9d74e94a6bc27e37b3923db` loaded office B PID 63256.
+  Original Platform monitor/PID identity and the final exclusion-cache field were
+  checked. Earlier close timeouts were Rhino update prompts, acknowledged by the
+  user; no force kill was used. Their diagnostic evidence is retained.
+- `Build.ps1` passed, including geometry regressions and 563 English caption,
+  abbreviation and dynamic-format checks. Actual B tests in
+  `scripts/Test-ExclusionsExports.py` passed on sloped trimmed Brep and trimmed
+  Mesh carriers: holes, retained manual conflicts, rejected new manual conflicts,
+  clearance, moved obstacle and changed carrier, plus first-save output-size
+  retention. Exclusion snapshots are cached; this is anchor clearance, not exact
+  canopy-volume collision.
+- Actual queued export `23b00b99-d354-439a-b6ff-b39147a5ef1d` completed and its
+  256 x 192 PSD was independently decoded with psd-tools. Same-ID replay did not
+  write twice, changed arguments were rejected, cancellation wrote no files,
+  document state was preserved, disk readback passed, and a simulated abandoned
+  receipt became interrupted rather than restarting. The previous PID's completed
+  job `a06a81e8-770e-49f5-9b99-9608a6d8207a` was also recovered after a real host
+  restart. Evidence: `artifacts/exclusions-exports0232/verified.json`.
+- Native Undo/Redo passed after the Platform command returned, restoring avoidance
+  references; evidence: `artifacts/rhino-B/exclusions0232/undo-verified.json`.
+  Reopening the saved fixture in final PID 63256 retained the references, geometry
+  mode and 256 x 192 sidecar dimensions, with the document unmodified; evidence:
+  `artifacts/rhino-B/exclusions0232/reopen-verified.json`.
+- Python review-task, board workflow, task-input and task-restore regressions
+  passed. Review-task tests exercise registered route callbacks with synthetic
+  generation state, not a real model call. An isolated headless Edge/Playwright
+  fixture displayed `Retrying tile #2` in both task and progress UI; screenshot
+  `output/playwright/retry-running-0232.png` was inspected. Its task HTTP response
+  was synthetic. The owned fixture and browser were closed afterwards.
+- No real AI generation, production installation, push or release was performed.
+  The existing unsigned public preview still requires manual installation; these
+  tests do not validate signed automatic-update installation.
+
+### Stable-release preparation, MIT and portable build
+
+The owner subsequently authorized MIT licensing for original code and evaluation
+of free SignPath Foundation signing; paid Azure signing was declined. No signing
+application, paid resource, certificate, signature or stable release was created.
+See Code-Signing-Policy.md and Release-Readiness-0232.md for unresolved gates.
+
+On this office machine, runtime staging initially failed because ignored Python
+inputs were only present on the home computer. The embedded-Python attempt to
+build pyvips in an isolated pip environment also failed (setuptools backend not
+importable under embedded `_pth`). Both failure logs are retained. Staging now
+fetches pinned Python/pip inputs and uses a separately specified development
+interpreter only for the pure-Python wrapper build; the new runtime passed pip
+check and actual BoardWorkflow, TaskInputs, raster and retry-state regressions.
+
+After including LICENSE and Privacy.md, the unsigned installer passed read-only
+checks with 6,914 owned file rows, exact compressed MSI identity and unchanged
+production registration. Native probe exit 10 correctly detected a standard Rhino
+process; no installation or process termination was attempted. Final local EXE
+SHA-256: `22A79A6A69771B107246560E78D1994564B652AB1FEE5849CB043A3868C074E2`.
+Evidence: artifacts/installer-tests/0.23.2/installer-verified.json and release0232
+build/test logs. The pinned official RhinoCommon 8.34.26223.11001 SDK references
+passed the complete local Build.ps1 regressions (563 caption checks). This is not
+evidence of a successful hosted CI run or native testing of that rebuilt binary.
+
+Candidate workflow is manual-only, read-only repository permissions, pinned action
+commits, no signing secrets and no release publication step. History and staged
+diff scans using digest-verified Gitleaks 8.30.1 reported no findings (existing
+single historical false-positive fingerprint retained); this is not proof that
+all sensitive content can be detected.

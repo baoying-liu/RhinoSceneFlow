@@ -1,4 +1,4 @@
-param([string]$Configuration = 'Release')
+param([string]$Configuration = 'Release',[string]$RhinoSystem='')
 $ErrorActionPreference = 'Stop'
 $projectRoot = Split-Path -Parent $PSScriptRoot
 Push-Location $projectRoot
@@ -8,7 +8,9 @@ try {
         node build.cjs
         if ($LASTEXITCODE -ne 0) { throw 'Studio web build failed.' }
     } finally { Pop-Location }
-    dotnet build RhinoSceneFlow.sln -c $Configuration
+    $buildArgs=@('build','RhinoSceneFlow.sln','-c',$Configuration)
+    if($RhinoSystem){$buildArgs+=('-p:RhinoSystem='+[IO.Path]::GetFullPath($RhinoSystem))}
+    & dotnet @buildArgs
     if ($LASTEXITCODE -ne 0) { throw 'Build failed.' }
     dotnet run --project tests/RhinoSceneFlow.Validation -c $Configuration --no-build -- artifacts/validation
     if ($LASTEXITCODE -ne 0) { throw 'Validation failed.' }

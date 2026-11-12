@@ -35,4 +35,7 @@ if(args.Length>0)
     Console.WriteLine($"PASS: {checkedLabels} captured native captions translated without Chinese leakage.");
 }
 Console.WriteLine($"PASS: {count} full English captions, semantic abbreviations, dynamic counts/enums and user text preservation.");
+Equal("Exclusion objects: 3",NativeText.Translate("排除物件：3","en"),"Exclusion count English");
+Equal("排除物件：3",NativeText.Translate("Exclusion objects: 3","zh-CN"),"Exclusion count Chinese");
+Equal("Export job ab12 | 1 / 3",NativeText.Translate("导出任务 ab12 | 1 / 3","en"),"Export job counter");
 namespace RhinoSceneFlow.Plugin {internal static class WorkspaceAppearance {internal static readonly Dictionary<string,string> english=new();}}

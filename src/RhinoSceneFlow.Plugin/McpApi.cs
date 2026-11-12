@@ -73,7 +73,11 @@ public static class McpApi
                             new { name="workbench_expand",required=new[]{"document","expanded"},parameters="scope:view(default)|layers; viewId?: target one or all cards; independent section folding",output="Panel state" },
                             new { name="workbench_settings",required=new[]{"document"},parameters="Per-view configuration, exportable display modes and PSD blend keys",output="views, displayModes, blends" },
                             new { name="configure_view",required=new[]{"document","viewId","settings"},parameters="Patch width,height,mode,layers:[{kind:shadow|texture|material|display|plants|color|depth,colorSource:material(default)|layer,textureGrouping:material(default)|object|all,plantGrouping:species(default)|individual|all,visible:true,expanded:false,mode:guid,blend:norm|mul |scrn|over|dark|lite,opacity:0..100,enabled:true}], camera:{yaw,pitch,zoom,panX,panY,panZ}, sun:{useDocument,azimuth,altitude},included,plantShadows:true,separatePlantShadows:true. Saved per document path, without altering Named Views.",output="Updated view configuration" },
-                            new { name="export_workbench",required=new[]{"document","directory"},parameters="views?: [Named View GUIDs] (otherwise included saved views); collision?: number|overwrite|cancel. Captures RGB display modes, unlit bitmap albedo (kind:texture, material-ID merge or per-object children in one group), legacy layer RGB (kind:material), and tiled shadows. Independent pass blend/opacity. Side <=8192; total <=8192 squared; PSD raw <=2GB.",output="Batch report" },
+                            new {name="export_workbench_start",required=new[]{"document","directory","requestId"},parameters="Durable asynchronous export. requestId: caller-generated UUID; reuse the identical request to recover its job without duplicate writes. views?: GUID[]; collision?:number|overwrite|cancel.",output="jobId,status,terminal,files,receipt; poll export_job_status"},
+                            new {name="export_job_status",required=new[]{"jobId"},parameters="Query by jobId (same as requestId), including persisted receipts after host restart.",output="status,stage,currentView,finished,total,files,report,terminal,error"},
+                            new {name="export_job_cancel",required=new[]{"jobId"},parameters="Request cooperative cancellation; poll until terminal. Completed files remain recorded.",output="Job receipt"},
+                            new {name="export_jobs",required=new[]{"document"},parameters="List current-host export jobs for the document; no resubmission.",output="jobs"},
+                            new { name="export_workbench",required=new[]{"document","directory"},parameters="Legacy synchronous compatibility operation; prefer export_workbench_start with requestId. views?: [Named View GUIDs] (otherwise included saved views); collision?: number|overwrite|cancel. Captures RGB display modes, unlit bitmap albedo (kind:texture, material-ID merge or per-object children in one group), legacy layer RGB (kind:material), and tiled shadows. Independent pass blend/opacity. Side <=8192; total <=8192 squared; PSD raw <=2GB.",output="Batch report" },
                             new { name="open_panel", required=new[]{"document"}, parameters="Opens or activates the native Eto Named View export panel", output="Panel state" },
                             new { name="panel_status", required=new[]{"document"}, parameters="Read-only panel state", output="Panel state, or open=false" },
                             new { name="named_views", required=new[]{"document"}, parameters="Lists stable named-view IDs and default dimensions", output="Named View entries" },
@@ -101,6 +105,25 @@ public static class McpApi
                     Merge(node,JsonNode.Parse(r.GetProperty("settings").GetRawText())!.AsObject());
                     var configured=node.Deserialize<ViewExportRow>(WorkbenchStore.Json)!;configured.Id=configId;
                     WorkbenchService.Configure(configDoc,configured);response=configured;break;
+                case "export_job_status":response=ExportJobs.State(Guid.Parse(r.GetProperty("jobId").GetString()!));break;
+                case "export_job_cancel":response=ExportJobs.Cancel(Guid.Parse(r.GetProperty("jobId").GetString()!));break;
+                case "export_jobs":response=ExportJobs.List(Document(r).RuntimeSerialNumber);break;
+                case "export_workbench_start":
+                    var exportDoc=Document(r);var requestId=Guid.Parse(r.GetProperty("requestId").GetString()!);
+                    var requestedIds=r.TryGetProperty("views",out var viewRequest)?viewRequest.EnumerateArray().Select(v=>Guid.Parse(v.GetString()!)).Distinct().OrderBy(v=>v).ToArray():null;
+                    string requestedDirectory=r.GetProperty("directory").GetString()!;
+                    if(!Path.IsPathFullyQualified(requestedDirectory))throw new ArgumentException("Export directory must be absolute.");
+                    requestedDirectory=Path.GetFullPath(requestedDirectory);
+                    string collisionMode=r.TryGetProperty("collision",out var cp)?cp.GetString()??"number":"number";
+                    string requestKey=JsonSerializer.Serialize(new{document=exportDoc.RuntimeSerialNumber,directory=Path.TrimEndingDirectorySeparator(requestedDirectory).ToUpperInvariant(),views=requestedIds,collision=collisionMode});
+                    var exportJob=ExportJobs.Start(exportDoc,()=>
+                    {
+                        var selected=WorkbenchService.Settings(exportDoc).Where(v=>v.Included);
+                        if(requestedIds!=null){selected=WorkbenchService.Settings(exportDoc).Where(v=>requestedIds.Contains(v.Id)).ToArray();foreach(var row in selected)row.Included=true;}
+                        var policy=collisionMode switch{"number"=>FileCollision.Number,"overwrite"=>FileCollision.Overwrite,"cancel"=>FileCollision.Cancel,_=>throw new ArgumentException("Invalid collision policy.")};
+                        return WorkbenchService.Plan(exportDoc,selected,requestedDirectory,_=>policy);
+                    },requestId,requestKey);
+                    response=ExportJobs.State(exportJob);break;
                 case "export_workbench":
                     var workDoc=Document(r);var settings=WorkbenchService.Settings(workDoc);
                     if(r.TryGetProperty("views",out var ids))

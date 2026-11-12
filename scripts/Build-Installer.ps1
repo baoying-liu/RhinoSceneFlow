@@ -1,5 +1,5 @@
 ﻿[CmdletBinding()]
-param([string]$PackageDirectory,[string]$PublisherThumbprint='',[switch]$SkipRuntimeStage)
+param([string]$PackageDirectory,[string]$PublisherThumbprint='',[switch]$SkipRuntimeStage,[string]$BuildPython='')
 $ErrorActionPreference='Stop'
 $root=Split-Path -Parent $PSScriptRoot
 if(-not $PackageDirectory){$PackageDirectory=Join-Path $root 'artifacts/package/RhinoSceneFlow'}
@@ -27,7 +27,9 @@ if($LASTEXITCODE -ne 0){throw 'Texture worker publish failed; see texture-publis
 if($LASTEXITCODE -ne 0){throw 'Updater publish failed; see updater-publish.log.'}
 if(-not $SkipRuntimeStage){
     $ErrorActionPreference='Continue'
-    & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $root 'scripts/Stage-ReleaseRuntime.ps1') -RuntimeDirectory (Join-Path $payload 'Runtime') *> (Join-Path $output 'runtime-stage.log')
+    $stageArgs=@('-NoProfile','-ExecutionPolicy','Bypass','-File',(Join-Path $root 'scripts/Stage-ReleaseRuntime.ps1'),'-RuntimeDirectory',(Join-Path $payload 'Runtime'))
+    if($BuildPython){$stageArgs+=@('-BuildPython',$BuildPython)}
+    & powershell @stageArgs *> (Join-Path $output 'runtime-stage.log')
     $ErrorActionPreference='Stop'
     if($LASTEXITCODE -ne 0){throw 'Private runtime staging failed; see runtime-stage.log.'}
 }
@@ -37,6 +39,8 @@ if(-not(Test-Path -LiteralPath $python)){throw 'Private Python runtime is missin
 if($LASTEXITCODE -ne 0){throw 'Private runtime is incomplete.'}
 # Public distribution notices are app-owned files and must survive repair too.
 Copy-Item -LiteralPath (Join-Path $root 'THIRD-PARTY-NOTICES.md') -Destination $payload -Force
+Copy-Item -LiteralPath (Join-Path $root 'LICENSE') -Destination $payload -Force
+Copy-Item -LiteralPath (Join-Path $root 'docs/Privacy.md') -Destination (Join-Path $payload 'Privacy.md') -Force
 $notices=Join-Path $payload 'Notices'
 New-Item -ItemType Directory -Force -Path $notices | Out-Null
 foreach($folder in @('dotnet','libvips')){

@@ -26,6 +26,9 @@ public sealed class PlantGroupSpec
     public int Version {get;set;}=1;
     public string Name {get;set;}="种植组合";
     public Guid Surface {get;set;}
+    public Guid[] ExclusionObjects {get;set;}=[];
+    public double ExclusionClearanceMeters {get;set;}
+    public string ExclusionMode {get;set;}="geometry";
     public PlantPaletteItem[] Palette {get;set;}=[];
     public Dictionary<Guid,PlantInstance> Assets {get;set;}=[];
     public PlantAttachment[] Manual {get;set;}=[];
@@ -67,27 +70,28 @@ public static class PlantGroups
     private sealed class Work
     {
         internal string Stamp="",Stage="等待计算";internal DateTime Changed;internal CancellationTokenSource? Cancel;internal Task<PlantLayoutResult>? Task;
-        internal PlantGroupSpec? Spec;internal Transform Transform;internal double Units;internal string? Error;
+        internal PlantGroupSpec? Spec;internal Transform Transform;internal double Units;internal string? Error;internal int ExclusionConflicts;internal PlantExclusions? ExclusionIndex;
     }
     private static readonly Dictionary<(uint,Guid),Work> work=[];
     private static readonly Eto.Forms.UITimer timer=new(){Interval=.35};
     internal static bool Picking=false;
     private static readonly Dictionary<uint,(PlantGroupSpec Spec,LayoutPlant[] Rows,string Config)> decoded=[];
+    private static readonly Dictionary<(uint,string),PlantExclusions> exclusionCache=[];
     private static bool running;
     internal static void Start(){if(running)return;running=true;PlantParameterUndo.Start();timer.Elapsed+=Tick;RhinoDoc.SelectObjects+=Selected;timer.Start();}
-    internal static void Stop(){if(!running)return;running=false;PlantParameterUndo.Stop();timer.Stop();timer.Elapsed-=Tick;RhinoDoc.SelectObjects-=Selected;foreach(var w in work.Values)w.Cancel?.Cancel();work.Clear();decoded.Clear();}
+    internal static void Stop(){if(!running)return;running=false;PlantParameterUndo.Stop();timer.Stop();timer.Elapsed-=Tick;RhinoDoc.SelectObjects-=Selected;foreach(var w in work.Values)w.Cancel?.Cancel();work.Clear();decoded.Clear();exclusionCache.Clear();}
     private static void Selected(object? sender,RhinoObjectSelectionEventArgs e)
     {
         if(Picking||SceneFlowWorkspace.Hosts.ContainsKey("properties")||!e.RhinoObjects.Any(IsGroup))return;uint serial=e.Document.RuntimeSerialNumber;
         Eto.Forms.Application.Instance.AsyncInvoke(()=>{var doc=RhinoDoc.ActiveDoc;if(running&&doc?.RuntimeSerialNumber==serial&&doc.IsAvailable&&!doc.IsClosing)try{SceneFlowWorkspace.Open("properties");}catch(Exception ex){System.Diagnostics.Debug.WriteLine(ex.Message);}});
     }
-    internal static void Close(uint doc){foreach(var key in work.Keys.Where(k=>k.Item1==doc).ToArray()){work[key].Cancel?.Cancel();work.Remove(key);}decoded.Clear();}
+    internal static void Close(uint doc){foreach(var key in work.Keys.Where(k=>k.Item1==doc).ToArray()){work[key].Cancel?.Cancel();work.Remove(key);}decoded.Clear();foreach(var key in exclusionCache.Keys.Where(k=>k.Item1==doc).ToArray())exclusionCache.Remove(key);}
     public static PlantGroupSpec? Read(RhinoObject obj)=>obj.Attributes.GetUserString(Key) is string s?JsonSerializer.Deserialize<PlantGroupSpec>(s,MaterialLibrary.Json):null;
     internal static bool IsGroup(RhinoObject o)=>o.Attributes.GetUserString(Key)!=null;
     internal static Transform Matrix(RhinoObject obj)=>(obj.Geometry.UserData.Find(typeof(PlantGroupTransform)) as PlantGroupTransform)?.Transform??Transform.Identity;
     internal static string LayoutKey(RhinoDoc doc,RhinoObject obj,PlantGroupSpec spec)
     {
-        string text=MaterialService.Serialize(new{spec.Surface,spec.Settings,spec.Palette,spec.Manual,geometry=doc.Objects.FindId(spec.Surface)?.Geometry.DataCRC(0),units=doc.ModelUnitSystem});
+        string text=MaterialService.Serialize(new{spec.Surface,spec.Settings,spec.Palette,spec.Manual,spec.ExclusionMode,spec.ExclusionClearanceMeters,exclusions=ExclusionStamp(doc,spec),geometry=doc.Objects.FindId(spec.Surface)?.Geometry.DataCRC(0),units=doc.ModelUnitSystem});
         return Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(text)));
     }
     internal static void FreezeLayout(RhinoDoc doc,RhinoObject obj,PlantGroupSpec spec)
@@ -123,6 +127,7 @@ public static class PlantGroups
         finally{doc.UndoRecordingEnabled=undo;doc.Modified=modified;}
         if(!work.TryGetValue((doc.RuntimeSerialNumber,id),out var w))work[(doc.RuntimeSerialNumber,id)]=w=new();
         w.Cancel?.Cancel();w.Cancel?.Dispose();w.Cancel=null;w.Task=null;w.Spec=spec;w.Units=units;w.Transform=matrix;
+        w.ExclusionConflicts=rows.Count(p=>p.Manual&&w.ExclusionIndex?.Contains(p.Position)==true);
         w.Stamp=Stamp(doc,doc.Objects.FindId(id)!);w.Stage=$"{rows.Count} 株 · 单株已更新";w.Error=null;
         return true;
     }
@@ -130,7 +135,50 @@ public static class PlantGroups
     private static string Stamp(RhinoDoc doc,RhinoObject obj)
     {
         var s=Read(obj)!;var source=doc.Objects.FindId(s.Surface);var t=Matrix(obj);
-        return obj.Attributes.GetUserString(Key)+"|"+(source?.Geometry.DataCRC(0).ToString()??"missing")+"|"+doc.ModelUnitSystem+"|"+string.Join(",",Enumerable.Range(0,16).Select(i=>t[i/4,i%4].ToString("R",System.Globalization.CultureInfo.InvariantCulture)));
+        return obj.Attributes.GetUserString(Key)+"|"+(source?.Geometry.DataCRC(0).ToString()??"missing")+"|"+ExclusionStamp(doc,s)+"|"+doc.ModelUnitSystem+"|"+string.Join(",",Enumerable.Range(0,16).Select(i=>t[i/4,i%4].ToString("R",System.Globalization.CultureInfo.InvariantCulture)));
+    }
+    private static string ExclusionStamp(RhinoDoc doc,PlantGroupSpec spec)=>string.Join(";",spec.ExclusionObjects.Select(id=>id+":"+(doc.Objects.FindId(id)?.Geometry.DataCRC(0).ToString()??"missing")));
+    private static void ValidateExclusions(RhinoDoc doc,PlantGroupSpec spec)
+    {
+        if(spec.ExclusionObjects.Length>256||spec.ExclusionObjects.Distinct().Count()!=spec.ExclusionObjects.Length||spec.ExclusionObjects.Contains(spec.Surface))throw new ArgumentException("Exclusions must be distinct objects other than the carrier (maximum 256).");
+        if(spec.ExclusionMode is not ("geometry" or "footprint"))throw new ArgumentException("Exclusion mode: geometry | footprint.");
+        if(!double.IsFinite(spec.ExclusionClearanceMeters)||spec.ExclusionClearanceMeters<0||spec.ExclusionClearanceMeters>1000)throw new ArgumentException("Invalid exclusion clearance.");
+        foreach(var id in spec.ExclusionObjects)
+        {
+            var obj=doc.Objects.FindId(id);if(obj==null)continue;
+            if(PlantService.IsPlant(obj))throw new ArgumentException("Plants cannot be used as exclusion objects.");
+            if(obj.Geometry is Curve c){if(!c.IsClosed||!c.IsPlanar())throw new ArgumentException("Exclusion curves must be closed and planar.");}
+            else if(obj.Geometry is not (Brep or Surface or Mesh or Extrusion))throw new ArgumentException("Exclusion objects must be surfaces, Breps, Meshes, extrusions or closed planar curves.");
+        }
+    }
+    internal static PlantExclusions Exclusions(RhinoDoc doc,PlantGroupSpec spec,Transform matrix,double units)
+    {
+        ValidateExclusions(doc,spec);
+        var values=Enumerable.Range(0,16).Select(i=>matrix[i/4,i%4]*(i%4==3&&i<12?units:1)).ToArray();
+        var key=(doc.RuntimeSerialNumber,ExclusionStamp(doc,spec)+MaterialService.Serialize(new{spec.ExclusionMode,spec.ExclusionClearanceMeters,units,matrix=values}));
+        if(exclusionCache.TryGetValue(key,out var cached))return cached;
+        var triangles=new List<LayoutTriangle>();var parts=new List<PlantExclusionMesh>();
+        foreach(var id in spec.ExclusionObjects)
+        {
+            var obj=doc.Objects.FindId(id);if(obj==null)continue;
+            if(PlantService.IsPlant(obj))throw new ArgumentException("Plants cannot be used as exclusion objects.");
+            if(obj.Geometry is Curve curve)
+            {
+                if(!curve.IsClosed||!curve.IsPlanar())throw new ArgumentException("Exclusion curves must be closed and planar.");
+                var breps=Brep.CreatePlanarBreps(curve,doc.ModelAbsoluteTolerance);
+                if(breps==null||breps.Length==0)throw new ArgumentException("Cannot mesh the exclusion boundary.");
+                try{foreach(var b in breps){using var mesh=MeshFor(b);Append(mesh,true);}}finally{foreach(var b in breps)b.Dispose();}
+            }
+            else{using var mesh=MeshFor(obj.Geometry);Append(mesh,false);}
+        }
+        void Append(Mesh mesh,bool region)
+        {
+            if(triangles.Count+mesh.Faces.Count>2_000_000)throw new ArgumentException("Exclusion mesh is too large.");
+            var rows=mesh.Faces.Select(f=>new LayoutTriangle(V(mesh.Vertices[f.A],units),V(mesh.Vertices[f.B],units),V(mesh.Vertices[f.C],units))).ToArray();triangles.AddRange(rows);
+            mesh.Vertices.CombineIdentical(true,true);parts.Add(new(rows,mesh.IsClosed,region));
+        }
+        var result=new PlantExclusions(triangles.ToArray(),spec.ExclusionClearanceMeters,values,spec.ExclusionMode=="geometry"?parts.ToArray():null);
+        if(exclusionCache.Count>=64)exclusionCache.Remove(exclusionCache.Keys.First());exclusionCache[key]=result;return result;
     }
     internal static Mesh MeshFor(GeometryBase geometry)
     {
@@ -193,6 +241,7 @@ public static class PlantGroups
         var manual=spec.Manual.Where(a=>!spec.Individuals.Any(i=>i.WasManual&&i.OriginalId==a.Id)).Select(a=>Resolve(a,source?.Geometry,w.Units,doc.ModelAbsoluteTolerance,oldRows.TryGetValue(a.Id,out var old)?inverse*P(old.Position/w.Units):null))
             .Concat(spec.Individuals.Select(i=>Resolve(i.Attachment,source?.Geometry,w.Units,doc.ModelAbsoluteTolerance,oldRows.TryGetValue(i.Id,out var old)?inverse*P(old.Position/w.Units):null) with{Id=i.Id,CustomScale=i.Scale,CustomMirror=i.Mirror,SpacingMeters=spec.Assets[i.Attachment.Asset].SpacingMeters})).ToArray();
         var excluded=spec.Individuals.Where(i=>!i.WasManual&&i.OriginalSeed==spec.Settings.LayoutSeed).Select(i=>i.OriginalId).ToHashSet();
+        var exclusions=Exclusions(doc,spec,w.Transform,w.Units);w.ExclusionIndex=exclusions;
         if(source==null){w.Stage="承载面已删除；保留最后结果，请重新关联。";w.Error=null;return;}
         w.Cancel=new();var token=w.Cancel.Token;w.Stage="正在计算种植布局…";w.Error=null;
         if(spec.EditLayout is {} frozen&&frozen.Key==LayoutKey(doc,obj,spec))
@@ -203,9 +252,9 @@ public static class PlantGroups
                 var item=manual.First(m=>m.Id==i.Id);rows.Add(new(i.Id,item.Asset,item.Position,true,i.Scale,i.Mirror,item.Detached));
             }
             double area=triangles.Sum(t=>(t.B-t.A).Cross(t.C-t.A).Length*.5);int target=(int)Math.Round(area*spec.Settings.Density);
-            w.Task=System.Threading.Tasks.Task.FromResult(new PlantLayoutResult(rows.ToArray(),target,0,rows.Count<target,area));
+            w.Task=System.Threading.Tasks.Task.Run(()=>new PlantLayoutResult(rows.ToArray(),target,0,rows.Count<target,area,rows.Count(p=>p.Manual&&exclusions.Contains(p.Position))),token);
         }
-        else w.Task=System.Threading.Tasks.Task.Run(()=>PlantLayout.Generate(triangles,edges,spec.Palette,manual,spec.Settings,token,excluded),token);
+        else w.Task=System.Threading.Tasks.Task.Run(()=>PlantLayout.Generate(triangles,edges,spec.Palette,manual,spec.Settings,token,excluded,exclusions),token);
     }
     private static void Tick(object? sender,EventArgs e)
     {
@@ -220,7 +269,7 @@ public static class PlantGroups
                 if(w.Task is {IsCompleted:true} task)
                 {
                     w.Task=null;if(task.IsCanceled)continue;if(task.IsFaulted)throw task.Exception!.GetBaseException();
-                    var result=task.Result;var transformed=result.Plants.Select(p=>p with{Position=V(w.Transform*P(p.Position/w.Units),w.Units)}).ToArray();
+                    var result=task.Result;w.ExclusionConflicts=result.ExclusionConflicts;var transformed=result.Plants.Select(p=>p with{Position=V(w.Transform*P(p.Position/w.Units),w.Units)}).ToArray();
                     using var proxy=Proxy(w.Spec!,transformed,w.Units,w.Transform);bool modified=doc.Modified,undo=doc.UndoRecordingEnabled;
                     // Derived geometry must refresh while the root remains locked for isolated editing.
                     try{doc.UndoRecordingEnabled=false;if(!doc.Objects.Replace(obj.Id,(GeometryBase)proxy,true))throw new InvalidOperationException("无法更新种植显示。");}
@@ -260,6 +309,7 @@ public static class PlantGroups
     }
     public static Guid Create(RhinoDoc doc,PlantGroupSpec spec)
     {
+        ValidateExclusions(doc,spec);
         NamedViewExportService.RequireActive(doc);Hydrate(spec);if(doc.Objects.FindId(spec.Surface)==null)throw new ArgumentException("先选择承载面。");using var check=MeshFor(doc.Objects.FindId(spec.Surface).Geometry);spec.Settings.Validate();
         using var mesh=Proxy(spec,[],RhinoMath.UnitScale(doc.ModelUnitSystem,UnitSystem.Meters),Transform.Identity);var attrs=new ObjectAttributes{Name=spec.Name};attrs.SetUserString(Key,JsonSerializer.Serialize(spec,MaterialLibrary.Json));uint undo=doc.BeginUndoRecord("创建种植组合");Guid id;
         try{id=doc.Objects.AddMesh(mesh,attrs);if(id==Guid.Empty)throw new InvalidOperationException("无法创建种植对象。");}finally{if(undo!=0)doc.EndUndoRecord(undo);}return id;
@@ -274,6 +324,7 @@ public static class PlantGroups
     }
     public static void Update(RhinoDoc doc,Guid id,PlantGroupSpec spec)
     {
+        ValidateExclusions(doc,spec);
         if(PlantEditing.IsEditing(doc.RuntimeSerialNumber,id)&&!PlantEditing.Applying)throw new InvalidOperationException("请先完成或取消单株编辑，再修改整体组合。");
         NamedViewExportService.RequireActive(doc);var obj=doc.Objects.FindId(id)??throw new ArgumentException("种植对象已删除。");if(!IsGroup(obj))throw new ArgumentException("不是种植组合。");Hydrate(spec);
         if(Read(obj)!.Surface!=spec.Surface)
@@ -287,7 +338,10 @@ public static class PlantGroups
     public static void AddManual(RhinoDoc doc,Guid id,Guid asset,Point3d point)
     {
         var obj=doc.Objects.FindId(id)??throw new ArgumentException("种植对象已删除。");var spec=Read(obj)??throw new ArgumentException("不是种植组合。");var source=doc.Objects.FindId(spec.Surface)??throw new ArgumentException("承载面已删除，请先重新关联。");
-        var matrix=Matrix(obj);if(!matrix.TryGetInverse(out var inverse))throw new ArgumentException("种植对象变换不可逆。");var attachment=Attach(source.Geometry,inverse*point,asset);spec.Manual=[..spec.Manual,attachment];Update(doc,id,spec);
+        var matrix=Matrix(obj);if(!matrix.TryGetInverse(out var inverse))throw new ArgumentException("种植对象变换不可逆。");var attachment=Attach(source.Geometry,inverse*point,asset);
+        double meters=RhinoMath.UnitScale(doc.ModelUnitSystem,UnitSystem.Meters);
+        if(Exclusions(doc,spec,matrix,meters).Contains(new Vec3(attachment.Position[0]*meters,attachment.Position[1]*meters,attachment.Position[2]*meters)))throw new ArgumentException(WorkspaceAppearance.Text("该位置在排除区域内，请选择其他位置。"));
+        spec.Manual=[..spec.Manual,attachment];Update(doc,id,spec);
         // Immediate preview for a continuous picking session; the background layout runs after Esc.
         var p=matrix*new Point3d(attachment.Position[0],attachment.Position[1],attachment.Position[2]);double units=RhinoMath.UnitScale(doc.ModelUnitSystem,UnitSystem.Meters);
         var row=new LayoutPlant(attachment.Id,asset,V(p,units),true,spec.Settings.MinScale+PlantLayout.Random(attachment.Id,spec.Settings.SizeSeed)*(spec.Settings.MaxScale-spec.Settings.MinScale),spec.Settings.Mirror&&PlantLayout.Random(attachment.Id,spec.Settings.MirrorSeed)<.5);
@@ -296,7 +350,7 @@ public static class PlantGroups
     public static object State(RhinoDoc doc,Guid id)
     {
         var obj=doc.Objects.FindId(id)??throw new ArgumentException("种植对象已删除。");var spec=Read(obj)??throw new ArgumentException("不是种植组合。");work.TryGetValue((doc.RuntimeSerialNumber,id),out var w);var rows=Rows(obj);
-        return new{id,spec,count=rows.Length,manual=rows.Count(r=>r.Manual),detached=rows.Count(r=>r.Detached),busy=w==null||w.Stamp!=Stamp(doc,obj)||w.Task!=null||w.Stage=="等待曲面稳定…",stage=w?.Stage??"等待检查",error=w?.Error};
+        return new{id,spec,count=rows.Length,manual=rows.Count(r=>r.Manual),detached=rows.Count(r=>r.Detached),exclusionConflicts=w?.ExclusionConflicts??0,missingExclusions=spec.ExclusionObjects.Count(id=>doc.Objects.FindId(id)==null),busy=w==null||w.Stamp!=Stamp(doc,obj)||w.Task!=null||w.Stage=="等待曲面稳定…",stage=w?.Stage??"等待检查",error=w?.Error};
     }
     internal static IEnumerable<(RhinoObject Object,PlantBillboard Billboard,bool Manual,string Path)> Drawables(RhinoDoc doc,RhinoObject obj)
     {
