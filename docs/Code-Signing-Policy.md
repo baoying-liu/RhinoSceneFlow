@@ -8,8 +8,9 @@ No currently published SceneFlow artifact is claimed to be foundation-signed.
 Repository owner `baoying-liu` maintains the project and is the proposed signing
 approver. External contributions must be reviewed before release. Signing will
 require manual approval of the exact source commit and build artifact. The owner
-must enable multi-factor authentication on GitHub and the signing service before
-an application is submitted; this document is not evidence that it is enabled.
+confirmed GitHub two-factor authentication is enabled on 2026-11-12. This is the
+owner's confirmation, not an independent account audit. Required signing-service
+MFA must be configured when that account is provisioned.
 
 Only project-owned binaries may be signed using a project signing subscription.
 Upstream components keep their own signatures/licenses and must not be re-signed
