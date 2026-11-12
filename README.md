@@ -4,28 +4,23 @@
 
 AI assets → physical-scale materials and UV → planting → layered PSD → AI postproduction.
 
-[Download the preview](https://github.com/baoying-liu/RhinoSceneFlow/releases/tag/v0.23.1-preview.1) · [Install / 安装说明](docs/Getting-Started.md) · [Report an issue](https://github.com/baoying-liu/RhinoSceneFlow/issues)
+[Download the preview](https://github.com/baoying-liu/RhinoSceneFlow/releases/tag/v0.23.1-preview.1) · [Installation guide](docs/Getting-Started.md) · [Report an issue](https://github.com/baoying-liu/RhinoSceneFlow/issues)
 
-## 中文
+## Features
 
-SceneFlow 将 AI 素材、真实尺寸材质与 UV、参数化植物布置、多视图 PSD 导出和 Web AI 后期串联起来。
-在 Rhino 输入 **`RhinoSceneFlow`** 打开可停靠工作区。界面支持中文和英文。
+- **AI assets:** text/image references, existing-asset reuse, local shared libraries,
+  categories and tags. The interface supports English and Chinese.
+- **Materials and UV:** physical-scale checks before application, independent UV
+  preparation and xatlas-based complex mesh unwrapping.
+- **Planting:** mixed-species groups, density, random seeds, surface attachment,
+  seasonal variants and camera-dependent elevation/plan display.
+- **PSD export:** Named Views, resolution, material textures/colors, shadows,
+  plants, Arctic display mode and depth channels.
+- **Web studio:** PSD import, list/canvas views, traceable child images,
+  annotations, references, PhotoCraft editing reference layers and HD processing.
 
-- 材质与植物：文本／图片参考、优先检索已有素材、本地共享库、分类与标签。
-- 真实尺寸 UV：应用材质时自动检查，也可独立展开；复杂曲面使用 xatlas。
-- 种植：混合植物组合、密度、独立随机 Seed、曲面附着、季节和平面／立面跟随相机。
-- PSD：Named Views、分辨率、材质贴图／颜色、阴影、植物、极地模式和深度图等通道。
-- Web：PSD 导入、列表与画布、可追溯子图、标注／参考图、PhotoCraft 编辑参考层、整图与高清处理。
+## Installation
 
-**这是测试版。** EXE 未签名，尚未完成干净电脑的首次安装、修复、卸载及跨版本升级验收。
-自动安装更新未启用。请备份工程，从小模型和低分辨率开始，不要直接依赖它完成不可替代的生产工作。
-AI 需要另行安装 Codex、使用自己的账号登录，并具有生图权限和额度；安装包不含 AI 订阅。
-旧 ZIP／Yak／手动安装的 SceneFlow 需要先移除旧插件注册，保留素材库。
-
-## English
-
-SceneFlow connects AI-assisted asset creation, physically scaled materials, UV preparation,
-parametric planting, layered view export and a local browser postproduction workbench.
 Run **`RhinoSceneFlow`** in Rhino to open the dockable tools.
 
 Download the **EXE from Releases**, rather than GitHub's source ZIP, for installation.
