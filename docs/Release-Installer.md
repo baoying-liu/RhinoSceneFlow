@@ -1,6 +1,7 @@
-# SceneFlow 0.23.1 public preview
+# SceneFlow 0.23.2 public preview
 
-The first public distribution is tagged `v0.23.1-preview.1` and marked Pre-release.
+The current public distribution is tagged `v0.23.2` and marked Pre-release.
+The initial preview remains available as `v0.23.1-preview.1`.
 It is unsigned and is not a clean-machine installation/upgrade acceptance certificate.
 No production installation is performed by development builds or the read-only
 installer test. See [Getting-Started.md](Getting-Started.md) for recipient instructions.
@@ -50,10 +51,10 @@ data isolation when users deliberately select the same library folder.
 
 ```powershell
 ./scripts/Build-Installer.ps1
-./scripts/Test-Installer.ps1 -Version 0.23.1
+./scripts/Test-Installer.ps1 -Version 0.23.2
 ```
 
-Output: `artifacts/installer/0.23.1/SceneFlow-Setup-0.23.1-win-x64.exe`.
+Output: `artifacts/installer/0.23.2/SceneFlow-Setup-0.23.2-win-x64.exe`.
 MSI/Burn own install, same-version repair, uninstall and major upgrades. Downgrades
 are rejected. Installer requires standard Rhino and owned production Python/texture
 workers to be closed; it never terminates them. User libraries, plants, boards,
@@ -115,7 +116,8 @@ rollback or a tested automatic recovery from a new plugin that loads incorrectly
   cancellation and transactional rollback on a disposable VM; current read-only
   MSI-table/layout checks do not replace this.
 - Publisher certificate, signed update exercise with real Release assets, and
-  GitHub repository/history/license preparation before publication.
+  provider approval. The repository is public, MIT-licensed, and history-scanned;
+  the SignPath application is submitted but not approved.
 - Test the browser and device-code authorization flow on a recipient account;
   current account-status checks do not prove new-user authorization or image access.
 - Confirm standard Rhino uses its supported .NET 8 host. Do not silently modify

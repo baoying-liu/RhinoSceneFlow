@@ -13,7 +13,7 @@
 
 ## Install
 
-1. Download `SceneFlow-Setup-0.23.1-win-x64.exe` and `SHA256SUMS.txt` from
+1. Download `SceneFlow-Setup-0.23.2-win-x64.exe` and `SHA256SUMS.txt` from
    [Releases](https://github.com/baoying-liu/RhinoSceneFlow/releases).
    Verify the downloaded file with PowerShell `Get-FileHash -Algorithm SHA256`.
    This preview is unsigned; its publisher is not yet verified by Windows.

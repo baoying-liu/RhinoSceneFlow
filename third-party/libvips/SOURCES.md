@@ -1,11 +1,11 @@
 # libvips source and build provenance
 
-SceneFlow 0.23.1 distributes unmodified pyvips-binary 8.18.7 and pyvips 3.2.0.
+SceneFlow 0.23.2 distributes unmodified pyvips-binary 8.18.7 and pyvips 3.2.0.
 The binary is loaded as a separate DLL/Python extension, not linked into the Rhino
 plugin. LGPL-covered rights, including modification and debugging replacement
 libraries, are not restricted by SceneFlow's own licensing status.
 
-The first public preview Release provides **SceneFlow-ThirdParty-Sources-0.23.1.zip**
+This Release provides **SceneFlow-ThirdParty-Sources-0.23.2.zip**
 next to the installer. It contains source archives for the upstream libvips 8.18.7
 dependency versions, upstream build recipes and patches, source URLs and SHA-256
 hashes. It is source material, not another installer. Upstream license texts and
@@ -34,3 +34,7 @@ The GNU LGPL/GPL texts included by pyvips-binary are retained in its `.dist-info
 license directory. `LICENSE.txt` here is the LGPL 2.1 text shipped by the original
 Windows libvips distribution. The packaging notices document the upstream use of
 the LGPL 3 or later option for relevant libraries.
+
+The 0.23.2 supplement preserves the verified upstream archives from the 0.23.1
+supplement because the bundled libvips and pyvips versions are unchanged. Its
+manifest records the original supplement hash and verifies every archived source.

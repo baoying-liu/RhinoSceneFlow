@@ -1,10 +1,10 @@
 # SceneFlow for Rhino 8
 
-**First public preview · 0.23.1 · Windows x64 · Rhino 8.34+ / .NET 8**
+**Public preview · 0.23.2 · Windows x64 · Rhino 8.34+ / .NET 8**
 
 AI assets → physical-scale materials and UV → planting → layered PSD → AI postproduction.
 
-[Download the preview](https://github.com/baoying-liu/RhinoSceneFlow/releases/tag/v0.23.1-preview.1) · [Installation guide](docs/Getting-Started.md) · [Report an issue](https://github.com/baoying-liu/RhinoSceneFlow/issues)
+[Download the preview](https://github.com/baoying-liu/RhinoSceneFlow/releases/tag/v0.23.2) · [Installation guide](docs/Getting-Started.md) · [Report an issue](https://github.com/baoying-liu/RhinoSceneFlow/issues)
 
 ## Features
 
