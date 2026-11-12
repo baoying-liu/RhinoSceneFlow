@@ -1,0 +1,13 @@
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs" xmlns:bal="http://wixtoolset.org/schemas/v4/wxs/bal">
+ <Bundle Name="SceneFlow for Rhino 8" Manufacturer="SceneFlow" Version="$(var.Version)" UpgradeCode="B269D99A-88F5-4571-ACF6-98744EE8AC75" Compressed="yes">
+  <BootstrapperApplication><bal:WixStandardBootstrapperApplication LicenseUrl="" Theme="hyperlinkLicense" ShowVersion="yes"/></BootstrapperApplication>
+  <Chain>
+   <ExePackage Id="Environment" SourceFile="$(var.Prerequisites)" PerMachine="no" Permanent="yes" Vital="yes" DetectCondition="0" InstallArguments="--install" RepairArguments="--install">
+    <Payload SourceFile="$(var.McpPackage)"/>
+    <Payload SourceFile="$(var.WebViewInstaller)"/>
+    <Payload SourceFile="$(var.McpLicense)"/>
+   </ExePackage>
+   <MsiPackage Id="SceneFlow" SourceFile="$(var.Msi)" Visible="no" Vital="yes"/>
+  </Chain>
+ </Bundle>
+</Wix>

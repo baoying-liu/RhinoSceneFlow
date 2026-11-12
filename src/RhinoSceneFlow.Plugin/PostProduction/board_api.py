@@ -166,6 +166,7 @@ class BoardApi:
         snapshot=self.generation_snapshot(id,node);n=snapshot['node'];stage=body.get('stage','whole')
         if n['kind']!='image' or n.get('archived'):raise ValueError('Select a main image')
         if stage!='detail' and not n['params']['prompt'].strip() and not n['annotations'] and not snapshot['references']:raise ValueError('Write a brief or add instructions inside the frame')
+        if self.api.get('resolve_codex'):self.api['codex']=self.api['resolve_codex']()
         if not self.api['codex'] or not Path(self.api['codex']).is_file():raise ValueError('Local Codex is unavailable')
         self.validate_stage(snapshot,stage)
         folder=self.task_folder(id);write_json(folder/'snapshot.json',snapshot);job=self.api['new_job'](id,'board')

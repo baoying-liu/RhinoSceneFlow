@@ -8,9 +8,10 @@ namespace RhinoSceneFlow.Plugin;
 public sealed class SceneFlowPlugin : PlugIn
 {
     public static SceneFlowPlugin Instance { get; private set; } = null!;
+    public override PlugInLoadTime LoadTime => InstallationContext.Managed ? PlugInLoadTime.AtStartup : base.LoadTime;
     public SceneFlowPlugin() => Instance = this;
-    protected override LoadReturnCode OnLoad(ref string errorMessage){try{UiPresentation.Start();UvRenderProvider.Start(this);PlantService.Start();SceneFlowWorkspace.Register(this);SceneFlowToolbar.RegisterWhenIdle();return LoadReturnCode.Success;}catch(Exception e){errorMessage=e.Message;return LoadReturnCode.ErrorShowDialog;}}
-    protected override void OnShutdown(){SeasonalGeneration.Stop();SceneFlowWorkspace.Stop();UiPresentation.Stop();PlantService.Stop();RandomTextureService.Stop();CatalogService.Stop();UvRenderProvider.Stop();MaterialChat.StopAll();UnwrapService.StopAll();MaterialGeneration.StopAll();base.OnShutdown();}
+    protected override LoadReturnCode OnLoad(ref string errorMessage){try{UiPresentation.Start();UvRenderProvider.Start(this);PlantService.Start();SceneFlowWorkspace.Register(this);SceneFlowToolbar.RegisterWhenIdle();ReleaseService.Start();return LoadReturnCode.Success;}catch(Exception e){errorMessage=e.Message;return LoadReturnCode.ErrorShowDialog;}}
+    protected override void OnShutdown(){ReleaseService.Stop();ConnectionService.CancelLogin();SeasonalGeneration.Stop();SceneFlowWorkspace.Stop();UiPresentation.Stop();PlantService.Stop();RandomTextureService.Stop();CatalogService.Stop();UvRenderProvider.Stop();MaterialChat.StopAll();UnwrapService.StopAll();MaterialGeneration.StopAll();base.OnShutdown();}
 
     public string MaterialDirectory
     {

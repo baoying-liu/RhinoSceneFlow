@@ -1008,3 +1008,82 @@ unchanged. Package binaries match the tested deployment. Office Hillside restore
 70 objects, Modified=false, nine tool errors null; library is open on the localized
 cedar-board material. Only source-edit data and the Chinese-language autonym remain
 Chinese in the current native diagnostic. No new images were generated.
+
+### 2026-11-11 — home B installed 0.22.18
+
+Home channel 0d327c4c84f644f089b73834ffd93cfe, deployment 20261112-030716-bc53425be5744ad79b0c23c8b03d8c93, PID 19268. Manager build_test fe337b4bf79f4f58b71f6826e69c52f3 succeeded. Original Platform verified actual runtime 0.22.18, all nine registered tools without errors, and RHP SHA256 c599fa2a663abe3a15331866e05b28840d6c6439f78d472479cbdaf6ab0fda68. Native UI checked 36 presentation states with zero unintended Chinese labels, 276 rendered icon measurements (maximum 16 DIP), immediate preferences and draft preservation. Home libraries contain 9 materials and 2 plants; no new assets, translations or images were generated during installation. B was initially stopped; no Rhino process was forcibly closed. Existing launcher MCP was enabled through its exact native button without mouse input. Model is an unchanged empty document; AI Assets panel and test Rhino are visible. Evidence: artifacts/home-update-02218 and native UI receipt in artifacts/localization-02218/actual-language-icons.json.
+
+
+## Home Hillside end-to-end validation · 2026-11-11 · 0.22.19
+
+Native and Web both verified as 0.22.19 after manager build_test efb2123aef344d139149f4f24eb09965; home B PID 141592, deployment 20261112-035938-90d0fc0ce0174e75bd458a2470a5517a. RHP SHA256 a93c6c16a9ba4cd3f0aea2e40dd673c091c61f7b8e0c0e50b3dc2d87624267fd. Saved final Hillside-StarryNight-Ready.3dm independently reads as 69 objects, four Named Views and no plant groups; physical UV valid on all 69 objects. Four real 1600×900 layered PSDs externally decoded. Starry Night output is 4096×2304, one real whole call plus eight first-attempt tile calls, no manual acceptance; source PSD/model hashes unchanged and final seam/alpha/readonly checks passed. Fixed package version drift, running-task presentation, busy-copy/load recovery conflict and stale-language save state. Standard Build.ps1 and targeted workflow/input/history/browser regressions passed, including 14 real-case interactions. Detailed evidence and remaining UX recommendations: [UX audit](UX-Audit-2026-11-11.md), artifacts/e2e-starry-night-20261111.
+
+
+Monet planted follow-up (home B, 0.22.19): 14 Betula nigra, one path-conflict corrected via individual override, alternate garden perspective, real layered PSD including plant shadows and a verified 4096×2304 Monet-style output. Eight tiles completed with one real retry, zero manual accepts, exact alpha/source integrity. Delivery and receipts: artifacts/e2e-monet-planted-20261111/delivery.json and 4k-verified.json. Web opened to the completed result.
+# 0.23.0 release preview — 2026-11-12 HOME
+
+- Build.ps1 passed core validations (including stable-release parsing/origin/digest
+  guards) and 523 caption checks. Existing 0.22.19 working-tree changes retained.
+- Real B `Test-ReleaseEnvironment.py`: PID 120128, native 0.23.0, Settings opens,
+  English/full and Chinese/short labels work and preferences restore, original
+  Platform loaded, actual development-runtime dependency imports pass, Codex reports
+  ChatGPT login, WebView2 installed, GitHub reports private/no-public-release, and
+  production update download is rejected in code. Zero image-model calls or login
+  mutations. Rendered native Settings capture 390×772 inspected without mouse use.
+- First attempt exposed real WebView2 SDK collision (MissingMethodException), followed
+  by failed-constructor timer and B abnormal exit code 3. Preserved evidence in
+  artifacts/release-0230/first-probe-failure-exit.json. Detection now uses Microsoft
+  Runtime installation registry locations; initial refresh precedes timer startup
+  and optional timer exceptions are contained. Subsequent B native checks passed.
+  An earlier 0.22.19 exit was recorded UnknownExit/code 0 with no crash events/dumps;
+  it was reviewed/acknowledged, not reclassified as a successful test.
+- Saved Hillside-Monet-Garden.3dm reopened in the same B PID, 70 objects, Modified=false.
+  Platform reset HTTP on Open; fresh port/PID checks confirmed a document transition,
+  not a crash. No model was overwritten.
+- Installer-private CPython 3.14.10 uses compatible compiled wheels instead of the
+  incomplete historical ChatKit cache. Actual Test-PsdParticipation, Test-TaskInputs
+  and Test-RasterStability passed with this staged interpreter, including canonical
+  Hillside pixels/alpha, actual attachment recording, local protection, prepared input
+  snapshots and textured reconstruction. No real image calls. Deprecation notices
+  from psd-tools clipping_layer are retained in logs.
+- EXE/MSI built; original McNeel 0.3.0 Yak hash matched GitHub's asset digest and
+  Microsoft's WebView2 bootstrapper signature validated. Native read-only probe
+  returned 0 while B was live. Burn quiet layout returned 0 without installation.
+- Production was NOT installed, repaired, uninstalled or upgraded. Unsigned build;
+  signed automatic-update path, fresh recipient login and clean-VM maintenance
+  lifecycle remain unverified. See Release-Installer.md.
+
+Final installer checks: Test-Installer.ps1 passed for the final EXE/MSI (6,904 owned files), standard GUID-key registration, upgrade rules, force-all-owned-files repair policy, correct native UTF-16 Chinese literals, native B-tolerant probe exit 0, read-only Burn layout/extraction and embedded MSI byte identity. Formal registration unchanged. SceneFlow.Release.Validation passed real Windows trust with Microsoft bootstrapper plus wrong-publisher/unsigned/missing-pin rejection. Installer-private Test-FinalFusion passed white-model, dense-plants, repeat-texture and 4K reconstruction synthetic cases with zero model calls. Real installation/maintenance on a disposable Windows system remains untested.
+# 0.23.1 automatic AI verification — 2026-11-12 HOME
+
+- Build.ps1 passed core regressions and 533 caption checks. B final deployment
+  `20261112-060511-61d334d05b9c466fadd64007bb5f904e`, PID 144192.
+- Test-AiVerification passed controlled in-memory signed-out state, centered failure
+  message, hidden/disabled native browser, focused/expanded Settings routing and
+  automatic recovery to the same browser. Actual official ChatKit component became
+  ready. Real credentials were not changed; no login or image call was made.
+- First regression exposed a state-model issue: display state overwrote ready after
+  revalidation, leaving an initialized browser in a verifying state. A separate
+  browserReady flag fixed recovery. The test now waits for asynchronous component
+  initialization instead of assuming a fixed four-second startup time.
+- Actual HTTP Test-WebLateCodex passed unavailable -> installed after launch ->
+  removed detection with a non-executed fake binary and an isolated service; lookup
+  tests passed pin/fallback rules. Workflow and TaskInputs tests passed, zero models.
+- Saved Monet case reopened in the same B PID: 70 objects, Modified=false; verified
+  chat recovered across document transition. Open reset the Platform HTTP connection;
+  a fresh PID/port check confirmed no process exit.
+- Previous B PID 120128 exit was recorded UnknownExit/code 0, with closing stages and
+  no crash events/dumps. Evidence retained and acknowledged, not called a passed exit.
+- Production installation, fresh recipient sign-in and model capability/quota were
+  not exercised. Installer remains an unsigned preview; no public release occurred.
+
+Final 0.23.1 EXE/MSI passed Test-Installer: 6,905 owned files, standard-only registration, upgrade/repair rules, native probe exit 0, compressed bundle layout/extraction byte identity, unchanged formal registration and SHA-256 receipt. No actual production installation/maintenance was performed.
+
+
+## 2026-11-12 public preview packaging
+
+Release preparation, history/staged secret review, private-runtime regressions and
+final 6,912-row installer extraction checks are recorded in
+[Public-Release-Audit.md](Public-Release-Audit.md). No production installation,
+clean-machine maintenance acceptance, fresh account login or new model call was
+performed. The public distribution is an unsigned manual-install Pre-release.

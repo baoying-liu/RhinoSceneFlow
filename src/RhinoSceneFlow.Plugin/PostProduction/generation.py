@@ -87,6 +87,7 @@ class Engine:
         project=self.api['read_project'](ident)
         if project['revision']!=body.revision:raise HTTPException(409,'配置已更新，请刷新后再生成。')
         if body.mode not in ('tile','all'):raise ValueError('mode: tile | all')
+        if self.api.get('resolve_codex'):self.api['codex']=self.api['resolve_codex']()
         if not self.api['codex'] or not Path(self.api['codex']).is_file():raise ValueError('未找到本机 Codex。')
         snapshot=self.api['plan_for'](ident)
         if not snapshot['prompt'].strip():raise ValueError('请先填写或采用一份整体处理描述。')

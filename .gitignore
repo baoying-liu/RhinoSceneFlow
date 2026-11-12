@@ -9,3 +9,5 @@ artifacts/
 **/__pycache__/
 
 **/node_modules/
+.playwright-cli/
+output/playwright/

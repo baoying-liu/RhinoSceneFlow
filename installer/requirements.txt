@@ -1,0 +1,12 @@
+# Release Python is embedded CPython 3.14.10. Unlike the development venv (3.11),
+# these compiled wheels must support cp314; validate the real raster worker.
+openai-chatkit==1.6.5
+fastapi==0.162.0
+uvicorn==0.54.0
+python-multipart==0.0.32
+psd-tools==1.12.1
+Pillow==12.2.0
+numpy==2.3.5
+opencv-python-headless==4.13.0.92
+pyvips==3.2.0
+pyvips-binary==8.18.7

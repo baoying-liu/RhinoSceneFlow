@@ -2854,5 +2854,509 @@
     "en": "Localization cannot rename or reorganize canonical fields.",
     "shortZh": "补齐译名不能改动素材原始名称、分类或标签。",
     "shortEn": "Localization cannot rename or reorganize canonical fields."
+  },
+  {
+    "zh": "安装目标：正式 Rhino；沙盒通道使用独立部署。",
+    "en": "Install target: standard Rhino. Sandbox channels use isolated deployments.",
+    "shortZh": "安装目标：正式 Rhino；沙盒通道使用独立部署。",
+    "shortEn": "Install target: standard Rhino. Sandbox channels use isolated deployments."
+  },
+  {
+    "zh": "检测环境与登录",
+    "en": "Check environment and sign-in",
+    "shortZh": "检测",
+    "shortEn": "Check env"
+  },
+  {
+    "zh": "AI 账号",
+    "en": "AI account",
+    "shortZh": "AI 账号",
+    "shortEn": "AI account"
+  },
+  {
+    "zh": "浏览器登录",
+    "en": "Sign in with browser",
+    "shortZh": "网页登录",
+    "shortEn": "Browser sign-in"
+  },
+  {
+    "zh": "设备码登录",
+    "en": "Sign in with device code",
+    "shortZh": "设备码",
+    "shortEn": "Device code"
+  },
+  {
+    "zh": "打开设备授权网页",
+    "en": "Open device authorization page",
+    "shortZh": "授权网页",
+    "shortEn": "Authorize"
+  },
+  {
+    "zh": "取消登录",
+    "en": "Cancel sign-in",
+    "shortZh": "取消登录",
+    "shortEn": "Cancel sign-in"
+  },
+  {
+    "zh": "安装 Codex 说明",
+    "en": "Codex installation guide",
+    "shortZh": "安装说明",
+    "shortEn": "Install Codex"
+  },
+  {
+    "zh": "使用本机 Codex 的正式授权；不读取 ChatGPT 桌面登录缓存。登录成功不保证生图权限或剩余额度。",
+    "en": "Uses supported local Codex authorization; never reads ChatGPT desktop credentials. Sign-in does not guarantee image access or remaining quota.",
+    "shortZh": "使用本机 Codex 的正式授权；不读取 ChatGPT 桌面登录缓存。登录成功不保证生图权限或剩余额度。",
+    "shortEn": "Uses supported local Codex authorization; never reads ChatGPT desktop credentials. Sign-in does not guarantee image access or remaining quota."
+  },
+  {
+    "zh": "Rhino MCP",
+    "en": "Rhino MCP",
+    "shortZh": "Rhino MCP",
+    "shortEn": "Rhino MCP"
+  },
+  {
+    "zh": "依赖 McNeel 原厂 Rhino MCP Platform。先安装并启动 Platform，再按官方说明把客户端连接到它的实际地址。沙盒管理端口不是发布版 MCP 地址。",
+    "en": "Requires McNeel's original Rhino MCP Platform. Install and start Platform, then connect your client to its actual address using the official guide. Sandbox management ports are not production MCP addresses.",
+    "shortZh": "依赖 McNeel 原厂 Rhino MCP Platform。先安装并启动 Platform，再按官方说明把客户端连接到它的实际地址。沙盒管理端口不是发布版 MCP 地址。",
+    "shortEn": "Requires McNeel's original Rhino MCP Platform. Install and start Platform, then connect your client to its actual address using the official guide. Sandbox management ports are not production MCP addresses."
+  },
+  {
+    "zh": "原厂 MCP 配置说明",
+    "en": "Official MCP configuration guide",
+    "shortZh": "MCP 说明",
+    "shortEn": "MCP guide"
+  },
+  {
+    "zh": "软件更新",
+    "en": "Software updates",
+    "shortZh": "软件更新",
+    "shortEn": "Software updates"
+  },
+  {
+    "zh": "启动时自动检查新版",
+    "en": "Check for updates on startup",
+    "shortZh": "启动检查",
+    "shortEn": "Check on startup"
+  },
+  {
+    "zh": "检查更新",
+    "en": "Check for updates",
+    "shortZh": "检查更新",
+    "shortEn": "Check for updates"
+  },
+  {
+    "zh": "下载并校验更新",
+    "en": "Download and verify update",
+    "shortZh": "下载更新",
+    "shortEn": "Download"
+  },
+  {
+    "zh": "保存并关闭 Rhino 以更新",
+    "en": "Save and close Rhino to update",
+    "shortZh": "关闭并更新",
+    "shortEn": "Close & update"
+  },
+  {
+    "zh": "查看发行版本",
+    "en": "View releases",
+    "shortZh": "发行版本",
+    "shortEn": "Releases"
+  },
+  {
+    "zh": "退出时仍由 Rhino 询问是否保存。取消退出不会强制关闭。更新和卸载保留素材库、画板与账号授权。",
+    "en": "Rhino still asks whether to save on exit; cancelling never forces it closed. Updates and uninstall retain libraries, boards and account authorization.",
+    "shortZh": "退出时仍由 Rhino 询问是否保存。取消退出不会强制关闭。更新和卸载保留素材库、画板与账号授权。",
+    "shortEn": "Rhino still asks whether to save on exit; cancelling never forces it closed. Updates and uninstall retain libraries, boards and account authorization."
+  },
+  {
+    "zh": "未就绪",
+    "en": "Not ready",
+    "shortZh": "未就绪",
+    "shortEn": "Not ready"
+  },
+  {
+    "zh": "当前：沙盒（禁止正式安装与更新）",
+    "en": "Current: sandbox (production installation/update disabled)",
+    "shortZh": "当前：沙盒（禁止正式安装与更新）",
+    "shortEn": "Current: sandbox (production installation/update disabled)"
+  },
+  {
+    "zh": "当前：正式安装",
+    "en": "Current: managed installation",
+    "shortZh": "当前：正式安装",
+    "shortEn": "Current: managed installation"
+  },
+  {
+    "zh": "当前：开发／手动安装",
+    "en": "Current: development/manual installation",
+    "shortZh": "当前：开发／手动安装",
+    "shortEn": "Current: development/manual installation"
+  },
+  {
+    "zh": "MCP 已加载：",
+    "en": "MCP loaded: ",
+    "shortZh": "MCP 已加载：",
+    "shortEn": "MCP loaded: "
+  },
+  {
+    "zh": "Python 环境：",
+    "en": "Python runtime: ",
+    "shortZh": "Python 环境：",
+    "shortEn": "Python runtime: "
+  },
+  {
+    "zh": "已通过 ChatGPT 登录 Codex",
+    "en": "Codex signed in with ChatGPT",
+    "shortZh": "已通过 ChatGPT 登录 Codex",
+    "shortEn": "Codex signed in with ChatGPT"
+  },
+  {
+    "zh": "检测到 API Key 登录；当前生图流程需要 ChatGPT 登录",
+    "en": "API-key sign-in detected; current image workflow requires ChatGPT sign-in",
+    "shortZh": "检测到 API Key 登录；当前生图流程需要 ChatGPT 登录",
+    "shortEn": "API-key sign-in detected; current image workflow requires ChatGPT sign-in"
+  },
+  {
+    "zh": "尚未登录",
+    "en": "Signed out",
+    "shortZh": "尚未登录",
+    "shortEn": "Signed out"
+  },
+  {
+    "zh": "尚未安装 Codex",
+    "en": "Codex is not installed",
+    "shortZh": "尚未安装 Codex",
+    "shortEn": "Codex is not installed"
+  },
+  {
+    "zh": "等待浏览器／设备码授权",
+    "en": "Waiting for browser/device authorization",
+    "shortZh": "等待浏览器／设备码授权",
+    "shortEn": "Waiting for browser/device authorization"
+  },
+  {
+    "zh": "登录已取消或超时",
+    "en": "Sign-in cancelled or timed out",
+    "shortZh": "登录已取消或超时",
+    "shortEn": "Sign-in cancelled or timed out"
+  },
+  {
+    "zh": "登录检测超时，可重试",
+    "en": "Sign-in check timed out; retry",
+    "shortZh": "登录检测超时，可重试",
+    "shortEn": "Sign-in check timed out; retry"
+  },
+  {
+    "zh": "连接失败，可重试登录",
+    "en": "Connection failed; retry sign-in",
+    "shortZh": "连接失败，可重试登录",
+    "shortEn": "Connection failed; retry sign-in"
+  },
+  {
+    "zh": "登录状态尚未检测",
+    "en": "Sign-in has not been checked",
+    "shortZh": "登录状态尚未检测",
+    "shortEn": "Sign-in has not been checked"
+  },
+  {
+    "zh": "设备码：",
+    "en": "Device code: ",
+    "shortZh": "设备码：",
+    "shortEn": "Device code: "
+  },
+  {
+    "zh": "正在检查 GitHub 发行版本…",
+    "en": "Checking GitHub releases…",
+    "shortZh": "正在检查 GitHub 发行版本…",
+    "shortEn": "Checking GitHub releases…"
+  },
+  {
+    "zh": "已是最新公开稳定版",
+    "en": "Up to date with public stable releases",
+    "shortZh": "已是最新公开稳定版",
+    "shortEn": "Up to date with public stable releases"
+  },
+  {
+    "zh": "发现新版：",
+    "en": "Update available: ",
+    "shortZh": "发现新版：",
+    "shortEn": "Update available: "
+  },
+  {
+    "zh": "仓库尚未公开，或尚无公开稳定版；不影响当前使用。",
+    "en": "Repository is private or has no public stable release; current use is unaffected.",
+    "shortZh": "仓库尚未公开，或尚无公开稳定版；不影响当前使用。",
+    "shortEn": "Repository is private or has no public stable release; current use is unaffected."
+  },
+  {
+    "zh": "GitHub 请求受限，请稍后重试。",
+    "en": "GitHub rate limit reached; try later.",
+    "shortZh": "GitHub 请求受限，请稍后重试。",
+    "shortEn": "GitHub rate limit reached; try later."
+  },
+  {
+    "zh": "无法连接更新服务，请检查网络后重试。",
+    "en": "Update service unavailable; check your network and retry.",
+    "shortZh": "无法连接更新服务，请检查网络后重试。",
+    "shortEn": "Update service unavailable; check your network and retry."
+  },
+  {
+    "zh": "正在下载和校验安装包…",
+    "en": "Downloading and verifying installer…",
+    "shortZh": "正在下载和校验安装包…",
+    "shortEn": "Downloading and verifying installer…"
+  },
+  {
+    "zh": "安装包已校验，可退出后安装。",
+    "en": "Installer verified; ready to install after exit.",
+    "shortZh": "安装包已校验，可退出后安装。",
+    "shortEn": "Installer verified; ready to install after exit."
+  },
+  {
+    "zh": "下载或校验失败，旧版本未修改。",
+    "en": "Download or verification failed; installed version unchanged.",
+    "shortZh": "下载或校验失败，旧版本未修改。",
+    "shortEn": "Download or verification failed; installed version unchanged."
+  },
+  {
+    "zh": "尚未检查更新",
+    "en": "Updates have not been checked",
+    "shortZh": "尚未检查更新",
+    "shortEn": "Updates have not been checked"
+  },
+  {
+    "zh": "此安装包尚未配置发布者签名，自动安装暂不可用。",
+    "en": "Publisher signing is not configured in this build; automatic installation is unavailable.",
+    "shortZh": "此安装包尚未配置发布者签名，自动安装暂不可用。",
+    "shortEn": "Publisher signing is not configured in this build; automatic installation is unavailable."
+  },
+  {
+    "zh": "未完成：",
+    "en": "Not completed: ",
+    "shortZh": "未完成：",
+    "shortEn": "Not completed: "
+  },
+  {
+    "zh": "显示语言",
+    "en": "Display language",
+    "shortZh": "显示语言",
+    "shortEn": "Display language"
+  },
+  {
+    "zh": "界面主题",
+    "en": "Interface theme",
+    "shortZh": "界面主题",
+    "shortEn": "Interface theme"
+  },
+  {
+    "zh": "界面文字",
+    "en": "Interface text",
+    "shortZh": "界面文字",
+    "shortEn": "Interface text"
+  },
+  {
+    "zh": "界面图标",
+    "en": "Interface icons",
+    "shortZh": "界面图标",
+    "shortEn": "Interface icons"
+  },
+  {
+    "zh": "必要文字（无文字模式）",
+    "en": "Essential text (icon mode)",
+    "shortZh": "必要文字（无文字模式）",
+    "shortEn": "Essential text (icon mode)"
+  },
+  {
+    "zh": "季节气候依据",
+    "en": "Seasonal climate context",
+    "shortZh": "季节气候依据",
+    "shortEn": "Seasonal climate context"
+  },
+  {
+    "zh": "例如：迈阿密，佛罗里达",
+    "en": "e.g. Miami, Florida",
+    "shortZh": "例如：迈阿密，佛罗里达",
+    "shortEn": "e.g. Miami, Florida"
+  },
+  {
+    "zh": "项目地区",
+    "en": "Project location",
+    "shortZh": "项目地区",
+    "shortEn": "Project location"
+  },
+  {
+    "zh": "用于后续季节版本，不会自动重新生成已有图片。",
+    "en": "Used for new seasonal variants; existing images stay unchanged.",
+    "shortZh": "用于后续季节版本，不会自动重新生成已有图片。",
+    "shortEn": "Used for new seasonal variants; existing images stay unchanged."
+  },
+  {
+    "zh": "默认生成四季版本",
+    "en": "Generate all seasons by default",
+    "shortZh": "默认生成四季版本",
+    "shortEn": "Generate all seasons by default"
+  },
+  {
+    "zh": "朝向模式",
+    "en": "Facing mode",
+    "shortZh": "朝向模式",
+    "shortEn": "Facing mode"
+  },
+  {
+    "zh": "按镜头俯角切换：水平 0°，正俯视 90°。",
+    "en": "Switches by camera elevation: horizontal 0°, top-down 90°.",
+    "shortZh": "按镜头俯角切换：水平 0°，正俯视 90°。",
+    "shortEn": "Switches by camera elevation: horizontal 0°, top-down 90°."
+  },
+  {
+    "zh": "自由朝向中心角 · °",
+    "en": "Free-facing centre · °",
+    "shortZh": "自由朝向中心角 · °",
+    "shortEn": "Free-facing centre · °"
+  },
+  {
+    "zh": "过渡半宽 · °",
+    "en": "Transition half-width · °",
+    "shortZh": "过渡半宽 · °",
+    "shortEn": "Transition half-width · °"
+  },
+  {
+    "zh": "平面图起始角 · °",
+    "en": "Plan starts at · °",
+    "shortZh": "平面图起始角 · °",
+    "shortEn": "Plan starts at · °"
+  },
+  {
+    "zh": "平面抬升比例 · 实际树高 × 比例",
+    "en": "Plan lift · actual tree height × ratio",
+    "shortZh": "平面抬升比例 · 实际树高 × 比例",
+    "shortEn": "Plan lift · actual tree height × ratio"
+  },
+  {
+    "zh": "自动：低角度沿 Z 轴，过渡后朝向相机，高俯视使用平面。平面缺失时暂用立面。",
+    "en": "Auto: Z axis at low angles, face camera after transition, plan at high angles. Missing plans use elevation temporarily.",
+    "shortZh": "自动：低角度沿 Z 轴，过渡后朝向相机，高俯视使用平面。平面缺失时暂用立面。",
+    "shortEn": "Auto: Z axis at low angles, face camera after transition, plan at high angles. Missing plans use elevation temporarily."
+  },
+  {
+    "zh": "设置",
+    "en": "Settings",
+    "shortZh": "设置",
+    "shortEn": "Settings"
+  },
+  {
+    "zh": "连接与更新",
+    "en": "Connections and updates",
+    "shortZh": "连接 / 更新",
+    "shortEn": "Connections"
+  },
+  {
+    "zh": "有未保存修改",
+    "en": "Unsaved changes",
+    "shortZh": "有未保存修改",
+    "shortEn": "Unsaved changes"
+  },
+  {
+    "zh": "未保存：",
+    "en": "Not saved: ",
+    "shortZh": "未保存：",
+    "shortEn": "Not saved: "
+  },
+  {
+    "zh": "设置已保存到本机。",
+    "en": "Settings saved on this computer.",
+    "shortZh": "设置已保存到本机。",
+    "shortEn": "Settings saved on this computer."
+  },
+  {
+    "zh": "已保存 · 当前场景已刷新",
+    "en": "Saved · current scene refreshed",
+    "shortZh": "已保存 · 当前场景已刷新",
+    "shortEn": "Saved · current scene refreshed"
+  },
+  {
+    "zh": "环境检测不可用；其他设置仍可使用。",
+    "en": "Environment detection is unavailable; other settings remain usable.",
+    "shortZh": "环境检测不可用；其他设置仍可使用。",
+    "shortEn": "Environment detection is unavailable; other settings remain usable."
+  },
+  {
+    "zh": "依赖导入通过",
+    "en": "Dependency imports passed",
+    "shortZh": "依赖导入通过",
+    "shortEn": "Dependency imports passed"
+  },
+  {
+    "zh": "尚未检测",
+    "en": "Not checked",
+    "shortZh": "尚未检测",
+    "shortEn": "Not checked"
+  },
+  {
+    "zh": "需检测或修复",
+    "en": "Check or repair required",
+    "shortZh": "需检测或修复",
+    "shortEn": "Check or repair required"
+  },
+  {
+    "zh": "连接状态更新失败，请在设置中重新检测。",
+    "en": "Connection refresh failed. Check again in Settings.",
+    "shortZh": "连接状态更新失败，请在设置中重新检测。",
+    "shortEn": "Connection refresh failed. Check again in Settings."
+  },
+  {
+    "zh": "前往设置",
+    "en": "Open Settings",
+    "shortZh": "前往设置",
+    "shortEn": "Open Settings"
+  },
+  {
+    "zh": "正在验证环境与登录…",
+    "en": "Verifying environment and sign-in…",
+    "shortZh": "正在验证环境与登录…",
+    "shortEn": "Verifying environment and sign-in…"
+  },
+  {
+    "zh": "未通过验证",
+    "en": "Verification not passed",
+    "shortZh": "未通过验证",
+    "shortEn": "Verification not passed"
+  },
+  {
+    "zh": "首次使用会自动检测，不会生成图片或消耗生图额度。",
+    "en": "The first check runs automatically without generating images or using image quota.",
+    "shortZh": "首次使用会自动检测，不会生成图片或消耗生图额度。",
+    "shortEn": "The first check runs automatically without generating images or using image quota."
+  },
+  {
+    "zh": "运行环境未就绪，请前往设置检测或修复安装。",
+    "en": "Runtime is not ready. Check the environment or repair installation in Settings.",
+    "shortZh": "运行环境未就绪，请前往设置检测或修复安装。",
+    "shortEn": "Runtime is not ready. Check the environment or repair installation in Settings."
+  },
+  {
+    "zh": "未找到 Codex，请前往设置查看安装与登录方法。",
+    "en": "Codex was not found. Open Settings for installation and sign-in.",
+    "shortZh": "未找到 Codex，请前往设置查看安装与登录方法。",
+    "shortEn": "Codex was not found. Open Settings for installation and sign-in."
+  },
+  {
+    "zh": "尚未验证 ChatGPT 授权，请前往设置登录或重新检测。",
+    "en": "ChatGPT authorization is not verified. Sign in or check again in Settings.",
+    "shortZh": "尚未验证 ChatGPT 授权，请前往设置登录或重新检测。",
+    "shortEn": "ChatGPT authorization is not verified. Sign in or check again in Settings."
+  },
+  {
+    "zh": "WebView2 未就绪，请修复安装后重新检测。",
+    "en": "WebView2 is not ready. Repair installation, then check again.",
+    "shortZh": "WebView2 未就绪，请修复安装后重新检测。",
+    "shortEn": "WebView2 is not ready. Repair installation, then check again."
+  },
+  {
+    "zh": "聊天未能启动，请在设置中重新检测。 ",
+    "en": "Chat could not start. Check again in Settings. ",
+    "shortZh": "聊天未能启动，请在设置中重新检测。 ",
+    "shortEn": "Chat could not start. Check again in Settings. "
   }
 ]

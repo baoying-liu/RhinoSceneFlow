@@ -3,6 +3,11 @@ $ErrorActionPreference = 'Stop'
 $projectRoot = Split-Path -Parent $PSScriptRoot
 Push-Location $projectRoot
 try {
+    Push-Location (Join-Path $projectRoot 'web/postproduction')
+    try {
+        node build.cjs
+        if ($LASTEXITCODE -ne 0) { throw 'Studio web build failed.' }
+    } finally { Pop-Location }
     dotnet build RhinoSceneFlow.sln -c $Configuration
     if ($LASTEXITCODE -ne 0) { throw 'Build failed.' }
     dotnet run --project tests/RhinoSceneFlow.Validation -c $Configuration --no-build -- artifacts/validation
@@ -22,6 +27,12 @@ try {
     }
     foreach ($name in @('runtimes','ChatKit','TextureWorker','PostProduction')) {
         Copy-Item -LiteralPath (Join-Path $outputPath $name) -Destination $packagePath -Recurse -Force
+    }
+    $projectVersion = ([xml](Get-Content -LiteralPath (Join-Path $projectRoot 'Directory.Build.props') -Raw)).Project.PropertyGroup.Version
+    $webVersion = (Get-Content -LiteralPath (Join-Path $packagePath 'PostProduction/version.txt') -Raw).Trim()
+    if ($webVersion -ne $projectVersion) { throw "Studio service version $webVersion differs from plugin $projectVersion." }
+    if (-not (Get-Content -LiteralPath (Join-Path $packagePath 'PostProduction/board.js') -Raw).Contains('"' + $projectVersion + '"')) {
+        throw 'Studio browser bundle does not contain the current project version.'
     }
     Copy-Item -LiteralPath (Join-Path $projectRoot 'third-party/FastNoiseLite/LICENSE') -Destination (Join-Path $packagePath 'FastNoiseLite-LICENSE.txt') -Force
     Copy-Item -LiteralPath (Join-Path $projectRoot 'src/RhinoSceneFlow.Plugin/Resources/InterfaceIcons/LICENSE.txt') -Destination (Join-Path $packagePath 'Lucide-LICENSE.txt') -Force

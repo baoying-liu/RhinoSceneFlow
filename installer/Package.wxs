@@ -1,0 +1,24 @@
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+ <Package Name="SceneFlow for Rhino 8" Manufacturer="SceneFlow" Version="$(var.Version)" ProductCode="$(var.ProductCode)" UpgradeCode="AE6096E2-1E44-4F28-9D81-217BA12B4CB7" Scope="perUser" Language="1033" Codepage="65001" InstallerVersion="500">
+  <MajorUpgrade DowngradeErrorMessage="A newer SceneFlow is installed. / 已安装更新版本。" Schedule="afterInstallInitialize"/>
+  <MediaTemplate EmbedCab="yes" CompressionLevel="high"/>
+  <Property Id="MSIRESTARTMANAGERCONTROL" Value="Disable"/>
+  <!-- Only immutable app/runtime files live here; repair must restore damaged code,
+       including same-version and unversioned files. User data lives outside MSI. -->
+  <Property Id="REINSTALLMODE" Value="amus"/>
+  <Property Id="ARPNOREMOVE" Value="1"/>
+  <Property Id="ARPSYSTEMCOMPONENT" Value="1"/>
+  <StandardDirectory Id="LocalAppDataFolder"><Directory Id="ProgramsFolder" Name="Programs"><Directory Id="INSTALLFOLDER" Name="RhinoSceneFlow"/></Directory></StandardDirectory>
+  <DirectoryRef Id="INSTALLFOLDER">
+   <Component Id="RhinoRegistration" Guid="C5C81D44-4837-4AC3-9D91-8229E2B72859">
+    <RegistryValue Root="HKCU" Key="Software\McNeel\Rhinoceros\8.0\Plug-ins\8b902013-73dd-4227-b45b-896f6a33f134" Name="Name" Type="string" Value="RhinoSceneFlow"/>
+    <RegistryValue Root="HKCU" Key="Software\McNeel\Rhinoceros\8.0\Plug-ins\8b902013-73dd-4227-b45b-896f6a33f134" Name="FileName" Type="string" Value="[INSTALLFOLDER]RhinoSceneFlow.Plugin.rhp" KeyPath="yes"/>
+    <RegistryValue Root="HKCU" Key="Software\McNeel\Rhinoceros\8.0\Plug-ins\8b902013-73dd-4227-b45b-896f6a33f134" Name="LoadMode" Type="integer" Value="1"/>
+   </Component>
+  </DirectoryRef>
+  <Binary Id="EnvironmentGuard" SourceFile="$(var.Guard)"/>
+  <CustomAction Id="CheckEnvironment" BinaryRef="EnvironmentGuard" DllEntry="CheckEnvironment" Execute="immediate" Return="check"/>
+  <InstallExecuteSequence><Custom Action="CheckEnvironment" Before="InstallInitialize" Condition="NOT UPGRADINGPRODUCTCODE"/></InstallExecuteSequence>
+  <Feature Id="Application" Title="SceneFlow" Level="1"><ComponentGroupRef Id="ApplicationFiles"/><ComponentRef Id="RhinoRegistration"/></Feature>
+ </Package>
+</Wix>

@@ -265,6 +265,9 @@ class Store:
         old=self.read(id);new=self.create(name);p=self.folder(new['id'])
         shutil.copytree(self.folder(id)/'assets',p/'assets',dirs_exist_ok=True)
         new.update(marks=copy.deepcopy(old.get('marks',[])),nodes=copy.deepcopy(old['nodes']),view=old['view'],selectedId=old['selectedId'],history=old.get('history',[]))
+        # Jobs belong to the source board. A copy retains pixels and provenance,
+        # but must not inherit a runtime lock for a job it cannot own.
+        for node in new['nodes']:node.pop('busy',None)
         return self.commit(new)
     def package(self,id):
         b=self.read(id);p=self.folder(id);target=p/('board-'+uuid.uuid4().hex+'.sflowboard');temp=p/(uuid.uuid4().hex+'.zip')

@@ -1,4 +1,5 @@
-﻿using RhinoSceneFlow.Core;
+using RhinoSceneFlow.Core;
+ReleaseValidation.Run();
 if(args.FirstOrDefault()=="--asset-languages"){AssetLocalizationValidation.Run();return;}
 if(args.FirstOrDefault()=="--asset-labels-ai")
 {

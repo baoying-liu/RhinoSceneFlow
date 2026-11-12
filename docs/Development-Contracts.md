@@ -22,6 +22,14 @@ Navigation:
 
 ## Studio and PhotoCraft
 
+- v0.22.19: native assembly, Web service version.txt and browser STUDIO_VERSION
+  derive from Directory.Build.props; packaging rejects a mismatched service or
+  browser version. Recover tasks before loading the editable board revision.
+  Duplicating a board retains pixels/provenance but clears source-board runtime
+  busy locks. Keep actual running task phases visible above pending-image hints.
+  Regress Test-BoardWorkflow and test-workspace-recovery-browser; use real-case
+  interaction checks for comparison, annotations and Undo/Redo.
+
 - v0.22.14 PSD participation is distinct from PSD visibility and PhotoCraft guide gates. Omitted layerParticipation IDs follow imported effective visibility; validate boolean maps, gate groups, preserve disabled visible pixels and the original PSD. Extract hidden/covered guides from the SAME private PSD copy as masks. Send the numbered, aligned guide sheet as an actual whole-image attachment and expose it in preflight. Explicit roles/locks/history/branch inheritance remain authoritative; never reapply coarse PSD to result-parent/HD inputs. Verify Test-PsdParticipation (pixel oracle + synthetic attachment recorder), test-psd-participation-browser, TaskInputs/Restore, RasterStability, CanvasContext, BoardWorkflow and the real task-flow/restoration browser. Distinguish attached image guidance from hard geometry control and synthetic orchestration from real image model results.
 
 - v0.22.5 task restoration normalizes legacy saved parameters/annotations before returning locked content, restores saved AI group participation while preserving presentation eyes, and computes remaining pending state against the baseline context. Shared canvas edits and the single PhotoCraft slot are not implicitly rolled back by task settings restoration; UI names that boundary and keeps reference disclosure open across deselection/deletion/Undo. Preflight exposes the actual planned output width/height, with whole-input dimensions distinguished from HD and model-native size. Regress Test-TaskRestore, Test-TaskInputs, real test-task-restoration-browser, reference-gallery and task-flow before B deployment. See UX-Audit-2026-11-10.md for scope and failures.
@@ -99,6 +107,17 @@ Navigation:
 
 ## Materials, shared library and document lifecycle
 
+- v0.23.1 AI verification: plugin idle starts bounded runtime/login checks without
+  model calls. Chat has a centered checking/failure gate and a focused Settings
+  connection-section link. Basic authorization is not an image-capability/quota
+  certificate. Gate hides/disables the native WebView window (WPF z-order alone
+  cannot cover it); keep browser readiness separate from validation display state.
+  Revalidation restores the existing browser/DOM rather than reloading drafts.
+  Stop the owned timer on document/panel close. Web resolves a late-installed Codex
+  at status/task boundaries, without accepting executable paths over HTTP. Preserve
+  explicit configured executables and reuse normal Codex authorization. Regress
+  Test-AiVerification, Test-CodexDiscovery, Test-WebLateCodex and board/input tests.
+
 - v0.22.18 asset languages: store per-asset localizations with canonical source stamps,
   tag-key maps and independent CatalogRevision. UI language reads must never launch
   translation workers, rename original keys, modify geometry/appearance or discard
@@ -161,6 +180,21 @@ Navigation:
 - v0.9 UI generation uses MaterialGeneration.Start -> CodexImageRunner, existing ChatGPT login, hidden image-only codex exec, read-only sandbox and disabled shell/browser/apps/subagents/hooks. No separate MCP listener or API-key fallback. Keep material_generation_request as an explicit manual handoff API. Never label pending jobs completed without actual imported images. Physical size requires calibration; do not infer measured dimensions or PBR maps from pixels. Remap after transforms/units changes; no promise of distortion-free freeform unwrapping. Image/library output and test evidence stay under ignored artifacts.
 
 ## Architecture, automation and sandbox boundaries
+
+- v0.23.0 release preview: EXE/Burn + per-user MSI registers only standard Rhino 8;
+  sandbox updater mutations fail closed. Managed Python and Studio directories are
+  separate from B/development. Do not execute the installer against production as a
+  substitute for a disposable-machine acceptance test. Bundle only original pinned
+  McNeel MCP, preserve shared prerequisites and user libraries on uninstall. Reject
+  legacy Yak/manual duplicate ownership with actionable instructions. Public updates
+  require exact stable assets, SHA-256 and Windows trust plus a pinned publisher;
+  unsigned previews cannot auto-install. Updater runs from a private snapshot, waits
+  for a verified parent and respects cancelled Rhino exit. Optional diagnostic UI
+  must not bind to a WebView2 SDK method that Rhino may replace; timer failures stop
+  locally rather than escaping into the host. Regress Test-ReleaseEnvironment,
+  Test-Installer, core ReleaseValidation and actual raster tests using the privately
+  staged Python. Keep the first failed probe/abnormal exit evidence. See
+  [Release-Installer.md](Release-Installer.md) for remaining acceptance gates.
 
 - Product scope: AI assets → physical-scale materials → planting → view-layer export → postproduction. Implemented: physical-scale material library and Agent generation handoff, layer-RGB/native-display PSD export, independent direct-sun shadows and Platform automation.
 - Keep geometry/projection/PSD serialization in Core; Rhino SDK, commands, preferences and the public JSON API belong in Plugin. Commands and automation call ExportService.

@@ -26,6 +26,10 @@ public static class McpApi
             object response;
             switch (operation)
             {
+                case "release_status": response=ReleaseService.State();break;
+                case "connection_status": response=ConnectionService.Inspect();break;
+                case "release_check": _=ReleaseService.CheckAsync();response=ReleaseService.State();break;
+                case "connection_check": _=ConnectionService.CheckAsync();response=ConnectionService.Inspect();break;
                 case "plugin_settings":
                     response=r.TryGetProperty("settings",out var preferences)?PluginPreferences.Save(JsonSerializer.Deserialize<PluginPreferences>(preferences.GetRawText(),MaterialLibrary.Json)!):PluginPreferences.Load();break;
                 case "plugin_settings_open":PluginPreferences.Show();response=SceneFlowWorkspace.State();break;
@@ -51,6 +55,10 @@ public static class McpApi
                     response = new { name = "RhinoSceneFlow", version = typeof(McpApi).Assembly.GetName().Version!.ToString(3), transport = "Rhino-MCP-Platform.run_python",materialLibrary=MaterialApi.Contract,plants=PlantApi.Operations,
                         entryPoint = "RhinoSceneFlow.Plugin.McpApi.Execute(string)",
                         operations = new object[] {
+                            new {name="release_status",required=Array.Empty<string>(),parameters="Read-only deployment target, version, update state; sandbox never installs into standard Rhino",output="Release state"},
+                            new {name="release_check",required=Array.Empty<string>(),parameters="Starts an asynchronous unauthenticated public GitHub stable-release check; poll release_status; no download or installation",output="Release state"},
+                            new {name="connection_status",required=Array.Empty<string>(),parameters="Read-only original Platform loaded state, Codex presence/sign-in probe state, private runtime and WebView2 presence; not a proof of model access",output="Connection state"},
+                            new {name="connection_check",required=Array.Empty<string>(),parameters="Starts bounded codex login status; poll connection_status. Does not sign in, log out, read credential files or generate images",output="Connection state"},
                             new {name="plugin_settings",required=Array.Empty<string>(),parameters="settings?: language:auto|zh|en, theme:rhino|light|dark, textMode:full(default)|short|none, showIcons:bool(default true), essentialTextMode:short(default)|full; textMode:none requires showIcons:true, season:spring|summer|autumn|winter, climateMode:species(default)|project, climate:custom project location (required for project); legacy climate-only settings auto-migrate, generateFourSeasons; plugin_settings_open opens dockable settings page",output="Preferences"},
                             new {name="seasonal_start",required=new[]{"assetId"},parameters="plant?:false, fourSeasons?:true; only missing variants, summer elevation+plan for plants; seasonal_status/seasonal_cancel require jobId; successful slots persist on cancellation",output="Seasonal job"},
                             new {name="seasonal_asset",required=new[]{"assetId"},parameters="plant?:false, seasonal?: followSeason/fixedSeason/climate/variants; returns single parent library record",output="Asset"},

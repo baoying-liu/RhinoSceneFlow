@@ -28,9 +28,19 @@ public static class PostProduction
     private static readonly string ServiceVersion=typeof(PostProduction).Assembly.GetName().Version!.ToString(3);
     private static readonly ConcurrentDictionary<Guid,PostProductionJob> jobs=new();
     private static readonly SemaphoreSlim launch=new(1);
-    private static readonly string root=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"RhinoSceneFlow","postproduction");
+    private static readonly string root=InstallationContext.StudioData;
     private static readonly JsonSerializerOptions json=new(){PropertyNamingPolicy=JsonNamingPolicy.CamelCase};
     public static PostProductionJob Get(Guid id)=>jobs.TryGetValue(id,out var job)?job:throw new ArgumentException("后期启动任务不存在。");
+    internal static async Task ShutdownForUpdateAsync()
+    {
+        // The authenticated owned service rejects shutdown while an image task is active.
+        // Never kill an arbitrary Python process or touch the sandbox's separate service.
+        if (!InstallationContext.Managed) throw new InvalidOperationException("production_only");
+        if (await ExistingAsync() is not {} service) return;
+        using var http = Client(service.Token);
+        using var response = await http.PostAsync($"http://127.0.0.1:{service.Port}/api/shutdown", null);
+        if (!response.IsSuccessStatusCode) throw new InvalidOperationException(PluginPreferences.Load().ResolvedLanguage == "en" ? "Finish or cancel Web Studio tasks before updating." : "请先完成或取消 Web 工作台任务，再更新。");
+    }
     public static PostProductionJob Request(string route,string method,string? body=null)
     {
         if(!System.Text.RegularExpressions.Regex.IsMatch(route,@"^/api/(status|projects|jobs|boards|board-preferences)(/[A-Za-z0-9_-]+)*$")||route.Contains("..",StringComparison.Ordinal))throw new ArgumentException("需要工作台 status、projects、jobs、boards 或 board-preferences 的相对 JSON 路由。");
@@ -105,7 +115,7 @@ public static class PostProduction
         try
         {
             if(await ExistingAsync() is {} existing)return existing;
-            string python=Environment.GetEnvironmentVariable("RHINOSCENEFLOW_CHATKIT_PYTHON")??Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"RhinoSceneFlow","chatkit-runtime","Scripts","python.exe");
+            string python=InstallationContext.Python;
             if(!File.Exists(python))throw new InvalidOperationException("请先运行 scripts/Setup-PostProduction.ps1 安装后期运行环境。");
             string script=Path.Combine(Path.GetDirectoryName(typeof(PostProduction).Assembly.Location)!,"PostProduction","server.py");
             Directory.CreateDirectory(root);var info=new ProcessStartInfo(python){UseShellExecute=false,CreateNoWindow=true,WindowStyle=ProcessWindowStyle.Hidden};

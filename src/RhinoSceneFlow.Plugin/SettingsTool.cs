@@ -16,6 +16,8 @@ internal sealed class SettingsTool:Panel
     private readonly UiLabel feedback=ToolUi.Note("");
     private readonly UiButton save=new();
     private bool syncing,dirty;
+    private readonly UiExpander connections=new();
+    private readonly Scrollable scroll;
     private string T(string zh,string en)=>PluginPreferences.Load().ResolvedLanguage=="en"?en:zh;
     internal SettingsTool()
     {
@@ -52,17 +54,24 @@ internal sealed class SettingsTool:Panel
         var content=Ui.Layout();content.Padding=new(0,0,5,8);
         content.AddRow(ToolUi.Heading(T("设置","Settings")));
         content.AddRow(ToolUi.Note(T("全局设置 · 所有 Rhino 文件共用","Global settings · shared by all Rhino documents")));
-        content.AddRow(Section(T("界面","Interface"),general,true));content.AddRow(Section(T("素材生成","Asset generation"),generation,false));content.AddRow(Section(T("植物显示","Plant display"),plants,true));content.AddRow(null);
+        connections.Header=T("连接与更新","Connections and updates");connections.Expanded=true;connections.Content=new ConnectionsSettings();
+        content.AddRow(new UiGroupBox{Content=new Panel{Padding=new(8),Content=connections}});content.AddRow(Section(T("界面","Interface"),general,true));content.AddRow(Section(T("素材生成","Asset generation"),generation,false));content.AddRow(Section(T("植物显示","Plant display"),plants,true));content.AddRow(null);
         save.Text=T("保存设置","Save settings");save.Click+=(_,_)=>SaveDraft();
         var discard=Ui.Button(T("还原未保存修改","Discard unsaved changes"),()=>LoadDraft());
         var footer=Ui.Layout();footer.AddRow(feedback);footer.AddRow(save);footer.AddRow(discard);
-        var scroll=ToolUi.VerticalScroll(content);
+        scroll=ToolUi.VerticalScroll(content);
         var root=Ui.Layout();root.Add(scroll,true,true);root.AddRow(footer);Content=root;
         foreach(var d in new[]{language,theme,textMode,icons,essentialText})d.SelectedValueChanged+=(_,_)=>ApplyAppearance(d);
         foreach(var d in new[]{mode,climateMode})d.SelectedValueChanged+=(_,_)=>Changed();
         climate.TextChanged+=(_,_)=>Changed();four.CheckedChanged+=(_,_)=>Changed();
         foreach(var n in new[]{angle,plan,transition,ratio})n.ValueChanged+=(_,_)=>Changed();
         LoadDraft();
+    }
+    internal static void NavigateToConnections()
+    {
+        SceneFlowWorkspace.Open("settings");
+        if(SceneFlowWorkspace.Hosts.GetValueOrDefault("settings")?.Tool is SettingsTool settings)
+        {settings.connections.Expanded=true;settings.scroll.ScrollPosition=new Eto.Drawing.Point(0,0);}
     }
     internal void SyncAppearance(PluginPreferences p)
     {

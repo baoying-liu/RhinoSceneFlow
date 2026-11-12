@@ -19,14 +19,16 @@ from pydantic import BaseModel, Field
 import uvicorn
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from project import check_psd, write_json, read_json, tiles, MAX_BYTES
+from codex_discovery import find_codex
 
 HERE = Path(__file__).resolve().parent
-VERSION = '0.22.16'
+VERSION = (HERE / 'version.txt').read_text(encoding='utf-8-sig').strip()
 parser = argparse.ArgumentParser()
 parser.add_argument('--data', required=True)
 parser.add_argument('--codex', default='')
 parser.add_argument('--port', type=int, default=0)
 args = parser.parse_args()
+args.codex = find_codex(args.codex)
 ROOT = Path(args.data).resolve()
 ROOT.mkdir(parents=True, exist_ok=True)
 PROJECTS = ROOT / 'projects'
@@ -204,6 +206,7 @@ async def style():
 
 @app.get('/api/status')
 async def status():
+    refresh_codex()
     return dict(service='RhinoSceneFlow.PostProduction', version=VERSION, pid=os.getpid(),
                 codexAvailable=bool(args.codex and Path(args.codex).is_file()), generationAvailable=True)
 
@@ -325,6 +328,7 @@ async def start_chat(ident: str, body: Chat):
     state = read_project(ident)
     if state['status'] != 'ready':
         raise ValueError('请先导入 PSD。')
+    refresh_codex()
     if not args.codex or not Path(args.codex).is_file():
         raise ValueError('未找到本机 Codex，请安装并登录后从 Rhino 重新启动工作台。')
     if any(j['project'] == ident and j['kind'] == 'chat' and j['status'] in ('queued', 'running') for j in jobs.values()):
@@ -425,16 +429,22 @@ async def shutdown():
     return dict(stopping=True)
 
 
+def refresh_codex():
+    args.codex = find_codex(args.codex)
+    if 'generation' in globals(): generation.api['codex'] = args.codex
+    if 'boards' in globals(): boards.api['codex'] = args.codex
+    return args.codex
+
 from generation import register as register_generation
 generation=register_generation(app,dict(project_dir=project_dir,read_project=read_project,update=update,
-    new_job=new_job,plan_for=plan_for,run_process=run_process,gate=gate,codex=args.codex))
+    new_job=new_job,plan_for=plan_for,run_process=run_process,gate=gate,codex=args.codex,resolve_codex=refresh_codex))
 
 from board_api import register as register_boards
 def cancel_chat_job(id):
     if id in jobs:jobs[id].update(status='cancelled',stage='Cancelled')
     if id in chat_tasks:chat_tasks[id].cancel()
 boards=register_boards(app,ROOT,dict(project_dir=project_dir,read_project=read_project,update=update,
-    create_project=create_project,new_job=new_job,run_process=run_process,gate=gate,codex=args.codex,jobs=jobs,start_chat=start_chat,cancel_chat=cancel_chat_job),generation)
+    create_project=create_project,new_job=new_job,run_process=run_process,gate=gate,codex=args.codex,resolve_codex=refresh_codex,jobs=jobs,start_chat=start_chat,cancel_chat=cancel_chat_job),generation)
 from edit_reference import register as register_edit_reference
 register_edit_reference(app,boards)
 

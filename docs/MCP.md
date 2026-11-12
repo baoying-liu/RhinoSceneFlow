@@ -452,3 +452,22 @@ fields for automation. Style changes preserve model and library metadata.
 - 复用 `material_catalog_status {jobId}` 和 `material_catalog_cancel {jobId}`。完整快照校验后一次性提交；只增加 CatalogRevision，保留有效译文并拒绝并发覆盖。
 - `material_library` / `plant_library` 的素材 JSON 增加可选 `localizations`；旧包与旧素材仍可读取。分类/标签筛选继续使用原始键；搜索也匹配已保存的多语言显示文字。
 - 切换 `plugin_settings.language` 只读取本地译文，不触发补齐任务。详见 Asset-Languages.md。
+# Release and connection diagnostics (0.23.0)
+
+Through the existing original Platform `run_python` -> `McpApi.Execute` only:
+
+- `release_status`: version, sandbox/managed target, update state, public offer and
+  signer configuration; never returns credentials.
+- `release_check`: starts public stable GitHub checking; poll `release_status`.
+  Does not download, install or change repository visibility.
+- `connection_status`: original Platform loaded, Codex presence/account-probe state,
+  WebView2 installation and actual private-runtime import-probe state.
+  Since 0.23.1, `checkedOnce`, `revision`, and `verified` describe the shared basic
+  runtime/ChatGPT-authorization check; `imageAccess:"not_tested"` explicitly excludes
+  model permissions/quota. Checks start automatically at plugin startup, not on each
+  document switch. Chat readiness additionally requires native WebView2.
+- `connection_check`: starts bounded runtime imports and `codex login status`;
+  poll `connection_status`. Does not log in/out, inspect account files or generate.
+
+Installer/update mutation is deliberately not exposed by MCP. Sandbox production
+updates are rejected in code. See [Release-Installer.md](Release-Installer.md).

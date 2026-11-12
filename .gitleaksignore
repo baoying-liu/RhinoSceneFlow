@@ -1,0 +1,3 @@
+# Reviewed false positive: SHA-256 of PhotoCraft's ATTRIBUTION.md, not a credential.
+# Exact historical fingerprint only; future changes remain scanned.
+c178f9cdee88fb638be6986cb80b1fb989e2943a:src/RhinoSceneFlow.Plugin/PostProduction/vendor/photocraft/SCENEFLOW-SOURCE.json:generic-api-key:21

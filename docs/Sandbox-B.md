@@ -875,3 +875,30 @@ unchanged. Package binaries match the tested deployment. Office Hillside restore
 70 objects, Modified=false, nine tool errors null; library is open on the localized
 cedar-board material. Only source-edit data and the Chinese-language autonym remain
 Chinese in the current native diagnostic. No new images were generated.
+
+### 2026-11-11 — home B installed 0.22.18
+
+Home channel 0d327c4c84f644f089b73834ffd93cfe, deployment 20261112-030716-bc53425be5744ad79b0c23c8b03d8c93, PID 19268. Manager build_test fe337b4bf79f4f58b71f6826e69c52f3 succeeded. Original Platform verified actual runtime 0.22.18, all nine registered tools without errors, and RHP SHA256 c599fa2a663abe3a15331866e05b28840d6c6439f78d472479cbdaf6ab0fda68. Native UI checked 36 presentation states with zero unintended Chinese labels, 276 rendered icon measurements (maximum 16 DIP), immediate preferences and draft preservation. Home libraries contain 9 materials and 2 plants; no new assets, translations or images were generated during installation. B was initially stopped; no Rhino process was forcibly closed. Existing launcher MCP was enabled through its exact native button without mouse input. Model is an unchanged empty document; AI Assets panel and test Rhino are visible. Evidence: artifacts/home-update-02218 and native UI receipt in artifacts/localization-02218/actual-language-icons.json.
+
+
+## Home Hillside end-to-end validation · 2026-11-11 · 0.22.19
+
+Native and Web both verified as 0.22.19 after manager build_test efb2123aef344d139149f4f24eb09965; home B PID 141592, deployment 20261112-035938-90d0fc0ce0174e75bd458a2470a5517a. RHP SHA256 a93c6c16a9ba4cd3f0aea2e40dd673c091c61f7b8e0c0e50b3dc2d87624267fd. Saved final Hillside-StarryNight-Ready.3dm independently reads as 69 objects, four Named Views and no plant groups; physical UV valid on all 69 objects. Four real 1600×900 layered PSDs externally decoded. Starry Night output is 4096×2304, one real whole call plus eight first-attempt tile calls, no manual acceptance; source PSD/model hashes unchanged and final seam/alpha/readonly checks passed. Fixed package version drift, running-task presentation, busy-copy/load recovery conflict and stale-language save state. Standard Build.ps1 and targeted workflow/input/history/browser regressions passed, including 14 real-case interactions. Detailed evidence and remaining UX recommendations: [UX audit](UX-Audit-2026-11-11.md), artifacts/e2e-starry-night-20261111.
+# HOME release preview 0.23.0 — 2026-11-12
+
+Known HOME B ID `0d327c4c84f644f089b73834ffd93cfe`. Management MCP 19540; original
+Platform port discovered from monitor and PID checked by Rhino-Mcp.py.
+Final prepared deployment `20261112-051121-e8d8547a9c314c5baa59fa27a866dc66`, loaded
+PID 120128. Release/account/native Settings checks passed; saved Monet case reopened
+in this PID with 70 objects, unmodified. No production registration or channel was
+changed. Initial failed WebView2 diagnostic/abnormal exit evidence is retained in
+Validation.md and artifacts/release-0230; no failed exit is labelled successful.
+# HOME automatic AI verification 0.23.1 — 2026-11-12
+
+Known B ID unchanged. Final deployment
+`20261112-060511-61d334d05b9c466fadd64007bb5f904e`, PID 144192.
+Automatic startup environment/login check, native failure gate, Settings routing,
+browser-preserving recovery and actual ChatKit readiness passed. Saved Monet case
+restored with 70 objects, unmodified. No credential mutation, image generation,
+production deployment or mouse control. See Validation.md for controlled-failure
+and transient test observations.

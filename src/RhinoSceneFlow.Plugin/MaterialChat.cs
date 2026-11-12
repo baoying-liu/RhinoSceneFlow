@@ -124,7 +124,7 @@ internal sealed class MaterialChatHost : IDisposable
     internal async Task StartAsync()
     {
         if(disposed)throw new OperationCanceledException();
-        string python=Environment.GetEnvironmentVariable("RHINOSCENEFLOW_CHATKIT_PYTHON")??Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"RhinoSceneFlow","chatkit-runtime","Scripts","python.exe");
+        string python=InstallationContext.Python;
         if(!File.Exists(python))throw new InvalidOperationException("请先运行 scripts/Setup-ChatKit.ps1 安装本机 ChatKit 运行环境。");
         var listener=new TcpListener(IPAddress.Loopback,0);listener.Start();int port=((IPEndPoint)listener.LocalEndpoint).Port;listener.Stop();
         string token=Convert.ToHexString(System.Security.Cryptography.RandomNumberGenerator.GetBytes(32));
@@ -191,8 +191,15 @@ internal sealed class MaterialChatHost : IDisposable
 internal sealed class MaterialChatView : Panel,IDisposable
 {
     internal readonly Microsoft.Web.WebView2.Wpf.WebView2 Browser=new();
-    private readonly MaterialChatHost host;
-    private readonly UiLabel error=new(){Wrap=WrapMode.Word};
+    private MaterialChatHost? host;
+    private readonly Func<MaterialChatHost> createHost;
+    private readonly System.Windows.Controls.Grid surface=new(),validation=new();
+    private readonly System.Windows.Controls.TextBlock validationTitle=new(){FontSize=20,FontWeight=System.Windows.FontWeights.SemiBold,TextAlignment=System.Windows.TextAlignment.Center};
+    private readonly System.Windows.Controls.TextBlock validationDetail=new(){TextWrapping=System.Windows.TextWrapping.Wrap,TextAlignment=System.Windows.TextAlignment.Center,Margin=new(0,12,0,20)};
+    private readonly System.Windows.Controls.Button settingsButton=new(){Padding=new(18,8,18,8),HorizontalAlignment=System.Windows.HorizontalAlignment.Center};
+    private bool startupFailed,browserReady;
+    private long failedRevision=-1;
+    private string startupError="";
     private readonly UITimer themeTimer=new(){Interval=1};
     private string? appliedTheme;
     internal string? Theme{get;private set;}
@@ -200,14 +207,56 @@ internal sealed class MaterialChatView : Panel,IDisposable
     internal string State{get;private set;}="尚未启动";
     internal MaterialChatView(uint doc,Func<(double,double)> size,Action<Guid> startedJob,Func<bool>? reuse=null)
     {
-        host=new(doc,size,startedJob,reuse);Content=new NativeControlHost(Browser);
-        SetBackground();themeTimer.Elapsed+=async(_,_)=>await UpdateTheme();
+        createHost=()=>new(doc,size,startedJob,reuse);
+        surface.Children.Add(Browser);
+        var centre=new System.Windows.Controls.StackPanel{MaxWidth=360,Margin=new(24),VerticalAlignment=System.Windows.VerticalAlignment.Center,HorizontalAlignment=System.Windows.HorizontalAlignment.Center};
+        centre.Children.Add(validationTitle);centre.Children.Add(validationDetail);centre.Children.Add(settingsButton);
+        validation.Children.Add(centre);surface.Children.Add(validation);Content=new NativeControlHost(surface);
+        settingsButton.Click+=(_,_)=>SettingsTool.NavigateToConnections();
+        SetBackground();ShowValidation();themeTimer.Elapsed+=async(_,_)=>{try{await RefreshConnection();await UpdateTheme();}catch(Exception){if(!closed&&!stopped){startupFailed=true;failedRevision=ConnectionService.Revision;startupError=T("连接状态更新失败，请在设置中重新检测。","Connection refresh failed. Check again in Settings.");ShowValidation();}}};
     }
+    private string T(string zh,string en)=>PluginPreferences.Load().ResolvedLanguage=="en"?en:zh;
     internal async Task StartAsync()
+    {
+        if(closed||stopped)return;
+        themeTimer.Start();ShowValidation();
+        if(!ConnectionService.Checked&&!ConnectionService.Busy)await ConnectionService.CheckAsync();
+        await RefreshConnection();
+    }
+    private void ShowValidation()
+    {
+        if(closed||stopped)return;
+        bool pending=!ConnectionService.Checked||ConnectionService.Busy||(ConnectionService.ChatReady&&!startupFailed&&!browserReady);
+        bool ready=ConnectionService.ChatReady&&!startupFailed&&browserReady;
+        validation.Visibility=ready?System.Windows.Visibility.Collapsed:System.Windows.Visibility.Visible;
+        // WebView2 owns a native child window: WPF z-order alone cannot mask it.
+        // Hide/disable the existing frame without destroying its DOM or draft.
+        Browser.Visibility=ready?System.Windows.Visibility.Visible:System.Windows.Visibility.Hidden;
+        Browser.IsEnabled=ready;
+        settingsButton.Content=T("前往设置","Open Settings");
+        settingsButton.IsEnabled=!pending;
+        validationTitle.Text=pending?T("正在验证环境与登录…","Verifying environment and sign-in…"):T("未通过验证","Verification not passed");
+        validationDetail.Text=pending?T("首次使用会自动检测，不会生成图片或消耗生图额度。","The first check runs automatically without generating images or using image quota."):
+            startupFailed?startupError:
+            ConnectionService.Runtime!="ready"?T("运行环境未就绪，请前往设置检测或修复安装。","Runtime is not ready. Check the environment or repair installation in Settings."):
+            ConnectionService.Auth=="missing"?T("未找到 Codex，请前往设置查看安装与登录方法。","Codex was not found. Open Settings for installation and sign-in."):
+            ConnectionService.Auth!="chatgpt"?T("尚未验证 ChatGPT 授权，请前往设置登录或重新检测。","ChatGPT authorization is not verified. Sign in or check again in Settings."):
+            T("WebView2 未就绪，请修复安装后重新检测。","WebView2 is not ready. Repair installation, then check again.");
+        State=ready?"ready":pending?"verifying":"verification_failed";
+    }
+    private async Task RefreshConnection()
+    {
+        if(closed||stopped)return;
+        if(startupFailed&&failedRevision!=ConnectionService.Revision)startupFailed=false;
+        SetBackground();ShowValidation();
+        if(ConnectionService.ChatReady&&!startupFailed&&!started)await InitializeAsync();
+    }
+    private async Task InitializeAsync()
     {
         if(started||closed||stopped)return;started=true;
         try
         {
+            host=createHost();
             await host.StartAsync();if(closed||stopped)return;
             string userData=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"RhinoSceneFlow","webview");
             var env=await CoreWebView2Environment.CreateAsync(null,userData);if(closed||stopped)return;
@@ -217,9 +266,9 @@ internal sealed class MaterialChatView : Panel,IDisposable
             Browser.CoreWebView2.Settings.AreDevToolsEnabled=false;Browser.CoreWebView2.Settings.AreDefaultContextMenusEnabled=false;
             Browser.CoreWebView2.NavigationCompleted+=async(_,_)=>{appliedTheme=null;await UpdateTheme();};
             var palette=Palette();SetBackground();
-            Browser.Source=new Uri(host.Url+"&language="+PluginPreferences.Load().ResolvedLanguage+"&scheme="+palette.colorScheme+"&background="+Uri.EscapeDataString(palette.background)+"&foreground="+Uri.EscapeDataString(palette.foreground)+"&inputBackground="+Uri.EscapeDataString(palette.inputBackground));State="ready";themeTimer.Start();
+            Browser.Source=new Uri(host.Url+"&language="+PluginPreferences.Load().ResolvedLanguage+"&scheme="+palette.colorScheme+"&background="+Uri.EscapeDataString(palette.background)+"&foreground="+Uri.EscapeDataString(palette.foreground)+"&inputBackground="+Uri.EscapeDataString(palette.inputBackground));browserReady=true;State="ready";ShowValidation();themeTimer.Start();
         }
-        catch(Exception e){if(!closed&&!stopped){State=e.Message;error.Text=WorkspaceAppearance.Text("ChatKit 无法启动：")+WorkspaceAppearance.Text(e.Message)+"\n"+WorkspaceAppearance.Text("请检查本机 ChatKit 运行环境与网络连接。");Content=error;host.Dispose();}}
+        catch(Exception e){if(!closed&&!stopped){started=false;startupFailed=true;failedRevision=ConnectionService.Revision;startupError=T("聊天未能启动，请在设置中重新检测。 ","Chat could not start. Check again in Settings. ")+WorkspaceAppearance.Text(e.Message);ShowValidation();host?.Dispose();}}
     }
     private sealed record ChatPalette(string colorScheme,string background,string foreground,string inputBackground);
     private static ChatPalette Palette()
@@ -233,7 +282,11 @@ internal sealed class MaterialChatView : Panel,IDisposable
         var preference=PluginPreferences.Load().Theme;if(preference!="rhino"){dark=preference=="dark";background=dark?System.Drawing.Color.FromArgb(29,35,32):System.Drawing.Color.FromArgb(241,243,241);foreground=dark?System.Drawing.Color.FromArgb(235,239,235):System.Drawing.Color.FromArgb(30,36,30);input=dark?System.Drawing.Color.FromArgb(40,48,43):System.Drawing.Color.White;}
         return new(dark?"dark":"light",$"#{background.R:X2}{background.G:X2}{background.B:X2}",$"#{foreground.R:X2}{foreground.G:X2}{foreground.B:X2}",$"#{input.R:X2}{input.G:X2}{input.B:X2}");
     }
-    private void SetBackground(){var p=Palette();Browser.DefaultBackgroundColor=System.Drawing.ColorTranslator.FromHtml(p.background);Theme=p.colorScheme;}
+    private void SetBackground(){var p=Palette();Browser.DefaultBackgroundColor=System.Drawing.ColorTranslator.FromHtml(p.background);Theme=p.colorScheme;
+        var converter=new System.Windows.Media.BrushConverter();validation.Background=(System.Windows.Media.Brush)converter.ConvertFromString(p.background)!;
+        validationTitle.Foreground=validationDetail.Foreground=(System.Windows.Media.Brush)converter.ConvertFromString(p.foreground)!;
+        settingsButton.Background=(System.Windows.Media.Brush)converter.ConvertFromString(p.inputBackground)!;settingsButton.Foreground=validationTitle.Foreground;
+    }
     private async Task UpdateTheme()
     {
         if(closed||stopped||Browser.CoreWebView2==null)return;
@@ -241,12 +294,12 @@ internal sealed class MaterialChatView : Panel,IDisposable
         try{SetBackground();string result=await Browser.ExecuteScriptAsync("typeof window.sceneFlowSetTheme==='function'&&typeof window.sceneFlowSetLanguage==='function'?(window.sceneFlowSetTheme("+json+"),window.sceneFlowSetLanguage("+JsonSerializer.Serialize(language)+"),true):false");if(!closed&&!stopped&&result=="true")appliedTheme=key;}
         catch(InvalidOperationException){}catch(System.Runtime.InteropServices.COMException){}
     }
-    internal void Stop(){stopped=true;themeTimer.Stop();host.Dispose();}
+    internal void Stop(){stopped=true;themeTimer.Stop();host?.Dispose();}
     protected override void Dispose(bool disposing)
     {
         if(disposing)
         {
-            if(closed)return;closed=true;themeTimer.Stop();themeTimer.Dispose();host.Dispose();var content=Content;Content=null;
+            if(closed)return;closed=true;themeTimer.Stop();themeTimer.Dispose();host?.Dispose();var content=Content;Content=null;
             content?.Dispose();Browser.Dispose();
         }
         base.Dispose(disposing);

@@ -52,6 +52,13 @@ assert s.asset(bid,backup['asset']).exists() # retained provenance bytes, not ga
 # Source naming, persistent IDs, archive package round trip.
 assert read(oid)['name'].endswith('.psd');assert s.read(bid)==s.read(bid)
 package=s.package(bid);restored=s.unpack(package);assert restored['nodes'][0]['id']==oid
+# A duplicated board cannot own the original board's running jobs. Keeping the
+# lock caused the first task poll to change its revision behind the loaded UI.
+busy_source=s.read(bid);busy_source['nodes'][0]['busy']='source-board-job';s.commit(busy_source)
+clone=s.duplicate(bid,'Busy source snapshot')
+assert all(not n.get('busy') for n in clone['nodes'])
+assert s.read(bid)['nodes'][0]['busy']=='source-board-job'
+busy_source=s.read(bid);busy_source['nodes'][0].pop('busy');s.commit(busy_source)
 async def queued_cancel():
  class Engine:
   image_gate=asyncio.Semaphore(0)

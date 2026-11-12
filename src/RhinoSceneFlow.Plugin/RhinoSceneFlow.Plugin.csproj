@@ -27,6 +27,7 @@
   <ItemGroup><None Update="RhinoSceneFlow.rui" CopyToOutputDirectory="PreserveNewest" /></ItemGroup>
   <ItemGroup><None Include="../../third-party/FastNoiseLite/LICENSE" Link="FastNoiseLite-LICENSE.txt" CopyToOutputDirectory="PreserveNewest" /></ItemGroup>
   <Target Name="KeepOnlyX64Loader" AfterTargets="Build">
+    <WriteLinesToFile File="$(TargetDir)PostProduction/version.txt" Lines="$(Version)" Overwrite="true" Encoding="UTF-8" />
     <Delete Files="$(TargetDir)runtimes/win-x86/native/WebView2Loader.dll;$(TargetDir)runtimes/win-arm64/native/WebView2Loader.dll" />
   </Target>
   <Target Name="CopyTextureWorker" AfterTargets="Build">
