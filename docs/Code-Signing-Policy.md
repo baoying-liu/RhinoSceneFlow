@@ -19,10 +19,13 @@ No repository secret, account token or private key belongs in distributed files.
 ## Application readiness
 
 - Original SceneFlow code now uses MIT, explicitly chosen by the owner.
-- Source-to-binary build provenance must be verified by the provider. The current
-  local build depends on installed Rhino SDK references; a clean automated build
-  and its accepted provenance are still required. Uploading an arbitrary local EXE
-  is not a substitute.
+- Source-to-binary build provenance must be verified by the provider. The manual
+  candidate workflow now uses pinned official SDK references instead of requiring
+  an installed Rhino. Its first hosted run passed on commit `9e10efe`:
+  [candidate build](https://github.com/baoying-liu/RhinoSceneFlow/actions/runs/43256136730).
+  Later product/version metadata changes passed locally; the eventual signed
+  release must build its exact approved commit again. Provider acceptance of the
+  provenance remains required. An arbitrary local EXE is not a substitute.
 - Rhino is proprietary host software and is not bundled. WebView2's Microsoft
   redistributable/SDK libraries are proprietary dependencies that must be disclosed
   for eligibility review; do not assume the system-library exception applies.

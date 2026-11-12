@@ -81,9 +81,17 @@ Import-Module (Join-Path $vs 'Common7/Tools/Microsoft.VisualStudio.DevShell.dll'
 Enter-VsDevShell -VsInstallPath $vs -SkipAutomaticLocation -DevCmdArguments '-arch=amd64 -host_arch=amd64' | Out-Null
 Push-Location $output
 try{
-    & cl /nologo /utf-8 /std:c++17 /EHsc /MT /W4 /DUNICODE /D_UNICODE /LD (Join-Path $root 'installer/native/InstallGuard.cpp') msi.lib shell32.lib ole32.lib version.lib advapi32.lib /link /OUT:InstallGuard.dll *> guard-build.log
+    $resource=Get-Content -LiteralPath (Join-Path $root 'installer/native/Version.rc.in') -Raw
+    $resource=$resource.Replace('@SCENEFLOW_VERSION_COMMAS@',$version.Replace('.',',')).Replace('@SCENEFLOW_VERSION@',$version)
+    $resource.Replace('@SCENEFLOW_FILETYPE@','VFT_DLL').Replace('@SCENEFLOW_DESCRIPTION@','SceneFlow installation guard') | Set-Content GuardVersion.rc -Encoding Ascii
+    $resource.Replace('@SCENEFLOW_FILETYPE@','VFT_APP').Replace('@SCENEFLOW_DESCRIPTION@','SceneFlow prerequisite installer') | Set-Content PrerequisiteVersion.rc -Encoding Ascii
+    & rc /nologo /fo GuardVersion.res GuardVersion.rc *> resource-build.log
+    if($LASTEXITCODE -ne 0){throw 'Install guard version-resource build failed.'}
+    & rc /nologo /fo PrerequisiteVersion.res PrerequisiteVersion.rc *>> resource-build.log
+    if($LASTEXITCODE -ne 0){throw 'Prerequisite version-resource build failed.'}
+    & cl /nologo /utf-8 /std:c++17 /EHsc /MT /W4 /DUNICODE /D_UNICODE /LD (Join-Path $root 'installer/native/InstallGuard.cpp') GuardVersion.res msi.lib shell32.lib ole32.lib version.lib advapi32.lib /link /OUT:InstallGuard.dll *> guard-build.log
     if($LASTEXITCODE -ne 0){throw 'Install guard build failed.'}
-    & cl /nologo /utf-8 /std:c++17 /EHsc /MT /W4 /DUNICODE /D_UNICODE (Join-Path $root 'installer/native/Prerequisites.cpp') shell32.lib user32.lib ole32.lib version.lib advapi32.lib /link /SUBSYSTEM:WINDOWS /OUT:SceneFlow.Prerequisites.exe *> prerequisites-build.log
+    & cl /nologo /utf-8 /std:c++17 /EHsc /MT /W4 /DUNICODE /D_UNICODE (Join-Path $root 'installer/native/Prerequisites.cpp') PrerequisiteVersion.res shell32.lib user32.lib ole32.lib version.lib advapi32.lib /link /SUBSYSTEM:WINDOWS /OUT:SceneFlow.Prerequisites.exe *> prerequisites-build.log
     if($LASTEXITCODE -ne 0){throw 'Prerequisites build failed.'}
 }finally{Pop-Location}
 function StableGuid([string]$Text){$md5=[Security.Cryptography.MD5]::Create();try{return [guid]::new($md5.ComputeHash([Text.Encoding]::UTF8.GetBytes($Text)))}finally{$md5.Dispose()}}

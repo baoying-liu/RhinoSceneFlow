@@ -9,6 +9,11 @@ New-Item -ItemType Directory -Force -Path $out | Out-Null
 $key='HKCU:\Software\McNeel\Rhinoceros\8.0\Plug-ins\8b902013-73dd-4227-b45b-896f6a33f134'
 function Registration { if(Test-Path -LiteralPath $key){return (Get-ItemProperty -LiteralPath $key).FileName};return $null }
 $before=Registration
+$owned=@('payload/RhinoSceneFlow.Plugin.rhp','payload/RhinoSceneFlow.Core.dll','payload/SceneFlow.UvWorker.exe','payload/TextureWorker/SceneFlow.TextureWorker.exe','payload/Updater/SceneFlow.Update.exe','InstallGuard.dll','SceneFlow.Prerequisites.exe')
+foreach($relative in $owned){
+    $info=[Diagnostics.FileVersionInfo]::GetVersionInfo((Join-Path $output $relative))
+    if($info.ProductName -ne 'SceneFlow' -or "$($info.FileMajorPart).$($info.FileMinorPart).$($info.FileBuildPart)" -ne $Version){throw "Invalid project signing metadata: $relative"}
+}
 foreach($relative in @('LICENSE','Privacy.md')){
     $source=if($relative -eq 'LICENSE'){Join-Path $root 'LICENSE'}else{Join-Path $root 'docs/Privacy.md'}
     $staged=Join-Path $output ('payload/'+$relative)

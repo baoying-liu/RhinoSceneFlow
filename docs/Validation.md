@@ -1143,7 +1143,7 @@ check and actual BoardWorkflow, TaskInputs, raster and retry-state regressions.
 After including LICENSE and Privacy.md, the unsigned installer passed read-only
 checks with 6,914 owned file rows, exact compressed MSI identity and unchanged
 production registration. Native probe exit 10 correctly detected a standard Rhino
-process; no installation or process termination was attempted. Final local EXE
+process; no installation or process termination was attempted. Pre-metadata EXE
 SHA-256: `22A79A6A69771B107246560E78D1994564B652AB1FEE5849CB043A3868C074E2`.
 Evidence: artifacts/installer-tests/0.23.2/installer-verified.json and release0232
 build/test logs. The pinned official RhinoCommon 8.34.26223.11001 SDK references
@@ -1155,3 +1155,12 @@ commits, no signing secrets and no release publication step. History and staged
 diff scans using digest-verified Gitleaks 8.30.1 reported no findings (existing
 single historical false-positive fingerprint retained); this is not proof that
 all sensitive content can be detected.
+
+Hosted candidate run 43256136730 succeeded on `9e10efe`, including source tests,
+installer inspection, staged-Python tests and artifact upload. Later product/version
+metadata additions passed local Build.ps1 and 6,914-row installer checks, including
+product/version assertions on seven project-owned binaries. Their final local EXE
+SHA-256 is `97977C5B69A575D29CEDFD9FD11893E72F4D2D3A9A4FEF9554679D72D9EE166D`;
+logs are artifacts/signpath-metadata-*.log. These later changes were not part of that
+first hosted run. No new signed build, application submission or stable release
+has occurred; the exact future signed commit still requires its own validation.

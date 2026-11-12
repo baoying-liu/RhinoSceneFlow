@@ -51,6 +51,15 @@ model calls. Windows trust/publisher rejection tests also passed. Adding the
 newly authorized MIT license and privacy document changes the package and requires
 a new package/hash check; none of these checks is an actual install/upgrade test.
 
+The subsequent 6,914-row license/privacy package passed, followed by a metadata
+package whose owned managed/native binaries all report product SceneFlow and the
+matching 0.23.2 file version. Final local metadata-package SHA-256 is
+`97977C5B69A575D29CEDFD9FD11893E72F4D2D3A9A4FEF9554679D72D9EE166D`.
+The first hosted candidate workflow succeeded on `9e10efe` (before the later
+metadata additions): https://github.com/baoying-liu/RhinoSceneFlow/actions/runs/43256136730 .
+It does not replace native B or disposable-machine installation tests. A final
+signed build must use its own exact approved source commit and artifact.
+
 ## Remaining acceptance gates
 
 1. Choose a signing provider, complete its validation, and verify final signed

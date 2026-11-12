@@ -26,9 +26,11 @@ supported account and model access. It does not bundle account credentials.
 The project has a manually dispatched GitHub Actions candidate build. It builds
 project source using hash-pinned official Rhino SDK references, runs portable
 tests, stages a private Python runtime, builds EXE/MSI packages, and inspects their
-contents without installing them. Hosted-run success and accepted provenance must
-be checked before submitting an application; do not present local builds as CI
-evidence. There is no current signing step or stable-release publication step.
+contents without installing them. The initial hosted build passed on `9e10efe`:
+https://github.com/baoying-liu/RhinoSceneFlow/actions/runs/43256136730 . Later signing
+metadata additions passed locally; build the exact approved release commit again
+for signing. Provider acceptance of provenance is still required. There is no
+current signing step or stable-release publication step.
 
 We would like to sign project-owned plugin/worker/installer binaries and preserve
 all upstream licenses/signatures. Binary metadata restrictions and nested-package
