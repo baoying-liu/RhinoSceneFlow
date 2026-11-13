@@ -940,3 +940,8 @@ Whole-image native-aspect inputs replace the square letterbox contract for new
 tasks; frozen older tasks remain compatible. See Validation.md and
 `artifacts/reference-style-20261112/border-fix.json` for actual image outcomes.
 Production Rhino, release feed and published 0.23.2 were not changed.
+
+
+## 2026-11-13 ? Office B 0.23.3 deployment
+
+Updated office B `1cee488700ad42f59492743cc4a2a3fe` through manager MCP 19540. Build/test job `dcbcb2b456f146f69bfac7886e2ab98e` succeeded with zero warnings/errors. Deployment: `20261113-152839-fbf3f39e12a94249bac903bd9cad34d0`. Original Rhino MCP Platform verified live PID 11600 and assembly version **0.23.3.0** from that deployment. AI Assets panel opened successfully (`error:null`, dark chat theme); document remains empty and unmodified. B window shown through manager API. No production Rhino installation changed and no image generation was requested. This is deployment smoke verification, not a full feature regression. Evidence: `artifacts/office-update-0233/runtime-verification.json`.
