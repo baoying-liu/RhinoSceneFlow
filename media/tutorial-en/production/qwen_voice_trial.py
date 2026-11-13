@@ -10,21 +10,18 @@ import urllib.error
 import urllib.request
 from qwen_credentials import load_credentials
 
-TEXT = ("Welcome to SceneFlow. In this fifteen minute tutorial, we will turn a simple Rhino model "
-        "into a finished architectural image. First, we will create a material and apply it at its real world size. "
-        "Next, we will place plants, adjust their spacing, and change the season. Then we will export a layered "
-        "P S D, refine the image with A I, and compare the result with the original. "
-        "The model stays editable, and every generated image keeps a clear connection to its source.")
+TEXT = 'Welcome to SceneFlow. Today we will create materials, place plants, and export a layered image from Rhino.'
 
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--probe', action='store_true')
+    parser.add_argument('--model', choices=['qwen-audio-3.1-tts-plus','qwen-audio-3.1-tts-flash'], default='qwen-audio-3.1-tts-plus')
     args = parser.parse_args()
     credential = load_credentials()
     folder = Path(os.environ['LOCALAPPDATA']) / 'RhinoSceneFlow/production/voice-private'
     folder.mkdir(parents=True, exist_ok=True)
-    model = 'qwen-audio-3.1-tts-plus'
+    model = args.model
     def call(path, payload):
         req = urllib.request.Request(credential['base_url'] + '/api/v1/' + path,
             data=json.dumps(payload).encode(), headers={'Authorization': 'Bearer '+credential['api_key'],
@@ -44,7 +41,7 @@ def main():
         print(json.dumps({'authenticated':True,'region':credential['region'],'probe':'voice list','has_output':'output' in result}))
         return
     reference = folder/'baoying-reference-24k-mono.wav'
-    receipt_path = folder/'trial-voice.json'
+    receipt_path = folder/('trial-voice-'+model+'.json')
     fingerprint = hashlib.sha256(reference.read_bytes()).hexdigest()
     voice = None
     if receipt_path.exists():
@@ -68,10 +65,14 @@ def main():
     print('Voice ready. Generating short English trial.',flush=True)
     result=call('services/audio/tts/SpeechSynthesizer',{'model':model,'input':{
         'text':TEXT,'voice':voice,'format':'wav','sample_rate':24000}})
-    audio_url=result['output']['audio']['url']
-    if not audio_url.startswith('https://'):raise RuntimeError('Expected HTTPS audio result')
-    with urllib.request.urlopen(audio_url,timeout=55) as response:audio=response.read()
-    output=folder/'SceneFlow-Baoying-English-Trial.wav'
+    audio_result=result['output']['audio']
+    if audio_result.get('data'):
+        audio=base64.b64decode(audio_result['data'],validate=True)
+    else:
+        audio_url=audio_result.get('url','')
+        if not audio_url.startswith('https://'):raise RuntimeError('Expected audio data or HTTPS result')
+        with urllib.request.urlopen(audio_url,timeout=55) as response:audio=response.read()
+    output=folder/('SceneFlow-Baoying-'+model+'-Trial.wav')
     output.write_bytes(audio)
     (folder/'trial-text.txt').write_text(TEXT,encoding='utf8')
     print(json.dumps({'completed':True,'audio_file':str(output),'bytes':len(audio),'characters':len(TEXT)}))
