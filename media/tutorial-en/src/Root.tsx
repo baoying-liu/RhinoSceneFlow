@@ -1,3 +1,4 @@
+import {FullPromoV07} from './PromoFullV07';
 import {FullPromoV06} from './PromoFullV06';
 import {SampleV05} from './PromoSampleV05';
 import {TransitionShowcase,TransitionOption} from './PromoTransitions';
@@ -13,6 +14,7 @@ import { WorkflowMaterial, WorkflowPlantRules, WorkflowCamera, WorkflowSeasons, 
 export const RemotionRoot: React.FC = () => {
   return (
     <>
+<Composition id="SceneFlow-Introduction-v07" component={FullPromoV07} durationInFrames={7560} fps={30} width={1920} height={1080}/>
 <Composition id="SceneFlow-Introduction-v06" component={FullPromoV06} durationInFrames={7560} fps={30} width={1920} height={1080}/>
 <Composition id="SceneFlow-Sample-v05" component={SampleV05} durationInFrames={3600} fps={30} width={1920} height={1080}/>
 <Composition id="Transition-Showcase-v04" component={TransitionShowcase} durationInFrames={750} fps={30} width={1920} height={1080}/>
