@@ -45,6 +45,10 @@ generation; editable parameters versus immutable result pixels.
   target with the same crop/zoom transform. Inspect actual click frames.
 - Establish context before a close-up; hold steady while explaining or clicking.
   Avoid zoom pulses, arbitrary shaking and decorative cursor movements.
+- Follow the current test Rhino's actual theme, docked layout and enabled tool
+  icons. Establish the full workspace, outline the settings panel and model
+  viewport, then smoothly reframe those same regions into readable split views.
+  See the confirmed case direction in [capture and edit](references/capture-and-edit.md).
 - Explicitly label compressed waits. Queued or unverified work is not completed.
 
 ## Tools and acceptance
@@ -62,3 +66,8 @@ supplies none. Do not consume allowances merely to exhaust them.
 Verify the entire export, sampled interactions, readable UI, subtitle/audio
 timing and delivered files. Report pronunciation, likeness and product issues.
 ASR cannot prove voice similarity; a rendered still cannot prove interaction.
+Correct transcription also cannot prove fluent speech: missing consonants,
+swallowed syllables, stuttering and damaged sentence joins fail narration QA.
+The v02 sample's framing was accepted; its voice fluency still needs repair.
+Follow the short-segment and listening checks in the narration reference before
+scaling to a full tutorial.

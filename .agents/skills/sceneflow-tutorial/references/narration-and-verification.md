@@ -37,6 +37,53 @@ a voice review asset, not a solution to production repetition. Repair/reject
 bad segments and recheck them. Do not conceal failures under music or equate
 receipt duration with usable tutorial narration.
 
+## Speech fluency gate before full production
+
+The user found stuttering and swallowed sounds in the v02 tutorial sample.
+The voice identity and visual direction were usable, but the speech track is
+not a final narration master. Do not reuse it unchanged throughout the full
+tutorial. The cause is not yet isolated: synthesis, pause removal, joins or
+encoding may contribute; compare stages rather than claiming a diagnosis.
+
+- Finish the spoken English script against current UI labels first. Use short,
+  natural sentences and consistent pronunciation for Rhino, SceneFlow, UV, PSD,
+  MCP and 4K. Preserve UI spelling in subtitles even when spoken text expands
+  an acronym. Avoid introducing long, comma-heavy text just to fit a chapter.
+- Generate short semantic passages, usually one to three sentences, with the
+  same voice reference and delivery. Prefer a complete thought over a rigid
+  character or duration limit. Do not generate the whole fifteen minutes as
+  one request. Keep enough neighboring context for a consistent delivery.
+- Retain the untouched response and a separate edited track for each cue.
+  Audit for repetitions, omissions and abnormal silence before assembly.
+  ASR/word timestamps help find faults; they are not a listening substitute.
+- Compare the original synthesis, processed cue, cue-to-cue join and encoded
+  video audio. Check sentence starts/ends and quiet consonants especially.
+  If listening is unavailable, mark auditory QA unverified rather than pass.
+- Trim at complete phrase boundaries in silence, retaining short handles
+  around speech (roughly 80–150 ms is a useful starting point, adjusted by
+  listening). Word timestamps may be inaccurate; never cut exactly at every
+  recognized word or remove all breathing pauses. Add tiny fades only in
+  silence; do not crossfade overlapping spoken words.
+- If a syllable is swallowed, a word is slurred, speech stutters or prosody is
+  unnatural, regenerate the affected complete sentence/passage and compare it.
+  Do not repair it by cutting within a word, aggressive time compression,
+  speed changes or denoising, and do not mask it with music. Preserve accepted
+  neighboring passages. Bound retries; after two unsuccessful replacements,
+  investigate reference/settings or an authorized fallback instead of looping.
+- Keep speech speed comfortable. Build the visual edit around the usable
+  narration and genuine interaction pauses; shorten the script if needed to
+  fit the tutorial budget. Do not force the voice to match old frame counts.
+- Make a representative corrected passage first, including technical terms
+  and a sentence join. Record content, pronunciation, fluency and edit-boundary
+  review separately from voice likeness. Existing approval of the speaker
+  identity does not approve a new defective passage, nor require a new account
+  or voice enrollment for routine retries.
+
+Only passages without known speech defects belong in the final master.
+Retain failed cue IDs/issues so a later edit cannot silently reintroduce a bad
+take. Match both subtitles and bilingual review timings to the replacement
+audio, not to the original defective take.
+
 ## Subtitles and edit handoff
 
 Tie English subtitles to the final spoken track. Deliver SRT and burned-in

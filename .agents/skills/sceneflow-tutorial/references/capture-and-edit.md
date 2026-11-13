@@ -16,6 +16,40 @@ Show current product environment/sign-in and connection settings; do not invent
 a universal port or expose bearer-bearing URLs. Installation illustrations are
 allowed by the current brief; label them and match the actual installer flow.
 
+## Confirmed SceneFlow tutorial direction
+
+For the current English, approximately 15-minute tutorial, the user accepted
+the framing in `media/tutorial-en/out/tutorial-rhino-sample-v02/`. Preserve the
+accepted cut; the acceptance covers visual direction, not narration fluency.
+
+- Capture the existing test Rhino workspace with its real theme and colors.
+  Keep SceneFlow set to follow Rhino; do not substitute an unthemed standalone
+  Eto window, recolor screenshots, or impose a generic dark palette.
+- Show the actual enabled tool icon rail/tabs and surrounding Rhino context
+  first. Use the real option to expose the tool entries when needed; do not
+  paint fictitious navigation onto the interface.
+- Begin a teaching section with the full workspace. Outline the operation
+  panel and model viewport with two restrained frames, then smoothly carry
+  those same regions into a split layout. This establishes where the enlarged
+  content comes from. Do not repeat the full introduction for every click.
+- Keep settings on the left and the model on the right. Split views serve
+  readability; their widths may change with the teaching focus. Enlarge the
+  relevant control once, hold through the explanation/action, and return to
+  context at a natural boundary. Avoid repeated enlarge/shrink pulses.
+- Crop actual viewport pixels tightly enough to show the model, while
+  retaining useful margins. Clip source pixels explicitly: contain/letterbox
+  fitting must not reveal neighboring toolbars in the spare space.
+- Use genuine current controls for the main tutorial. An MCP-operated state
+  sequence with an editorial cursor is an edited demonstration, not continuous
+  mouse recording. Retain that provenance in the review page/manifest. Do not
+  imply drag, hover, menu or click behavior that was not actually verified.
+
+The existing source examples are `src/TutorialRhinoSampleV02.tsx` under
+`media/tutorial-en/` and its ignored source assets. Reuse framing ideas, not
+hard-coded window sizes, capture coordinates, PID, colors or old UI labels.
+Record these anew for the current session. Restore temporary preferences and
+case export settings after capture; do not overwrite the original case.
+
 ## Precise cursor coordinates
 
 For each cue record capture dimensions, desktop DPI, capture rectangle and target
