@@ -1,0 +1,107 @@
+[
+  {
+    "text": "Let's prepare a named view for a",
+    "startMs": 1500,
+    "endMs": 5620,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "layered export.",
+    "startMs": 5620,
+    "endMs": 6760,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "Open page size and choose the 4K",
+    "startMs": 6980,
+    "endMs": 9880,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "preset.",
+    "startMs": 9880,
+    "endMs": 11240,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "The width and height update together.",
+    "startMs": 11860,
+    "endMs": 15520,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "Next, expand PSD layers.",
+    "startMs": 16140,
+    "endMs": 19160,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "Keep plants, shadows, and material textures as",
+    "startMs": 19160,
+    "endMs": 25320,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "separate channels.",
+    "startMs": 25320,
+    "endMs": 27440,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "The eye controls visibility when the file",
+    "startMs": 28140,
+    "endMs": 31720,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "opens in Photoshop.",
+    "startMs": 31720,
+    "endMs": 32740,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "The check mark controls whether a channel",
+    "startMs": 33460,
+    "endMs": 36980,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "is exported.",
+    "startMs": 36980,
+    "endMs": 37960,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "These are different settings.",
+    "startMs": 38660,
+    "endMs": 41320,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "You can include a depth layer while",
+    "startMs": 42100,
+    "endMs": 45260,
+    "timestampMs": null,
+    "confidence": null
+  },
+  {
+    "text": "keeping it hidden.",
+    "startMs": 45260,
+    "endMs": 46980,
+    "timestampMs": null,
+    "confidence": null
+  }
+]

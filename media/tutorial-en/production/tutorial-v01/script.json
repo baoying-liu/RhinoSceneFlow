@@ -1,0 +1,366 @@
+{
+  "title": "SceneFlow — From a Rhino model to an AI image",
+  "chapters": [
+    {
+      "id": "T01",
+      "title": "The workflow",
+      "budget": 20
+    },
+    {
+      "id": "T02",
+      "title": "Download and install",
+      "budget": 60
+    },
+    {
+      "id": "T03",
+      "title": "Connect AI and MCP",
+      "budget": 60
+    },
+    {
+      "id": "T04",
+      "title": "Your Rhino workspace",
+      "budget": 20
+    },
+    {
+      "id": "T05",
+      "title": "Create a material",
+      "budget": 110
+    },
+    {
+      "id": "T06",
+      "title": "Real-world texture scale",
+      "budget": 40
+    },
+    {
+      "id": "T07",
+      "title": "Create and place plants",
+      "budget": 120
+    },
+    {
+      "id": "T08",
+      "title": "The completed case",
+      "budget": 90
+    },
+    {
+      "id": "T09",
+      "title": "Export Named Views",
+      "budget": 60
+    },
+    {
+      "id": "T10",
+      "title": "Inspect the PSD in PhotoCraft",
+      "budget": 60
+    },
+    {
+      "id": "T11",
+      "title": "Render in Web Studio",
+      "budget": 110
+    },
+    {
+      "id": "T12",
+      "title": "Guide a local revision",
+      "budget": 90
+    },
+    {
+      "id": "T13",
+      "title": "Finish in 4K",
+      "budget": 60
+    }
+  ],
+  "cues": [
+    {
+      "id": "T01-01",
+      "chapter": "T01",
+      "en": "Welcome to Scene Flow! Let's turn this simple Rhino model into a finished architectural image. We'll create a material, add plants, export a layered file, and guide an A I render, all with one practical case.",
+      "zh": "欢迎使用 SceneFlow！我们用同一案例，从简单 Rhino 模型开始，创建材质、加入植物、导出分层文件，再引导 AI 完成效果图。",
+      "budget": 20.0
+    },
+    {
+      "id": "T02-01",
+      "chapter": "T02",
+      "en": "Start on the Scene Flow GitHub Releases page. Choose the release you want, open Assets, and download the Windows E X E installer. The source code archive is for developers; it is not the installer.",
+      "zh": "从 SceneFlow 的 GitHub Releases 页面开始。展开对应版本的 Assets，下载 Windows EXE。源码压缩包不是安装程序。",
+      "budget": 20.0
+    },
+    {
+      "id": "T02-02",
+      "chapter": "T02",
+      "en": "Save your work and close Rhino before installing. Follow the installer prompts and let it check the required components. These setup screens illustrate the installation flow; the rest of our tutorial uses the actual software interface.",
+      "zh": "安装前保存工作并关闭 Rhino。按安装向导操作并检查所需组件。本段安装窗口为流程示意，后续使用真实软件界面。",
+      "budget": 20.0
+    },
+    {
+      "id": "T02-03",
+      "chapter": "T02",
+      "en": "Reopen Rhino and open the Scene Flow workspace. Keep this download page bookmarked for release notes and future versions. This tutorial uses a preview build, so follow the notices shown by that particular release.",
+      "zh": "重新打开 Rhino 并打开 SceneFlow 工作区。保留下载页面以查看更新说明；本教程使用预览版，请留意该版本的实际提示。",
+      "budget": 20.0
+    },
+    {
+      "id": "T03-01",
+      "chapter": "T03",
+      "en": "Next, open Settings from the tool dropdown. Find the environment and sign-in check. Let the check finish, and follow any sign-in instructions. Account access and image generation availability are separate checks, so read the actual result.",
+      "zh": "从顶部工具下拉菜单进入设置，执行环境与登录检查。等待完成并按提示登录；账号授权与生图能力不同，请看实际检查结果。",
+      "budget": 20.0
+    },
+    {
+      "id": "T03-02",
+      "chapter": "T03",
+      "en": "M C P is the connection that lets a compatible agent work with Rhino. It is separate from your A I account login. Use the original Rhino M C P platform and the connection details provided by your installation.",
+      "zh": "MCP 用于让兼容 Agent 连接 Rhino，与 AI 账号登录不同。使用原厂 Rhino MCP 平台和本次安装提供的连接信息。",
+      "budget": 20.0
+    },
+    {
+      "id": "T03-03",
+      "chapter": "T03",
+      "en": "If a check fails, use the settings link to resolve it before starting a generation. Don't keep clicking Generate. For this demonstration, we're using the isolated test Rhino and a working copy of the example model.",
+      "zh": "检查失败时，先通过设置入口解决，不要反复点击生成。本次演示使用隔离的测试 Rhino 与案例副本。",
+      "budget": 20.0
+    },
+    {
+      "id": "T04-01",
+      "chapter": "T04",
+      "en": "Here's our workspace. The Scene Flow tools are on the left, and the model is on the right. We'll keep this split steady, and use the dropdown at the top to switch tools as we go.",
+      "zh": "左侧是 SceneFlow 工具，右侧是模型。接下来保持稳定分屏，用顶部下拉菜单切换工具。",
+      "budget": 20.0
+    },
+    {
+      "id": "T05-01",
+      "chapter": "T05",
+      "en": "Let's start from the white model, without any planting. Select one wall first. That selection gives the material tool a clear target, and makes it easy to see exactly what changes when we apply the result.",
+      "zh": "先从没有植物的白膜开始，选择一面墙，明确材质工具的目标，也方便观察应用后的变化。",
+      "budget": 22.0
+    },
+    {
+      "id": "T05-02",
+      "chapter": "T05",
+      "en": "In A I Assets, describe the material you want. Be specific about the surface and pattern. For this wall, weathered vertical cedar with a fine grain is more useful than simply typing beautiful wood.",
+      "zh": "在 AI Assets 描述材质的表面和纹理。例如风化的竖向雪松细木纹，比单纯输入漂亮木材更明确。",
+      "budget": 22.0
+    },
+    {
+      "id": "T05-03",
+      "chapter": "T05",
+      "en": "You can attach a reference image when you have a particular finish in mind. Reuse first checks the existing library before making something new. That can save time and keep materials consistent across a project.",
+      "zh": "有明确饰面参考时可以添加图片。优先复用会先检索素材库，有助于节省等待时间并保持项目一致性。",
+      "budget": 22.0
+    },
+    {
+      "id": "T05-04",
+      "chapter": "T05",
+      "en": "Submit the description and watch the actual task feedback. A matching library material and a newly generated texture are different outcomes. Here we inspect the resulting texture before applying it. Generation waits are shortened in this video.",
+      "zh": "提交描述后查看任务反馈。复用已有材质和新生成贴图是不同结果。先检查纹理再应用；视频压缩了生成等待。",
+      "budget": 22.0
+    },
+    {
+      "id": "T05-05",
+      "chapter": "T05",
+      "en": "Now choose the application scope. Apply to this object changes the selected wall; apply to its layer affects that layer's material assignment. For a first test, use the object scope so the result stays easy to inspect.",
+      "zh": "选择应用范围：物体范围作用于选中墙体，图层范围用于该图层的材质分配。第一次测试先应用到单个物体，便于检查。",
+      "budget": 22.0
+    },
+    {
+      "id": "T06-01",
+      "chapter": "T06",
+      "en": "A texture also needs a physical size. Think of it as a measured piece of material, not a picture stretched across an entire building. Check the wood grain against doors and other familiar dimensions.",
+      "zh": "贴图还需要真实尺寸。它代表一块有尺寸的材料，而不是铺满整栋建筑的一张图片。可用门等熟悉尺度检查木纹比例。",
+      "budget": 20.0
+    },
+    {
+      "id": "T06-02",
+      "chapter": "T06",
+      "en": "Scene Flow prepares physical-scale U V mapping when the target needs it. If the pattern still looks too large or too small, inspect the material dimensions and mapping. Don't compensate by changing the building's geometry.",
+      "zh": "需要时 SceneFlow 会先准备真实尺度 UV。纹理比例不合适时检查材质尺寸和映射，不要通过缩放建筑几何补偿。",
+      "budget": 20.0
+    },
+    {
+      "id": "T07-01",
+      "chapter": "T07",
+      "en": "Let's make one plant using the same A I chat. Describe a real plant and the look you need, or specify its scientific name. The workflow checks botanical identity and existing assets before generating a new transparent image.",
+      "zh": "用同一个 AI 对话创建植物。描述真实植物及需求，或填写学名。流程会先核实物种并检索已有素材，再生成透明图片。",
+      "budget": 24.0
+    },
+    {
+      "id": "T07-02",
+      "chapter": "T07",
+      "en": "Review the plant asset in the library. The scientific name stays consistent across interface languages. Elevation and plan images serve different camera angles, so check that both are available before testing a top view.",
+      "zh": "在植物库检查素材。学名不随语言变化；立面与平面素材用于不同视角，测试俯视前应确认两种图片都存在。",
+      "budget": 24.0
+    },
+    {
+      "id": "T07-03",
+      "chapter": "T07",
+      "en": "For a single plant, start point placement and choose a position on the carrier surface. For a planted area, add the asset to the composition, select the surface or mesh, and use scattering. The plants stay upright in world space.",
+      "zh": "单株可用点选放置；成片种植则将素材加入组合，选择承载曲面或网格再散布。植物保持世界 Z 轴朝上。",
+      "budget": 24.0
+    },
+    {
+      "id": "T07-04",
+      "chapter": "T07",
+      "en": "Adjust density first, then the random size range. Change the layout seed to try another arrangement without replacing the plant asset. Keep spacing in mind, and use avoidance objects where plants should stay clear of buildings or other geometry.",
+      "zh": "先调整密度，再调整随机大小范围。改变布局种子可尝试另一排列；注意植物间距，并用避让物件避开建筑或其他几何。",
+      "budget": 24.0
+    },
+    {
+      "id": "T07-05",
+      "chapter": "T07",
+      "en": "This planting is a group with editable parameters. Keep the group selected when changing the overall layout. Individual editing is a separate operation; use it when you want to move or customize just one plant.",
+      "zh": "散布结果是带参数的组合。修改整体布局时选中组合；仅移动或自定义单株时使用单独编辑。",
+      "budget": 24.0
+    },
+    {
+      "id": "T08-01",
+      "chapter": "T08",
+      "en": "To avoid repeating the same steps across every surface, we'll continue with a prepared version of this same case. The remaining materials and planting have already been applied. This is a checkpoint, not a one-click generation of the whole site.",
+      "zh": "为避免重复处理每个表面，现在切到同一案例预先完成的版本，其余材质和植物已应用。这是检查点，并非一键生成整个场地。",
+      "budget": 22.5
+    },
+    {
+      "id": "T08-02",
+      "chapter": "T08",
+      "en": "Now rotate the real Rhino view. Notice how the plant images turn with the camera while the planting positions stay fixed. This gives a readable canopy from different viewpoints without moving the trees around the site.",
+      "zh": "转动 Rhino 视图，观察植物随相机转向，而种植位置保持不变，不是让树在场地上移动。",
+      "budget": 22.5
+    },
+    {
+      "id": "T08-03",
+      "chapter": "T08",
+      "en": "Move toward a top view and inspect the switch to plan images. In Settings, the plant display controls define which angle ranges use upright following, free facing, or a plan image. Check the height ratio there as well.",
+      "zh": "切到俯视，检查平面素材切换。设置中可调整直立跟随、自由朝向和平面图对应的角度区间，以及平面图的高度比例。",
+      "budget": 22.5
+    },
+    {
+      "id": "T08-04",
+      "chapter": "T08",
+      "en": "We can also change the viewport display mode to make a point clearer. Rendered helps inspect materials; Arctic helps read the overall form. This changes the preview, not the model geometry or the list of export channels.",
+      "zh": "可切换视口显示模式帮助观察：渲染模式查看材质，极地模式查看体块。这改变预览，不改变模型几何或导出通道列表。",
+      "budget": 22.5
+    },
+    {
+      "id": "T09-01",
+      "chapter": "T09",
+      "en": "Switch to P S D View export using the top dropdown. Choose a Named View, or create one from the current camera. Give it a useful name so the exported file is easy to identify later.",
+      "zh": "通过顶部下拉菜单进入 PSD 导出。选择已命名视图，或从当前镜头创建一个，并使用容易辨认的名称。",
+      "budget": 20.0
+    },
+    {
+      "id": "T09-02",
+      "chapter": "T09",
+      "en": "Expand Output dimensions and set the required width and height. Check the composition and sunlight before export. Choose the actual P S D channels you need, and keep their order clear from top to bottom.",
+      "zh": "展开输出尺寸，设置宽高，导出前检查构图和太阳。选择实际需要的 PSD 通道，确认从上到下的顺序。",
+      "budget": 20.0
+    },
+    {
+      "id": "T09-03",
+      "chapter": "T09",
+      "en": "The checkbox includes a channel in the export. The eye sets whether it is initially visible in the P S D. These are independent settings. Choose the output folder, export, and wait for a completed result before opening the file.",
+      "zh": "勾选框决定是否导出通道，眼睛决定 PSD 打开时是否显示，两者独立。选择文件夹并导出，确认完成后再打开。",
+      "budget": 20.0
+    },
+    {
+      "id": "T10-01",
+      "chapter": "T10",
+      "en": "Let's open that exported P S D in Photo Craft on the right. These are the real exported layers. We can inspect their visibility without replacing the source model or flattening the file.",
+      "zh": "在右侧 PhotoCraft 打开实际导出的 PSD。这里是真实图层，可检查显示状态，不需要替换模型或把文件压平。",
+      "budget": 20.0
+    },
+    {
+      "id": "T10-02",
+      "chapter": "T10",
+      "en": "Plants live above the non-plant layers. Plant shadows can be separated inside the plant group. Material textures can stay separated by material, so we can inspect the cedar, wall finish, grass, and other surfaces independently.",
+      "zh": "植物位于非植物层上方，植物阴影可单独放在植物组内。材质贴图可按材质分层，从而分别检查木材、墙面、草地等。",
+      "budget": 20.0
+    },
+    {
+      "id": "T10-03",
+      "chapter": "T10",
+      "en": "The supporting layers include Arctic, depth, and material colors. Depth describes relative distance; material colors help identify surface regions. Hidden layers still contain data when included. We'll decide separately which channels the A I should consider.",
+      "zh": "辅助层包括极地、深度和材质颜色。深度表示前后距离，材质颜色区分区域。隐藏并不等于没有数据；AI 是否参考还要单独设置。",
+      "budget": 20.0
+    },
+    {
+      "id": "T11-01",
+      "chapter": "T11",
+      "en": "Open Web Studio from Scene Flow and bring in the same P S D. You can also import a saved file from disk. Start with one image so the source, its settings, and the result remain easy to follow.",
+      "zh": "从 SceneFlow 打开 Web Studio，导入同一 PSD，也可以从磁盘导入。先用一张图，便于理解来源、设置与结果。",
+      "budget": 22.0
+    },
+    {
+      "id": "T11-02",
+      "chapter": "T11",
+      "en": "The list view is useful for parameters and comparison. The canvas is useful for spatial notes, references, and branching ideas. They are two views of the same project, and you can locate an image in either one.",
+      "zh": "列表适合参数与对比，画布适合空间标注、参考图和分支尝试。两者对应同一项目，可互相定位图片。",
+      "budget": 22.0
+    },
+    {
+      "id": "T11-03",
+      "chapter": "T11",
+      "en": "Create a child draft from the original. The original stays traceable, and the new draft has its own settings. Write a concise description of the intended result, then check the fuller instructions before updating the image.",
+      "zh": "从原图创建子级草稿，保留原始来源，为新图配置设置。先输入简洁意图，再检查完整描述，最后更新图片。",
+      "budget": 22.0
+    },
+    {
+      "id": "T11-04",
+      "chapter": "T11",
+      "en": "For a layered P S D, review which layers participate in the A I request. Initial P S D visibility is a useful default, but participation is a separate choice. Supporting channels provide guidance; they are not a guarantee of unchanged geometry.",
+      "zh": "检查各 PSD 层是否参与 AI 请求。初始显示状态可作为默认，但参与计算是独立设置；辅助通道是引导，不是几何完全不变的保证。",
+      "budget": 22.0
+    },
+    {
+      "id": "T11-05",
+      "chapter": "T11",
+      "en": "Run the whole-image stage first. When it finishes, drag the comparison divider to inspect architecture, paths, trees, and surface changes. Look at the whole result before spending time on high-resolution refinement.",
+      "zh": "先执行整图阶段，完成后拖动对比杆，检查建筑、路径、树和表面变化。确认整图效果后再做高清细化。",
+      "budget": 22.0
+    },
+    {
+      "id": "T12-01",
+      "chapter": "T12",
+      "en": "For a focused revision, create another child and apply its parent as the working image. This gives us something clear to annotate while preserving the earlier result and its source relationship.",
+      "zh": "局部修改时创建另一个子级，并应用父级作为工作图。这样既能清楚标注，也保留之前的结果与来源关系。",
+      "budget": 22.5
+    },
+    {
+      "id": "T12-02",
+      "chapter": "T12",
+      "en": "On the canvas, draw an arrow toward the target, add a short text instruction, and place a relevant reference image nearby. Keep these inside the image's context boundary so the request can consider their positions together.",
+      "zh": "在画布用箭头指向目标，添加简短说明与参考图。将它们放入对应图片的考虑边界，让请求同时理解内容与空间位置。",
+      "budget": 22.5
+    },
+    {
+      "id": "T12-03",
+      "chapter": "T12",
+      "en": "The boundary defines what belongs to this request. Notes outside it can stay on the board without participating yet. Move a resource or adjust the boundary when you want it included, then review the actual inputs.",
+      "zh": "考虑边界决定本次请求包含哪些内容，框外资源可以暂存。需要纳入时移动素材或调整边界，并检查实际输入。",
+      "budget": 22.5
+    },
+    {
+      "id": "T12-04",
+      "chapter": "T12",
+      "en": "Update the image and compare the revision with its parent. Inspect the marked area and the surrounding architecture. If something is wrong, adjust the instruction or retry that revision instead of losing the earlier successful image.",
+      "zh": "更新后对比父级，既检查标注区域，也检查周围建筑。若不理想，修改说明或重试本次版本，保留之前成功的结果。",
+      "budget": 22.5
+    },
+    {
+      "id": "T13-01",
+      "chapter": "T13",
+      "en": "Once the whole image is approved, move to high-resolution refinement. Choose the output size and inspect the tile plan. The system refines overlapping regions and assembles the result; it does not simply resize the preview.",
+      "zh": "确认整图后进入高清细化，选择尺寸并检查分块计划。流程会细化重叠区域再合并，而不只是放大预览。",
+      "budget": 20.0
+    },
+    {
+      "id": "T13-02",
+      "chapter": "T13",
+      "en": "Watch the task status, and review any block that needs attention. Retry the affected block when possible. After completion, check the actual exported dimensions and inspect important edges and joins at full size.",
+      "zh": "查看任务状态并检查异常块，必要时仅重试相关分块。完成后核对实际尺寸，并以原尺寸查看重要边缘与拼接处。",
+      "budget": 20.0
+    },
+    {
+      "id": "T13-03",
+      "chapter": "T13",
+      "en": "Export the finished image and save the board so you can continue later. That's the workflow: build a clear model, control materials and planting, keep a layered handoff, and use A I with traceable revisions. Thanks for following along!",
+      "zh": "导出成品并保存画板。完整流程是：清晰模型、可控材质与种植、分层交接，以及可追溯的 AI 修改。感谢观看！",
+      "budget": 20.0
+    }
+  ]
+}
