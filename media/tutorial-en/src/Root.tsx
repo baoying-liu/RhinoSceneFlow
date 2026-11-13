@@ -1,3 +1,4 @@
+import {TransitionShowcase,TransitionOption} from './PromoTransitions';
 import {RevisionSingleMaterialBefore,RevisionSingleMaterialAfter,RevisionSinglePlantBefore,RevisionSinglePlantAfter} from './PromoRevisionKeyframes';
 import {RevisionMaterial,RevisionPlant,RevisionCamera,RevisionLayers,RevisionPrepare,RevisionCompare,RevisionCanvas,RevisionHd} from './PromoRevisionKeyframes';
 import { Composition, Still } from "remotion";
@@ -10,6 +11,8 @@ import { WorkflowMaterial, WorkflowPlantRules, WorkflowCamera, WorkflowSeasons, 
 export const RemotionRoot: React.FC = () => {
   return (
     <>
+<Composition id="Transition-Showcase-v04" component={TransitionShowcase} durationInFrames={750} fps={30} width={1920} height={1080}/>
+<Composition id="Transition-Option" component={TransitionOption} durationInFrames={150} fps={30} width={1920} height={1080} defaultProps={{kind:0}}/>
 <Still id="Revision-Single-MaterialBefore" component={RevisionSingleMaterialBefore} width={1920} height={1080}/>
 <Still id="Revision-Single-MaterialAfter" component={RevisionSingleMaterialAfter} width={1920} height={1080}/>
 <Still id="Revision-Single-PlantBefore" component={RevisionSinglePlantBefore} width={1920} height={1080}/>
