@@ -1,5 +1,6 @@
 import { Composition, Still } from "remotion";
 import { Intro } from "./Intro";
+import {PromoFilm} from './PromoFilm';
 import { PromoLayers, PromoOpening, PromoPossibilities } from "./PromoKeyframes";
 import { PromoSample } from "./PromoSample";
 import { WorkflowMaterial, WorkflowPlantRules, WorkflowCamera, WorkflowSeasons, WorkflowPsdDock, WorkflowAiWorlds, WorkflowLocalEdit } from "./PromoWorkflowKeyframes";
@@ -7,6 +8,7 @@ import { WorkflowMaterial, WorkflowPlantRules, WorkflowCamera, WorkflowSeasons, 
 export const RemotionRoot: React.FC = () => {
   return (
     <>
+      <Composition id="SceneFlow-Promo-Film-v02" component={PromoFilm} durationInFrames={3600} fps={30} width={1920} height={1080}/>
       <Still id="Workflow-01-Material-Chat" component={WorkflowMaterial} width={1920} height={1080}/>
       <Still id="Workflow-02-Plant-Rules" component={WorkflowPlantRules} width={1920} height={1080}/>
       <Still id="Workflow-03-Camera" component={WorkflowCamera} width={1920} height={1080}/>

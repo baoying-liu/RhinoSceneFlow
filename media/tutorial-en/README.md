@@ -3,6 +3,10 @@
 Personal open-source project presentation for company sharing. Target: 23 minutes,
 maximum 30. English narration, English application UI, English captions.
 
+## Cinematic introduction v02 (120 seconds)
+
+`SceneFlow-Promo-Film-v02` is the new 1080p, 30 fps promotional composition with original music. It covers actual Rhino orbit captures, material application, plants, seasons, PSD channels, AI styles, annotation edits and the actual 4K result. Interaction panels are visualizations; this is distinct from the longer narrated tutorial below. See [production notes](production/Promo-Film-v02.md). The editable project and media are delivered in the shared OneDrive Video folder.
+
 ## Current state
 
 `SceneFlow-Style-Preview` is a **72-second silent visual study**, not a completed
