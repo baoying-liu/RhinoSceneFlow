@@ -1,3 +1,4 @@
+import {RevisionSingleMaterialBefore,RevisionSingleMaterialAfter,RevisionSinglePlantBefore,RevisionSinglePlantAfter} from './PromoRevisionKeyframes';
 import {RevisionMaterial,RevisionPlant,RevisionCamera,RevisionLayers,RevisionPrepare,RevisionCompare,RevisionCanvas,RevisionHd} from './PromoRevisionKeyframes';
 import { Composition, Still } from "remotion";
 import { Intro } from "./Intro";
@@ -9,6 +10,10 @@ import { WorkflowMaterial, WorkflowPlantRules, WorkflowCamera, WorkflowSeasons, 
 export const RemotionRoot: React.FC = () => {
   return (
     <>
+<Still id="Revision-Single-MaterialBefore" component={RevisionSingleMaterialBefore} width={1920} height={1080}/>
+<Still id="Revision-Single-MaterialAfter" component={RevisionSingleMaterialAfter} width={1920} height={1080}/>
+<Still id="Revision-Single-PlantBefore" component={RevisionSinglePlantBefore} width={1920} height={1080}/>
+<Still id="Revision-Single-PlantAfter" component={RevisionSinglePlantAfter} width={1920} height={1080}/>
       <Still id="Revision-01-Material" component={RevisionMaterial} width={1920} height={1080}/>
       <Still id="Revision-02-Plant" component={RevisionPlant} width={1920} height={1080}/>
       <Still id="Revision-03-Camera" component={RevisionCamera} width={1920} height={1080}/>
