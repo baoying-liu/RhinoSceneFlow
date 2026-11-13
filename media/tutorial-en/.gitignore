@@ -8,3 +8,6 @@ out
 
 # Generated original score; reproducible from production/make-film-score.py
 public/audio/sceneflow-film-120.wav
+
+# Reproducible section-scored sample soundtrack
+public/audio/sceneflow-sample-v05.wav
