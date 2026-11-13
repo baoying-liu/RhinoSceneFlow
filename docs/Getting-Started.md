@@ -1,5 +1,10 @@
 # Install the public preview
 
+Watch [Tutorial 1: installation to 4K rendering](https://youtu.be/-htcKoRhU-o)
+for a 15-minute walkthrough with English narration, captions and chapters.
+For a quick overview, see the [feature introduction](https://youtu.be/jZdimsuU_Iw).
+Both are in the [RhinoSceneFlow playlist](https://www.youtube.com/playlist?list=PLdXJS4Sb8Mno).
+
 ## Requirements
 
 - Windows x64, licensed Rhino **8.34 or later in the Rhino 8 series**, .NET 8 host.
@@ -13,7 +18,7 @@
 
 ## Install
 
-1. Download `SceneFlow-Setup-0.23.2-win-x64.exe` and `SHA256SUMS.txt` from
+1. Download `SceneFlow-Setup-0.23.3-win-x64.exe` and `SHA256SUMS.txt` from
    [Releases](https://github.com/baoying-liu/RhinoSceneFlow/releases).
    Verify the downloaded file with PowerShell `Get-FileHash -Algorithm SHA256`.
    This preview is unsigned; its publisher is not yet verified by Windows.

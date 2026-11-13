@@ -6,6 +6,14 @@ AI assets → physical-scale materials and UV → planting → layered PSD → A
 
 [Download the preview](https://github.com/baoying-liu/RhinoSceneFlow/releases/tag/v0.23.3) · [Installation guide](docs/Getting-Started.md) · [Report an issue](https://github.com/baoying-liu/RhinoSceneFlow/issues)
 
+## Videos
+
+- [Feature introduction](https://youtu.be/jZdimsuU_Iw) — a 4-minute overview of
+  AI materials, planting, layered PSD export and AI rendering.
+- [Tutorial 1: installation to 4K rendering](https://youtu.be/-htcKoRhU-o) —
+  15 minutes, with English narration, English captions and chapter navigation.
+- [RhinoSceneFlow playlist](https://www.youtube.com/playlist?list=PLdXJS4Sb8Mno)
+
 ## Features
 
 - **AI assets:** text/image references, existing-asset reuse, local shared libraries,
