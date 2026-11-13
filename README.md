@@ -8,11 +8,12 @@ AI assets → physical-scale materials and UV → planting → layered PSD → A
 
 ## Videos
 
-- [Feature introduction](https://youtu.be/jZdimsuU_Iw) — a 4-minute overview of
-  AI materials, planting, layered PSD export and AI rendering.
-- [Tutorial 1: installation to 4K rendering](https://youtu.be/-htcKoRhU-o) —
-  15 minutes, with English narration, English captions and chapter navigation.
-- [RhinoSceneFlow playlist](https://www.youtube.com/playlist?list=PLdXJS4Sb8Mno)
+| Feature introduction | Tutorial 1: installation to 4K rendering |
+| --- | --- |
+| [![Watch the SceneFlow feature introduction](docs/images/video-introduction.jpg)](https://youtu.be/jZdimsuU_Iw) | [![Watch the first SceneFlow tutorial](docs/images/video-tutorial-01.jpg)](https://youtu.be/-htcKoRhU-o) |
+| **[Watch on YouTube](https://youtu.be/jZdimsuU_Iw)** · 4 min<br>AI materials, planting, layered PSD and AI rendering. | **[Watch on YouTube](https://youtu.be/-htcKoRhU-o)** · 15 min<br>English narration, captions and chapters. |
+
+Click a preview to watch, or browse the [RhinoSceneFlow playlist](https://www.youtube.com/playlist?list=PLdXJS4Sb8Mno).
 
 ## Features
 
