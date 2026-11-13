@@ -1,0 +1,4 @@
+interface:
+  display_name: "SceneFlow Tutorial"
+  short_description: "Plan and produce accurate bilingual SceneFlow tutorials"
+  default_prompt: "Use $sceneflow-tutorial to plan or produce a SceneFlow tutorial from real Rhino and Web workflows."

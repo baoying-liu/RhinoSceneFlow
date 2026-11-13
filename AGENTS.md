@@ -68,6 +68,11 @@ For icon selection, vector drawing or icon export work, use the project-local
 Rhino/Web semantics and small-size/theme verification; ordinary layout or label
 edits do not require an icon redesign.
 
+For tutorial planning, real UI capture, cursor/zoom overlays, bilingual scripts,
+voice and subtitle production, use the project-local
+[SceneFlow Tutorial skill](.agents/skills/sceneflow-tutorial/SKILL.md).
+It does not apply to ordinary plugin implementation or unrelated media work.
+
 ## Required technical contracts
 
 Before modifying an affected subsystem, read its section of
