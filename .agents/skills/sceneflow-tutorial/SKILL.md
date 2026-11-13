@@ -48,6 +48,8 @@ generation; editable parameters versus immutable result pixels.
 - Follow the current test Rhino's actual theme, docked layout and enabled tool
   icons. Establish the full workspace, outline the settings panel and model
   viewport, then smoothly reframe those same regions into readable split views.
+  Keep the split stable across Rhino tools; use the real top tool dropdown.
+  Return to full view only when it adds necessary orientation, not per action.
   See the confirmed case direction in [capture and edit](references/capture-and-edit.md).
 - Explicitly label compressed waits. Queued or unverified work is not completed.
 
