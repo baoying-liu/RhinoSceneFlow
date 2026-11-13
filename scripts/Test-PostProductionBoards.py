@@ -50,7 +50,7 @@ try:
  snap=dict(node=node,image=str(out/'boards'/bid/'assets'/node['asset']),references=[dict(path=str(out/'rough-house.png'),clip=[0,0,1,1],relativePose=dict(x=500,y=50,width=100,height=100),node=dict(id=uuid.uuid4().hex,params=dict(referencePurpose='material'))) for _ in range(4)])
  (test/'snapshot.json').write_text(json.dumps(snap));worker('prepare',test)
  with Image.open(test/'reference-sheet.png') as sheet:assert sheet.size==(1536,1536)
- Image.new('RGB',(1536,1536),(235,100,55)).save(test/'generated.png');worker('finish',test)
+ Image.new('RGB',(640,480),(235,100,55)).save(test/'generated.png');worker('finish',test)
  a=np.asarray(Image.open(test/'base.png'));r=np.asarray(Image.open(test/'result.png'));m=np.asarray(Image.open(test/'mask.png'))
  assert np.any(m==0) and np.any(m>0) and np.array_equal(a[m==0],r[m==0]) and np.array_equal(a[:,:,3],r[:,:,3])
  assert np.count_nonzero(np.any(a[:,:,:3]!=r[:,:,:3],axis=2))>10000

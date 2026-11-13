@@ -1164,3 +1164,53 @@ SHA-256 is `97977C5B69A575D29CEDFD9FD11893E72F4D2D3A9A4FEF9554679D72D9EE166D`;
 logs are artifacts/signpath-metadata-*.log. These later changes were not part of that
 first hosted run. No new signed build, application submission or stable release
 has occurred; the exact future signed commit still requires its own validation.
+# Home B verification — 2026-11-12, 0.23.2
+
+Rebuilt and actually loaded 0.23.2 in home channel B, PID 67192, deployment
+`20261113-021822-23d9d3bd25da47c89530b29fac20ac5a` (UTC build identifier).
+Original Platform MCP was used throughout. The preceding instance's UnknownExit
+was reviewed and acknowledged: exit code 0, no crash events/dumps; this does not
+retroactively certify a normal exit.
+
+An isolated copy of the shared Hillside example retained 70 objects and 14 Named
+Views. Reconnected 11 materials and two plant records. Fixed the handoff helper
+to relink the absolute `spec.assets[].image` paths inside planting groups as well
+as the material library. Verified 15 plants, top-plan/human-elevation switching,
+nine panel states with no initialization errors, native previews and a real
+800x450 layered PSD independently decoded with psd-tools. Hidden depth/material
+color passes remained hidden. Saved `SceneFlow-Home-Ready.3dm` separately.
+
+Gracefully stopped an idle stale sandbox Web service (0.22.19), then verified
+actual Web 0.23.2, fresh PSD import (25 flattened layer records), ready generation
+preflight and package import (eight nodes). Authenticated Playwright refresh
+reported zero HTTP failures, page errors or broken displayed images. Imported
+old board nodes can show pending/not-generated status despite retained imagery;
+state/ancestry recovery is not certified by image loading alone. No model calls
+or image generation were made in this verification. Evidence is under ignored
+`artifacts/home-check-20261112/`; no production installation or release changed.
+
+# Native-aspect whole-image inputs — 0.23.3 development
+
+The real 1280x720 collage exposed a 61-row white top band. Its generated square
+had changed the placement/height of the letterboxed scene; fixed-coordinate
+backfill therefore included padding. The full source mask was editable, ruling
+out protected PSD pixels as the cause.
+
+New whole-image inputs/masks use the output aspect directly. The finish worker
+rejects aspect-ratio mismatch above 2.5%; it does not guess whitespace crops.
+Old frozen preparations retain legacy square backfill. `Test-WholeImageAspect`
+passed landscape/portrait/square identity and exact edge-marker oracles,
+mismatched-output rejection and old-task compatibility. TaskInputs,
+PsdParticipation, CanvasContext, BoardWorkflow, PostProductionBoards and real
+Hillside RasterStability passed without model calls. Build.ps1 packaged 0.23.3
+with core and UI-text validation passing. Actual home B loaded deployment
+`20261113-024422-f197c5b9b73c4b2ea831bba1555ce6fd`, PID 145148; Web startup
+independently reported 0.23.3. A new local top-strip edit is tracked in
+`artifacts/reference-style-20261112/border-fix.json`; only a completed receipt
+with pixel checks certifies its corrected image. The actual correction completed:
+model output 1672x941, native input 1280x720, no top white rows, and every pixel
+outside the 72-row editable strip plus the full alpha channel remained exact.
+The original image is retained; the corrected PNG and new board package were
+saved alongside it in OneDrive and linked from the review gallery.
+This development build has not
+been published to GitHub or installed into production Rhino.

@@ -22,6 +22,15 @@ Navigation:
 
 ## Studio and PhotoCraft
 
+- v0.23.3: new whole-image clean inputs and masks use their native target aspect,
+  tagged `inputLayout:native-aspect-v1`; spatial/guide sheets remain independent.
+  Never reintroduce fixed square letterbox cropping for new whole tasks. Reject
+  generated aspect mismatch above 2.5% before publication, preserving frozen
+  old square preparations and exact protected pixels/alpha. Do not infer crops
+  from white pixels: white backgrounds can be intentional. Regress
+  Test-WholeImageAspect, TaskInputs, PsdParticipation, CanvasContext,
+  PostProductionBoards and RasterStability. HD tile context padding is separate.
+
 - v0.22.19: native assembly, Web service version.txt and browser STUDIO_VERSION
   derive from Directory.Build.props; packaging rejects a mismatched service or
   browser version. Recover tasks before loading the editable board revision.

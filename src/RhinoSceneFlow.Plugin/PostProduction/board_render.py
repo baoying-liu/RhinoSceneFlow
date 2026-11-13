@@ -127,13 +127,14 @@ def prepare(folder):
     mask=Image.fromarray(arr.astype(np.uint8));mask.save(folder/'mask.png');im.save(folder/'base.png')
     preview=im.copy();preview.thumbnail((1200,1200));preview.save(folder/'base-preview.png')
     markup=Image.composite(markup,im,clip)
-    # A square letterbox gives deterministic coordinate backfill for arbitrary model output sizes.
-    scale=1536/max(w,h);rw,rh=max(1,round(w*scale)),max(1,round(h*scale));ox,oy=(1536-rw)//2,(1536-rh)//2
+    # The model must see the actual output canvas. Square padding is visually
+    # ambiguous: models can resize/shift its margins, leaking white into output.
+    # The separate context diagram/guide sheets may remain square.
     for name,image,bg in [('input',im,'white'),('markup',markup,'white'),('editable',mask,0)]:
-        target=Image.new('RGB' if name!='editable' else 'L',(1536,1536),bg);small=image.resize((rw,rh),Image.Resampling.LANCZOS if name!='editable' else Image.Resampling.NEAREST)
-        target.paste(small,(ox,oy),small.getchannel('A') if small.mode=='RGBA' else None);target.save(folder/(name+'.png'))
+        target=Image.new('RGB' if name!='editable' else 'L',(w,h),bg)
+        target.paste(image,(0,0),image.getchannel('A') if image.mode=='RGBA' else None);target.save(folder/(name+'.png'))
     spatial=context_diagram(folder,s,im,enabled)
-    write_json(folder/'prepared.json',dict(guides=guides,sourceAdjusted=not np.array_equal(original,np.asarray(im)),scope='local' if use_edits else 'whole',spatial=spatial,width=w,height=h,offset=[ox,oy],size=[rw,rh],editablePixels=int(np.count_nonzero(arr)),totalPixels=w*h,notes=notes))
+    write_json(folder/'prepared.json',dict(inputLayout='native-aspect-v1',guides=guides,sourceAdjusted=not np.array_equal(original,np.asarray(im)),scope='local' if use_edits else 'whole',spatial=spatial,width=w,height=h,offset=[0,0],size=[w,h],editablePixels=int(np.count_nonzero(arr)),totalPixels=w*h,notes=notes))
     for i,r in enumerate(s.get('references',[])):
         ref=opened(r['path']);clip=r['clip'];left=max(0,min(ref.width-1,math.floor(clip[0]*ref.width)));top=max(0,min(ref.height-1,math.floor(clip[1]*ref.height)))
         ref=ref.crop((left,top,max(left+1,min(ref.width,math.ceil(clip[2]*ref.width))),max(top+1,min(ref.height,math.ceil(clip[3]*ref.height)))))
@@ -191,9 +192,19 @@ def context_diagram(folder,s,im,marks):
 
 def finish(folder):
     s=read_json(folder/'snapshot.json');p=read_json(folder/'prepared.json');base=opened(folder/'base.png');raw=opened(folder/'generated.png')
-    if raw.width*raw.height>16_777_216 or abs(raw.width/raw.height-1)>.025:raise ValueError('Expected a square letterboxed result; refused distorted backfill')
-    generated=list(raw.size);raw=raw.resize((1536,1536),Image.Resampling.LANCZOS);x,y=p['offset'];w,h=p['size']
-    candidate=raw.crop((x,y,x+w,y+h)).resize(base.size,Image.Resampling.LANCZOS)
+    if raw.width*raw.height>16_777_216:raise ValueError('Generated image exceeds the pixel limit')
+    generated=list(raw.size)
+    if p.get('inputLayout')=='native-aspect-v1':
+        # Allow only rounding differences, not square-to-rectangle stretching or
+        # guessed whitespace crops. White backgrounds may be intentional.
+        if abs(raw.width/raw.height/(base.width/base.height)-1)>.025:
+            raise ValueError(f'Generated image aspect ratio does not match the requested {base.width}:{base.height} canvas. No image was published; retry with the requested aspect ratio.')
+        candidate=raw.resize(base.size,Image.Resampling.LANCZOS)
+    else:
+        # Frozen pre-change tasks retain their original coordinate contract.
+        if abs(raw.width/raw.height-1)>.025:raise ValueError('Expected a square letterboxed result; refused distorted backfill')
+        raw=raw.resize((1536,1536),Image.Resampling.LANCZOS);x,y=p['offset'];w,h=p['size']
+        candidate=raw.crop((x,y,x+w,y+h)).resize(base.size,Image.Resampling.LANCZOS)
     a=np.asarray(base);b=np.asarray(candidate);m=np.asarray(Image.open(folder/'mask.png')).astype(np.float32)/255
     rgb=np.clip(np.round(a[:,:,:3].astype(np.float32)*(1-m[:,:,None])+b[:,:,:3].astype(np.float32)*m[:,:,None]),0,255).astype(np.uint8)
     rgb[m==0]=a[:,:,:3][m==0];result=Image.fromarray(np.dstack([rgb,a[:,:,3]]));result.save(folder/'result.png')

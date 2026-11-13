@@ -917,3 +917,26 @@ Full evidence and synthetic-browser limitations are recorded in Validation.md.
 Rhino update prompts required the user's No responses during orderly restarts;
 no process was forcibly killed. No production registration, publication, user
 mouse control, credentials or real AI image generation was involved.
+# Home handoff verification — 2026-11-12
+
+Home B `0d327c4c84f644f089b73834ffd93cfe`, PID 67192, actually loaded 0.23.2
+from `20261113-021822-23d9d3bd25da47c89530b29fac20ac5a`. Checked the shared
+Hillside model on an isolated local copy: library relinking including persisted
+plant snapshots, top-plan switching, panel initialization, layered PSD export and
+Web import/preflight. No AI generation/model calls were issued. Sandbox Web's
+old 0.22.19 service was shut down through its own idle-only shutdown endpoint;
+the production service and production Rhino were untouched. Retained UnknownExit
+evidence from the preceding instance, and the imported-board pending-state
+limitation. See `artifacts/home-check-20261112/validation.json`, `psd-check.json`,
+`save-ready.json` and the home verification entry in Validation.md.
+
+# 0.23.3 whole-image border repair — home B
+
+Actually loaded 0.23.3 into home B, PID 145148, deployment
+`20261113-024422-f197c5b9b73c4b2ea831bba1555ce6fd`. Previous case was saved
+before graceful manager replacement, then the home-ready copy was reopened.
+Stopped the idle sandbox Web service normally and verified new Web 0.23.3.
+Whole-image native-aspect inputs replace the square letterbox contract for new
+tasks; frozen older tasks remain compatible. See Validation.md and
+`artifacts/reference-style-20261112/border-fix.json` for actual image outcomes.
+Production Rhino, release feed and published 0.23.2 were not changed.

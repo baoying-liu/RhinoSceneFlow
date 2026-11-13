@@ -51,7 +51,7 @@ assert not psd_guides.settings([parent,childrow],dict(layerParticipation={childr
 
 off,off_info=prepare('facade-off',dict(layerParticipation={by_name['Facade']:False}))
 mask=np.array(Image.open(off/'mask.png'));assert not np.any(mask[16:55,12:39]);assert np.any(mask[:12,:])
-Image.new('RGB',(1536,1536),'#81b8ce').save(off/'generated.png');board_render.finish(off)
+Image.new('RGB',(96,72),'#81b8ce').save(off/'generated.png');board_render.finish(off)
 result=np.array(Image.open(off/'result.png'));assert np.array_equal(result[16:55,12:39],canonical[16:55,12:39])
 assert np.array_equal(result[:,:,3],canonical[:,:,3])
 try:prepare('all-off',dict(layerParticipation={l['id']:False for l in rows}))
@@ -73,7 +73,7 @@ class FakeGeneration:
     image_gate=asyncio.Lock()
     async def image(self,job,folder,brief,images):
         calls.append(dict(brief=brief,images=[str(p) for p in images],hashes=[hashlib.sha256(p.read_bytes()).hexdigest() for p in images]))
-        folder.mkdir();image=folder/'synthetic.png';Image.new('RGB',(1536,1536),'#79ac68').save(image)
+        folder.mkdir();image=folder/'synthetic.png';Image.new('RGB',Image.open(images[0]).size,'#79ac68').save(image)
         return image,dict(syntheticFixture=True,sha256=hashlib.sha256(image.read_bytes()).hexdigest())
 api=BoardApi(out/'http',dict(new_job=lambda *a:dict(id=uuid.uuid4().hex,status='queued')),FakeGeneration())
 async def raster(job,operation,folder):{'prepare':board_render.prepare,'finish':board_render.finish}[operation](folder)

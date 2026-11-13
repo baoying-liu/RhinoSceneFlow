@@ -15,7 +15,7 @@ def prep(name,s):
  p=out/name;p.mkdir();project.write_json(p/'snapshot.json',s);board_render.prepare(p);return p
 base=prep('whole',snap);assert np.array_equal(canonical,np.array(Image.open(base/'base.png')))
 assert not project.read_json(base/'prepared.json')['sourceAdjusted']
-Image.new('RGB',(1536,1536),'#bf7960').save(base/'generated.png');board_render.finish(base)
+Image.new('RGB',(w,h),'#bf7960').save(base/'generated.png');board_render.finish(base)
 mask=np.array(Image.open(base/'mask.png'));result=np.array(Image.open(base/'result.png'))
 assert np.array_equal(result[mask==0],canonical[mask==0]);assert np.array_equal(result[:,:,3],canonical[:,:,3])
 local=copy.deepcopy(snap);local['node']['params']['editScope']='local'
