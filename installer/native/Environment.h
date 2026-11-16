@@ -9,6 +9,15 @@
 #include <cwctype>
 
 inline std::wstring Lower(std::wstring s) { std::transform(s.begin(),s.end(),s.begin(),::towlower);return s; }
+inline bool IsManagedPluginPath(const std::wstring& registered,const std::wstring& directory) {
+    auto normalize=[](const std::wstring& value) {
+        return Lower(std::filesystem::path(value).lexically_normal().make_preferred().wstring());
+    };
+    if(registered.empty()||directory.empty())return false;
+    auto expected=normalize(directory);
+    if(expected.back()!=L'\\')expected+=L'\\';
+    return normalize(registered).rfind(expected,0)==0;
+}
 inline std::wstring KnownFolder(REFKNOWNFOLDERID id) {
     PWSTR p{};if(FAILED(SHGetKnownFolderPath(id,0,nullptr,&p)))return L"";
     std::wstring s(p);CoTaskMemFree(p);return s;

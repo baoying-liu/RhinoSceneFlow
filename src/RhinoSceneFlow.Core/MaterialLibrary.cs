@@ -18,6 +18,7 @@ public sealed class MaterialAsset
     public double HeightMeters { get; set; } = 1;
     public double Roughness { get; set; } = .65;
     public double Metallic { get; set; }
+    public EmissionSettings Emission {get;set;}=new();
     public string RecommendedMapping { get; set; } = "auto";
     public string Source { get; set; } = "import";
     public string Prompt { get; set; } = "";
@@ -30,7 +31,7 @@ public sealed class MaterialAsset
     public void Validate()
     {
         Category??="";Tags??=[];Localizations??=[];AssetLocalization.Validate(this);
-        Randomization??=new();Randomization.Validate();
+        Randomization??=new();Randomization.Validate();Emission??=new();Emission.Validate();
         Plant?.Validate();
         if(SchemaVersion!=1||Id==Guid.Empty||Revision<1||string.IsNullOrWhiteSpace(Name)||Name.Length>200)throw new ArgumentException("Invalid material identity/name.");
         if(!double.IsFinite(WidthMeters)||!double.IsFinite(HeightMeters)||WidthMeters<=0||HeightMeters<=0||WidthMeters>1e5||HeightMeters>1e5)throw new ArgumentException("Texture physical size must be finite and positive (meters).");
@@ -45,7 +46,7 @@ public sealed class MaterialAsset
 /// <summary>Portable immutable image files with relative references and atomic metadata updates.</summary>
 public sealed class MaterialLibrary
 {
-    public static readonly string[] Slots=["baseColor","roughness","normal","metallic"];
+    public static readonly string[] Slots=["baseColor","roughness","normal","metallic","emission"];
     public static bool ValidSlot(string slot)=>Slots.Contains(slot)||Seasons.All.Any(s=>slot==s+"_elevation"||slot==s+"_plan");
     public static readonly JsonSerializerOptions Json=new(){PropertyNamingPolicy=JsonNamingPolicy.CamelCase,PropertyNameCaseInsensitive=true,WriteIndented=true};
     public string Root { get; }

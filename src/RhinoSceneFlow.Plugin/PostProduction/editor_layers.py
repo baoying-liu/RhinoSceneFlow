@@ -112,8 +112,8 @@ def read(folder,psd):
         if container.opacity!=255 or container.has_mask() or container.has_effects():raise ValueError('Keep SF folder opacity at 100%, without masks or effects; edit individual instruction layers')
     for layer in psd.descendants():
         if layer is root or any(p is root for p in parents(layer)):continue
-        if layer.is_visible() and (layer.has_effects() or layer.clipping_layer or layer.kind=='adjustment' or layer.blend_mode.value not in (b'norm',b'pass',b'mul ',b'scrn',b'over',b'dark',b'lite')):
-            raise ValueError('Appearance return supports pixel/text layers, masks and Normal/Multiply/Screen/Overlay/Darken/Lighten blends. Rasterize effects/adjustments or clipping groups before applying.')
+        if layer.is_visible() and (layer.has_effects() or layer.clipping_layer or layer.kind=='adjustment' or layer.blend_mode.value not in (b'norm',b'pass',b'mul ',b'scrn',b'over',b'hLit',b'dark',b'lite')):
+            raise ValueError('Appearance return supports pixel/text layers, masks and Normal/Multiply/Screen/Overlay/Hard Light/Darken/Lighten blends. Rasterize effects/adjustments or clipping groups before applying.')
     # Independent appearance declaration excludes special layers, including hidden ones.
     ordinary=psd.composite(viewport=(0,0,*size),force=True,ignore_preview=True,layer_filter=lambda l:l.is_visible() and l is not root and not any(p is root for p in parents(l)))
     ox,oy=layout['offset'];w,h=layout['imageSize'];ordinary=ordinary.convert('RGBA').crop((ox,oy,ox+w,oy+h));ordinary.save(folder/'image.png')

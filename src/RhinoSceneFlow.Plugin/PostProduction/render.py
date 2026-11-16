@@ -57,7 +57,7 @@ def prepare(folder):
             actual.append((layer,role))
             blend=layer.blend_mode.value
             if layer.is_visible() and role!='exclude':
-                if blend not in (b'norm',b'pass',b'mul '):
+                if blend not in (b'norm',b'pass',b'mul ',b'hLit',b'scrn'):
                     raise ValueError('当前生图暂不支持此混合模式：'+layer.name)
                 if layer.is_group():
                     if layer.opacity!=255 or layer.has_mask() or layer.has_vector_mask():

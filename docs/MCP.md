@@ -506,3 +506,23 @@ capture; files become successful only after writing returns successfully.
 Plant group specs additionally accept `exclusionObjects`, `exclusionClearanceMeters`
 and `exclusionMode: geometry | footprint`. State reports retained manual conflicts
 and missing references. See PlantGroups.md for geometry/anchor limitations.
+
+
+## 0.23.4 development: emission
+
+- `material_import` / `material_update` asset metadata accepts
+  `emission:{enabled:false,color:"#FFF0D0",intensity:1}`; intensity is finite 0..100,
+  an artistic multiplier rather than photometric units. Optional map slot `emission`
+  is a grayscale emission mask, aligned with existing physical UV.
+- `selection_properties` includes effective native `emission` values.
+  `selection_material_update` accepts the same optional `emission` object and
+  preserves the existing material/layer/object scope and clone isolation.
+- `configure_view.settings.layers` accepts `kind:"emission"`,
+  `textureGrouping:"all"|"object"|"material"`, `glow:true` (default), plus standard
+  enabled/visible/opacity/blend. The channel defaults to `blend:"hLit"` (Hard Light).
+  Layer copy/paste includes glow. Untouched default stacks gain this pass;
+  customized stacks remain unchanged. Whole-image preflight manifests label the
+  separately attached emission guide; PSD eyes and AI participation stay distinct.
+
+See [Emission](Emission.md) for behavior and limits. This is B development only;
+no public installer or update-feed publication is implied.

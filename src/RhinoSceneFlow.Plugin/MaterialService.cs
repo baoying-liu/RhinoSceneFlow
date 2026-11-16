@@ -254,18 +254,18 @@ public static partial class MaterialService
         var view=checker?null:RandomTextureService.Resolve(asset,instance);
         string name=$"SceneFlow_{asset.Id:N}_r{asset.Revision}_meter2"+(checker?"_checker":view!.Key.Length>0?"_random_"+view.Key:"");
         var existing=doc.RenderMaterials.FirstOrDefault(m=>m.Name==name);if(existing!=null)return existing;
-        using var native=new Material{Name=name};native.ToPhysicallyBased();native.PhysicallyBased.Roughness=asset.Roughness;native.PhysicallyBased.Metallic=asset.Metallic;
+        using var native=new Material{Name=name};native.ToPhysicallyBased();native.PhysicallyBased.Roughness=asset.Roughness;native.PhysicallyBased.Metallic=asset.Metallic;if(!checker&&asset.Emission.Enabled){var e=asset.Emission.Rgb;native.PhysicallyBased.Emission=new Rhino.Display.Color4f((float)(e.R/255d*asset.Emission.Intensity),(float)(e.G/255d*asset.Emission.Intensity),(float)(e.B/255d*asset.Emission.Intensity),1);}
         foreach(var (slot,_) in checker?new Dictionary<string,string>{{"baseColor",""}}:asset.Maps.Where(p=>MaterialLibrary.Slots.Contains(p.Key)).ToDictionary(p=>p.Key,p=>p.Value))
         {
             string path=checker?CheckerPath():view!.Maps[slot];double width=view?.WidthMeters??asset.WidthMeters,height=view?.HeightMeters??asset.HeightMeters;
             using var texture=new Texture{FileName=path,Enabled=true,TreatAsLinear=slot!="baseColor",WrapU=TextureUvwWrapping.Repeat,WrapV=TextureUvwWrapping.Repeat,UvwTransform=Transform.Scale(Plane.WorldXY,1/width,1/height,1)};
-            var type=slot switch{"roughness"=>TextureType.PBR_Roughness,"metallic"=>TextureType.PBR_Metallic,"normal"=>TextureType.Bump,_=>TextureType.PBR_BaseColor};
+            var type=slot switch{"roughness"=>TextureType.PBR_Roughness,"metallic"=>TextureType.PBR_Metallic,"normal"=>TextureType.Bump,"emission"=>TextureType.PBR_Emission,_=>TextureType.PBR_BaseColor};
             native.PhysicallyBased.SetTexture(texture,type);
         }
         var render=RenderMaterial.FromMaterial(native,doc);render.Name=name;
         foreach(var slot in asset.Maps.Keys.Where(MaterialLibrary.Slots.Contains))
         {
-            var usage=slot switch{"roughness"=>RenderMaterial.StandardChildSlots.PbrRoughness,"metallic"=>RenderMaterial.StandardChildSlots.PbrMetallic,"normal"=>RenderMaterial.StandardChildSlots.Bump,_=>RenderMaterial.StandardChildSlots.PbrBaseColor};
+            var usage=slot switch{"roughness"=>RenderMaterial.StandardChildSlots.PbrRoughness,"metallic"=>RenderMaterial.StandardChildSlots.PbrMetallic,"normal"=>RenderMaterial.StandardChildSlots.Bump,"emission"=>RenderMaterial.StandardChildSlots.PbrEmission,_=>RenderMaterial.StandardChildSlots.PbrBaseColor};
             var texture=render.GetTextureFromUsage(usage);if(texture!=null)
             {
                 texture.SetMappingChannel(1,RenderContent.ChangeContexts.Program);

@@ -1,5 +1,6 @@
 using RhinoSceneFlow.Core;
 ReleaseValidation.Run();
+if(args.FirstOrDefault()=="--emission"){Directory.CreateDirectory("artifacts/validation");EmissionValidation.Run("artifacts/validation");return;}
 if(args.FirstOrDefault()=="--asset-languages"){AssetLocalizationValidation.Run();return;}
 if(args.FirstOrDefault()=="--asset-labels-ai")
 {
@@ -384,6 +385,7 @@ if(args.Contains("--large"))
 }
 TextureValidation.Run(output);
 ExportChannelsValidation.Run(output);
+EmissionValidation.Run(output);
 SeasonalValidation.Run(output);
 await UnwrapValidation.Run(output);
 TubeValidation.Run(output);

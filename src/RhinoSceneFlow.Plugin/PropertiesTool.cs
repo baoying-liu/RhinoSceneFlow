@@ -17,6 +17,10 @@ public sealed class PropertiesTool:Panel
     private readonly NumericStepper roughness=Ui.Number(0,1,3),metallic=Ui.Number(0,1,3),width=Ui.Number(.001,1e8,3),height=Ui.Number(.001,1e8,3),scale=Ui.Number(.001,100,3);
     private readonly UiCheckBox custom=new(){Text="自定义 · 不随组合参数重新随机"},mirror=new(){Text="水平镜像"},resize=new(){Text="修改贴图实际尺寸（米）"};
     private readonly UiCheckBox editRoughness=new(){Text="粗糙度"},editMetallic=new(){Text="金属度"};
+    private readonly UiCheckBox editEmission=new(){Text="修改自发光"},emissionEnabled=new(){Text="启用自发光"};
+    private readonly ColorPicker emissionPicker=new(){Value=Eto.Drawing.Color.Parse("#FFF0D0")};
+    private readonly UiTextBox emissionColor=new(){Text="#FFF0D0"};
+    private readonly NumericStepper emissionIntensity=Ui.Number(0,100,2);
     private string originalName="";
     private Action? afterUv;private Guid[] pendingUv=[];
     private readonly Panel materialPanel=new(),individualPanel=new();
@@ -30,8 +34,10 @@ public sealed class PropertiesTool:Panel
         foreach(var (key,label) in new[]{("material","所有相同材质"),("layer","所选物件所在图层"),("object","仅所选物体")})scope.Items.Add(new UiListItem{Key=key,Text=label});scope.SelectedKey="material";
         foreach(var (key,label) in new[]{("auto","自动"),("plane","平面"),("box","箱式"),("cylinder","圆柱"),("xatlas","复杂曲面 · xatlas")})mapping.Items.Add(new UiListItem{Key=key,Text=label});mapping.SelectedKey="auto";
         var uv=Ui.Layout();uv.AddRow(mapping);uv.AddRow(uvState);uv.AddRow(Ui.Button("更新真实尺寸 UV",()=>Guard(()=>{actions.Start(CurrentObjects(),null,new(){Mode=mapping.SelectedKey??"auto"},force:true);})));uv.AddRow(Ui.Button("取消后续步骤",()=>{afterUv=null;actions.Cancel();}));
-        var material=Ui.Layout();material.AddRow(new UiLabel{Text="修改范围"});material.AddRow(scope);material.AddRow(new UiLabel{Text="材质名称（多个值时留空）"});material.AddRow(materialName);material.AddRow(ToolUi.Row(editRoughness,roughness,null));material.AddRow(ToolUi.Row(editMetallic,metallic,null));material.AddRow(resize);material.AddRow(ToolUi.Row(new UiLabel{Text="实际宽度 m"},width,null));material.AddRow(ToolUi.Row(new UiLabel{Text="实际高度 m"},height,null));material.AddRow(Ui.Button("应用材质修改",()=>Guard(ApplyMaterial)));material.AddRow(ToolUi.Help("仅应用勾选或修改的参数，只修改当前文件。缩小范围时自动隔离共享材质，库中素材保留；贴图通道可能覆盖对应常数参数。"));
+        var material=Ui.Layout();material.AddRow(new UiLabel{Text="修改范围"});material.AddRow(scope);material.AddRow(new UiLabel{Text="材质名称（多个值时留空）"});material.AddRow(materialName);material.AddRow(ToolUi.Row(editRoughness,roughness,null));material.AddRow(ToolUi.Row(editMetallic,metallic,null));emissionPicker.ValueChanged+=(_,_)=>{var c=emissionPicker.Value;emissionColor.Text=$"#{c.Rb:X2}{c.Gb:X2}{c.Bb:X2}";};emissionColor.TextChanged+=(_,_)=>{try{var c=EmissionSettings.Parse(emissionColor.Text);emissionPicker.Value=Eto.Drawing.Color.Parse($"#{c.R:X2}{c.G:X2}{c.B:X2}");}catch(ArgumentException){}};
+        var light=Ui.Layout();light.AddRow(editEmission);light.AddRow(emissionEnabled);light.AddRow(new UiLabel{Text="发光颜色 #RRGGBB"});light.AddRow(ToolUi.Row(emissionPicker,emissionColor,null));light.AddRow(ToolUi.Row(new UiLabel{Text="发光强度"},emissionIntensity,null));light.AddRow(Ui.Button("恢复自发光默认值",()=>{emissionEnabled.Checked=false;emissionColor.Text="#FFF0D0";emissionIntensity.Value=1;}));light.AddRow(ToolUi.Note("视觉强度，不是流明；PSD 自发光通道与 AI 会使用此设置。"));material.AddRow(new UiExpander{Header="自发光",Content=light});material.AddRow(resize);material.AddRow(ToolUi.Row(new UiLabel{Text="实际宽度 m"},width,null));material.AddRow(ToolUi.Row(new UiLabel{Text="实际高度 m"},height,null));material.AddRow(Ui.Button("应用材质修改",()=>Guard(ApplyMaterial)));material.AddRow(ToolUi.Help("仅应用勾选或修改的参数，只修改当前文件。缩小范围时自动隔离共享材质，库中素材保留；贴图通道可能覆盖对应常数参数。"));
         roughness.ValueChanged+=(_,_)=>{if(!binding)editRoughness.Checked=true;};metallic.ValueChanged+=(_,_)=>{if(!binding)editMetallic.Checked=true;};
+        emissionEnabled.CheckedChanged+=(_,_)=>{if(!binding)editEmission.Checked=true;};emissionColor.TextChanged+=(_,_)=>{if(!binding)editEmission.Checked=true;};emissionIntensity.ValueChanged+=(_,_)=>{if(!binding)editEmission.Checked=true;};
         var ordinary=Ui.Layout();ordinary.AddRow(new UiExpander{Header="材质设置",Content=material,Expanded=true});ordinary.AddRow(new UiExpander{Header="UV 设置 · 默认自动",Content=uv,Expanded=false});ordinary.AddRow(null);materialPanel.Content=ToolUi.VerticalScroll(ordinary);
         var plant=Ui.Layout();plant.AddRow(custom);plant.AddRow(new UiLabel{Text="植物类型 · 更换时保留当前高度"});plant.AddRow(species);plant.AddRow(ToolUi.Row(new UiLabel{Text="相对素材大小"},scale,null));plant.AddRow(mirror);plant.AddRow(Ui.Button("保存单株设置",()=>Guard(ApplyIndividual)));var groupButtons=Ui.Layout();groupButtons.AddRow(Ui.Button("在视口中移动 · 吸附承载面",()=>Guard(()=>PlantEditing.Move(Doc))));groupButtons.AddRow(Ui.Button("复制此株",()=>Guard(()=>{PlantEditing.ApplyTransform(Doc,Rhino.Geometry.Transform.Identity,true);stamp="";})));groupButtons.AddRow(Ui.Button("恢复组合设置",()=>Guard(()=>{var (g,r)=Individual();PlantEditing.Modify(Doc,g,r,custom:false);stamp="";})));groupButtons.AddRow(Ui.Button("返回组合设置",()=>Guard(()=>{if(PlantEditing.Group is Guid g)PlantEditing.Enter(Doc,g);})));groupButtons.AddRow(Ui.Button("结束单株编辑",()=>{PlantEditing.Exit();stamp="";}));groupActions.Content=groupButtons;plant.AddRow(groupActions);plant.AddRow(null);individualPanel.Content=ToolUi.VerticalScroll(plant);
         var root=Ui.Layout();root.AddRow(ToolUi.Heading("当前选择的属性"));root.AddRow(title);root.AddRow(editHeader);root.Add(body,true,true);root.AddRow(status);Content=root;
@@ -43,7 +49,7 @@ public sealed class PropertiesTool:Panel
     {
         if(stopped||!Doc.IsAvailable||Doc.IsClosing||Doc.IsOpening||Doc.IsCreating||RhinoApp.InCommand>0)return;
         if(afterUv!=null&&!actions.Busy){var apply=afterUv;afterUv=null;if(pendingUv.All(id=>Doc.Objects.FindId(id) is {} o&&MaterialService.UvValid(Doc,o)))apply();else status.Text="UV 未完成，材质修改未应用。";}
-        selected=PlantEditing.IsActive(document)&&PlantEditing.Group is Guid active&&Doc.Objects.FindId(active)!=null?[active]:ToolUi.Selection(Doc);string next=string.Join(";",selected.Order().Select(id=>{var o=Doc.Objects.FindId(id)!;var m=o.GetRenderMaterial(true);return id+":"+o.Name+":"+o.Attributes.LayerIndex+":"+o.Attributes.GetUserString(PlantGroups.Key)?.GetHashCode()+":"+m?.Id+":"+m?.Name+":"+m?.GetParameter("pbr-roughness")+":"+m?.GetParameter("pbr-metallic")+":"+(PlantGroups.IsGroup(o)?o.Geometry.UserDictionary.GetString(PlantGroups.RowsKey)?.GetHashCode():0); }))+"|"+PlantEditing.Group+"|"+PlantEditing.Individual;
+        selected=PlantEditing.IsActive(document)&&PlantEditing.Group is Guid active&&Doc.Objects.FindId(active)!=null?[active]:ToolUi.Selection(Doc);string next=string.Join(";",selected.Order().Select(id=>{var o=Doc.Objects.FindId(id)!;var m=o.GetRenderMaterial(true);return id+":"+o.Name+":"+o.Attributes.LayerIndex+":"+o.Attributes.GetUserString(PlantGroups.Key)?.GetHashCode()+":"+m?.Id+":"+m?.Name+":"+m?.GetParameter("pbr-roughness")+":"+m?.GetParameter("pbr-metallic")+":"+MaterialEmission.Signature(m)+":"+(PlantGroups.IsGroup(o)?o.Geometry.UserDictionary.GetString(PlantGroups.RowsKey)?.GetHashCode():0); }))+"|"+PlantEditing.Group+"|"+PlantEditing.Individual;
         if(PlantEditing.Group is Guid eg&&(!selected.Contains(eg)||Doc.Objects.FindId(eg)==null)){PlantEditing.Exit();next+="exit";}
         if(next==stamp)return;stamp=next;binding=true;try
         {
@@ -70,9 +76,10 @@ public sealed class PropertiesTool:Panel
             else
             {
                 title.Text=$"{objects.Length} 个物件 · 普通物件属性";var materials=objects.Select(o=>o.GetRenderMaterial(true)).ToArray();
-                var names=materials.Select(m=>m?.Name??"").Distinct().ToArray();materialName.Text=originalName=names.Length==1?names[0]:"";editRoughness.Checked=editMetallic.Checked=false;
+                var names=materials.Select(m=>m?.Name??"").Distinct().ToArray();materialName.Text=originalName=names.Length==1?names[0]:"";editRoughness.Checked=editMetallic.Checked=editEmission.Checked=false;
                 var first=materials[0];using var native=first==null?null:new Rhino.DocObjects.Material(first.ToMaterial(Rhino.Render.RenderTexture.TextureGeneration.Allow));
                 roughness.Value=native?.IsPhysicallyBased==true?native.PhysicallyBased.Roughness:0;metallic.Value=native?.IsPhysicallyBased==true?native.PhysicallyBased.Metallic:0;
+                var e=native==null?new EmissionSettings():MaterialEmission.Read(first,native);emissionEnabled.Checked=e.Enabled;emissionColor.Text=e.Color;emissionIntensity.Value=e.Intensity;
                 var texture=first?.GetTextureFromUsage(Rhino.Render.RenderMaterial.StandardChildSlots.PbrBaseColor);var repeat=texture?.GetRepeat();
                 width.Value=repeat.HasValue&&repeat.Value.X>0?1/repeat.Value.X:1;height.Value=repeat.HasValue&&repeat.Value.Y>0?1/repeat.Value.Y:1;resize.Checked=false;
                 mapping.SelectedKey="auto";uvState.Text=objects.All(o=>MaterialService.UvValid(Doc,o))?"真实尺寸 UV 有效":"应用材质前会自动补算缺失或失效的 UV";
@@ -83,9 +90,9 @@ public sealed class PropertiesTool:Panel
     private void ApplyMaterial()
     {
         var ids=CurrentObjects();if(actions.Busy)throw new ArgumentException("请先等待 UV 更新完成。");
-        if(materialName.Text==originalName&&editRoughness.Checked!=true&&editMetallic.Checked!=true&&resize.Checked!=true)throw new ArgumentException("先修改材质参数。");
+        if(materialName.Text==originalName&&editRoughness.Checked!=true&&editMetallic.Checked!=true&&resize.Checked!=true&&editEmission.Checked!=true)throw new ArgumentException("先修改材质参数。");
         string targetScope=scope.SelectedKey??"material";string? newName=materialName.Text==originalName||string.IsNullOrWhiteSpace(materialName.Text)?null:materialName.Text;double? newRoughness=editRoughness.Checked==true?roughness.Value:null,newMetallic=editMetallic.Checked==true?metallic.Value:null,newWidth=resize.Checked==true?width.Value:null,newHeight=resize.Checked==true?height.Value:null;
-        void Apply(){SelectionProperties.Modify(Doc,ids,targetScope,newName,newRoughness,newMetallic,newWidth,newHeight);status.Text="材质修改已应用，可使用 Rhino 撤销。";stamp="";}
+        void Apply(){SelectionProperties.Modify(Doc,ids,targetScope,newName,newRoughness,newMetallic,newWidth,newHeight,editEmission.Checked==true?new EmissionSettings{Enabled=emissionEnabled.Checked==true,Color=emissionColor.Text,Intensity=emissionIntensity.Value}:null);status.Text="材质修改已应用，可使用 Rhino 撤销。";stamp="";}
         var affected=SelectionProperties.Affected(Doc,ids,targetScope);if(affected.Any(id=>Doc.Objects.FindId(id)!.IsLocked))throw new ArgumentException("目标包含锁定物件，请先解锁。");
         if(affected.Any(id=>!MaterialService.UvValid(Doc,Doc.Objects.FindId(id)!))){pendingUv=affected;actions.Start(affected,null,new(){Mode="auto"});afterUv=Apply;status.Text="先准备真实尺寸 UV，再修改并应用材质…";}else Apply();
     }

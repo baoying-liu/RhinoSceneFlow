@@ -1,6 +1,6 @@
-# SceneFlow 0.23.2 public preview
+# SceneFlow 0.23.4 public preview
 
-The current public distribution is tagged `v0.23.2` and marked Pre-release.
+The current public distribution is tagged `v0.23.4` and marked Pre-release.
 The initial preview remains available as `v0.23.1-preview.1`.
 It is unsigned and is not a clean-machine installation/upgrade acceptance certificate.
 No production installation is performed by development builds or the read-only
@@ -51,10 +51,10 @@ data isolation when users deliberately select the same library folder.
 
 ```powershell
 ./scripts/Build-Installer.ps1
-./scripts/Test-Installer.ps1 -Version 0.23.2
+./scripts/Test-Installer.ps1 -Version 0.23.4
 ```
 
-Output: `artifacts/installer/0.23.2/SceneFlow-Setup-0.23.2-win-x64.exe`.
+Output: `artifacts/installer/0.23.4/SceneFlow-Setup-0.23.4-win-x64.exe`.
 MSI/Burn own install, same-version repair, uninstall and major upgrades. Downgrades
 are rejected. Installer requires standard Rhino and owned production Python/texture
 workers to be closed; it never terminates them. User libraries, plants, boards,

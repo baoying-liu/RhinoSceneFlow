@@ -5,7 +5,7 @@ public sealed record StyledPass(string Name,IPsdImage Image,string Blend="norm",
 /// <summary>Top-to-bottom isolated passes, with genuine PSD blend/opacity metadata.</summary>
 public sealed class ConfiguredStack : IPsdImage,IPsdHierarchy
 {
-    public static readonly string[] BlendKeys=["norm","mul ","scrn","over","dark","lite"];
+    public static readonly string[] BlendKeys=["norm","mul ","scrn","over","hLit","dark","lite"];
     private readonly StyledPass[] passes;
     private readonly (IPsdImage Image,int Group)[] layers;
     private int cachedY=-1;
@@ -58,7 +58,7 @@ public sealed class ConfiguredStack : IPsdImage,IPsdHierarchy
     public byte LayerChannel(int group,int channel,int x,int y)=>layers[group].Image.LayerChannel(layers[group].Group,channel,x,y);
     public void ReadLayerRow(int group,int channel,int y,int left,Span<byte> row)=>layers[group].Image.ReadLayerRow(layers[group].Group,channel,y,left,row);
     private static double Blend(string key,double b,double s)=>key switch
-    {"mul "=>b*s,"scrn"=>b+s-b*s,"over"=>b<=.5?2*b*s:1-2*(1-b)*(1-s),"dark"=>Math.Min(b,s),"lite"=>Math.Max(b,s),_=>s};
+    {"mul "=>b*s,"scrn"=>b+s-b*s,"over"=>b<=.5?2*b*s:1-2*(1-b)*(1-s),"hLit"=>s<=.5?2*b*s:1-2*(1-b)*(1-s),"dark"=>Math.Min(b,s),"lite"=>Math.Max(b,s),_=>s};
     private void Composite(int y)
     {
         if(cachedY==y)return;

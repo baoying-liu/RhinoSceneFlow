@@ -4,12 +4,12 @@ export function guideKind(row,rows){
  const byId=new Map(rows.map(r=>[r.id,r])),seen=new Set();let current=row;
  while(current&&!seen.has(current.id)){
   seen.add(current.id);const name=current.name.toLowerCase();
-  for(const [kind,words] of [['depth',['depth','深度']],['form',['arctic','极地']],['color',['material color','material colour','材质颜色','材质色','color channel','colour channel']],['shadow',['shadow','阴影']]])if(words.some(w=>name.includes(w)))return kind;
+  for(const [kind,words] of [['emission',['emission','emissive','自发光']],['depth',['depth','深度']],['form',['arctic','极地']],['color',['material color','material colour','材质颜色','材质色','color channel','colour channel']],['shadow',['shadow','阴影']]])if(words.some(w=>name.includes(w)))return kind;
   current=byId.get(current.parent);
  }
  return null;
 }
-export function layerRole(row,rows,params){const kind=guideKind(row,rows);return params.roles?.[row.id]||(kind?(kind==='shadow'?'reference':'structure'):row.role||'generate');}
+export function layerRole(row,rows,params){const kind=guideKind(row,rows);return params.roles?.[row.id]||(kind?(['shadow','emission'].includes(kind)?'reference':'structure'):row.role||'generate');}
 export function layerEnabled(row,rows,params){const byId=new Map(rows.map(r=>[r.id,r])),seen=new Set();let current=row;while(current&&!seen.has(current.id)){seen.add(current.id);if(!(params.layerParticipation?.[current.id]??current.effectiveVisible??current.visible??true))return false;current=byId.get(current.parent);}return true;}
 
 export default function PsdLayers({layers,params,patch,t}){

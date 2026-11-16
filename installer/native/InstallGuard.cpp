@@ -16,7 +16,7 @@ extern "C" __declspec(dllexport) UINT __stdcall CheckEnvironment(MSIHANDLE insta
     for(auto hive:{HKEY_CURRENT_USER,HKEY_LOCAL_MACHINE}) {
         auto registered=Lower(RegistryString(hive,L"Software\\McNeel\\Rhinoceros\\8.0\\Plug-ins\\8b902013-73dd-4227-b45b-896f6a33f134",L"FileName"));
         if(registered.empty())registered=Lower(RegistryString(hive,L"Software\\McNeel\\Rhinoceros\\8.0\\Plug-ins\\8b902013-73dd-4227-b45b-896f6a33f134\\PlugIn",L"FileName"));
-        if(!registered.empty()&&registered.rfind(expected+L"\\",0)!=0)return Fail(install,L"A manually registered SceneFlow plugin was found. Unregister that copy in Rhino PlugInManager before installing. Do not remove RhinoDevSandbox. / 检测到手动注册的旧插件，请先在正式 Rhino 插件管理器移除该注册。");
+        if(!registered.empty()&&!IsManagedPluginPath(registered,expected))return Fail(install,L"A manually registered SceneFlow plugin was found. Unregister that copy in Rhino PlugInManager before installing. Do not remove RhinoDevSandbox. / 检测到手动注册的旧插件，请先在正式 Rhino 插件管理器移除该注册。");
     }
     return ERROR_SUCCESS;
 }

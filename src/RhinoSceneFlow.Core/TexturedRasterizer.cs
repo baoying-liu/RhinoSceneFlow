@@ -20,7 +20,7 @@ public sealed record PixelTexture(int Width,int Height,byte[] Rgb,bool RepeatU=t
         return new(C(0),C(1),C(2));
     }
 }
-public sealed record TextureSurface(string MaterialKey,string MaterialName,Rgb Color,PixelTexture? Texture,bool Modulate=true,double TextureAmount=1,Rgb? Representative=null);
+public sealed record TextureSurface(string MaterialKey,string MaterialName,Rgb Color,PixelTexture? Texture,bool Modulate=true,double TextureAmount=1,Rgb? Representative=null,bool Emissive=false);
 public sealed record TextureObject(string Key,string Name,int Material);
 public readonly record struct TextureTriangle(Vec3 A,Vec3 B,Vec3 C,Uv UA,Uv UB,Uv UC,int Object,bool UseTexture=true);
 
@@ -84,15 +84,16 @@ public static class TexturedRasterizer
 
 public sealed class TextureSamples(int width,int height,int[] owners,uint[] colors,IReadOnlyList<TextureObject> objects,IReadOnlyList<TextureSurface> surfaces)
 {
-    public IPsdImage Grouped(string grouping)
+    public IPsdImage Grouped(string grouping,bool emissionOnly=false)
     {
         if(grouping is not ("material" or "object" or "all"))throw new ArgumentException("Invalid texture grouping.");
         var keys=objects.Select((o,i)=>grouping=="all"?"all":grouping=="object"?o.Key:surfaces[o.Material].MaterialKey).ToArray();
-        var unique=keys.Distinct().Order(StringComparer.Ordinal).ToArray();if(unique.Length==0)unique=["empty"];
+        var unique=keys.Where((k,i)=>!emissionOnly||surfaces[objects[i].Material].Emissive).Distinct().Order(StringComparer.Ordinal).ToArray();if(unique.Length==0)unique=["empty"];
         var index=unique.Select((key,i)=>(key,i)).ToDictionary(p=>p.key,p=>p.i);
-        var map=keys.Select(k=>index[k]).ToArray();
+        var map=keys.Select((k,i)=>emissionOnly&&!surfaces[objects[i].Material].Emissive?-1:index[k]).ToArray();
         var groups=unique.Select(key=>{int i=Array.IndexOf(keys,key);return new ColorGroup(grouping=="all"?"全部物件":i<0?"未指定材质":grouping=="object"?objects[i].Name+" · "+surfaces[objects[i].Material].MaterialName:surfaces[objects[i].Material].MaterialName,new(0,0,0));}).ToArray();
-        return new SampleImage(width,height,owners,colors,map,groups);
+        var visibleOwners=emissionOnly?owners.Select((o,i)=>o>=0&&surfaces[objects[o].Material].Emissive&&colors[i]!=0?o:-1).ToArray():owners;
+        return new SampleImage(width,height,visibleOwners,colors,map,groups);
     }
     private sealed class SampleImage(int width,int height,int[] owners,uint[] colors,int[] map,ColorGroup[] groups) : IPsdImage
     {
@@ -102,19 +103,19 @@ public sealed class TextureSamples(int width,int height,int[] owners,uint[] colo
         public IReadOnlyList<LayerBounds> GetVisibleLayers(CancellationToken cancellation=default)
         {
             if(bounds!=null)return bounds;var b=Enumerable.Range(0,groups.Length).Select(g=>new LayerBounds(g,width,height,0,0)).ToArray();
-            for(int y=0;y<height;y++){cancellation.ThrowIfCancellationRequested();for(int x=0;x<width;x++)for(int s=0;s<4;s++){int o=owners[At(x,y,s)];if(o<0)continue;int g=map[o];var old=b[g];b[g]=new(g,Math.Min(old.Left,x),Math.Min(old.Top,y),Math.Max(old.Right,x+1),Math.Max(old.Bottom,y+1));}}
+            for(int y=0;y<height;y++){cancellation.ThrowIfCancellationRequested();for(int x=0;x<width;x++)for(int s=0;s<4;s++){int o=owners[At(x,y,s)];if(o<0)continue;int g=map[o];if(g<0)continue;var old=b[g];b[g]=new(g,Math.Min(old.Left,x),Math.Min(old.Top,y),Math.Max(old.Right,x+1),Math.Max(old.Bottom,y+1));}}
             return bounds=b.Where(v=>v.Right>v.Left).ToArray();
         }
         public byte LayerChannel(int group,int channel,int x,int y)
         {
             int own=0,above=0,sum=0;
-            for(int s=0;s<4;s++){int i=At(x,y,s),o=owners[i];if(o<0)continue;int g=map[o];if(g==group){own++;if(channel<3)sum+=(byte)(colors[i]>>(16-channel*8));}else if(g<group)above++;}
+            for(int s=0;s<4;s++){int i=At(x,y,s),o=owners[i];if(o<0)continue;int g=map[o];if(g<0)continue;if(g==group){own++;if(channel<3)sum+=(byte)(colors[i]>>(16-channel*8));}else if(g<group)above++;}
             return channel==3?(byte)(own==0?0:Math.Round(255.0*own/(4-above))):(byte)(own==0?0:Math.Round((double)sum/own));
         }
         public byte LayerAlpha(int group,int x,int y)=>LayerChannel(group,3,x,y);
         public byte CompositeChannel(int channel,int x,int y)
         {
-            int covered=0,sum=0;for(int s=0;s<4;s++){int i=At(x,y,s);if(owners[i]<0)continue;covered++;if(channel<3)sum+=(byte)(colors[i]>>(16-channel*8));}
+            int covered=0,sum=0;for(int s=0;s<4;s++){int i=At(x,y,s);if(owners[i]<0||map[owners[i]]<0)continue;covered++;if(channel<3)sum+=(byte)(colors[i]>>(16-channel*8));}
             return channel==3?(byte)Math.Round(covered*255.0/4):(byte)(covered==0?0:Math.Round((double)sum/covered));
         }
     }

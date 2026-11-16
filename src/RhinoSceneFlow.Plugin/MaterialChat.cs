@@ -73,6 +73,7 @@ public static class MaterialChat
                     }
                 }
                 var result=await CodexMaterialChatRunner.RunAsync(directory,$"Physical tile size: {widthMeters:G8} x {heightMeters:G8} meters.\n"+conversation,refs,stage=>Ui(()=>job.Stage=stage),cancel.Token);
+                if(result.Emission!=null)asset.Emission=result.Emission;
                 CatalogLabel? label=null;
                 string? labelError=null;
                 if(result.ImagePath!=null)

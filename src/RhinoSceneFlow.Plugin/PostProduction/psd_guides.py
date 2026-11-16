@@ -4,7 +4,7 @@ import math
 from PIL import Image, ImageDraw, ImageFont
 
 
-KINDS = dict(depth=('Depth', 'White is near, black is far; empty background is not geometry.'),
+KINDS = dict(emission=('Emission', 'Self-emitting surfaces: retain source positions and colors; add plausible local light spill and restrained bloom. Halo pixels are an appearance effect, not new geometry. Do not interpret these as reflective albedo. Intensity is artistic, not calibrated illuminance.'), depth=('Depth', 'White is near, black is far; empty background is not geometry.'),
              form=('Form', 'Massing, surface folds and silhouette; do not copy the white material.'),
              color=('Material regions', 'Categorical region boundaries, not requested surface colours.'),
              shadow=('Lighting', 'Sun direction and cast shadows, not additional objects.'),
@@ -16,7 +16,7 @@ def kind(row, rows):
     lookup={r['id']:r for r in rows};seen=set();current=row
     while current and current['id'] not in seen:
         seen.add(current['id']);name=current['name'].lower()
-        for key,words in (('depth',('depth','深度')),('form',('arctic','极地')),
+        for key,words in (('emission',('emission','emissive','自发光')),('depth',('depth','深度')),('form',('arctic','极地')),
                           ('color',('material color','material colour','材质颜色','材质色','color channel','colour channel')),
                           ('shadow',('shadow','阴影'))):
             if any(word in name for word in words):return key
@@ -26,7 +26,7 @@ def kind(row, rows):
 
 def default_role(row, rows):
     guide=kind(row,rows)
-    return ('reference' if guide=='shadow' else 'structure') if guide else row.get('role','generate')
+    return ('reference' if guide in ('shadow','emission') else 'structure') if guide else row.get('role','generate')
 
 
 def settings(rows, params):
@@ -83,6 +83,9 @@ def prepare(folder, source, rows):
             # This is a private parsed copy; never save it back to the PSD.
             layer.visible=row['id'] in allowed
             if row['id'] not in allowed:continue
+            if row['guideKind']=='emission':
+                from psd_tools.constants import BlendMode
+                if layer.blend_mode.value in (b'hLit',b'scrn'):layer.blend_mode=BlendMode.NORMAL
             if layer.blend_mode.value not in (b'norm',b'pass',b'mul '):raise ValueError('Unsupported guide blend: '+layer.name)
             if layer.is_group():
                 if layer.opacity!=255 or layer.has_mask() or layer.has_vector_mask():raise ValueError('Simplify masked/transparent guide group: '+layer.name)

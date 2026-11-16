@@ -206,7 +206,7 @@ public sealed class ExportPanel : Panel
 
 internal static class Ui
 {
-    internal static readonly (string Key,string Name)[] Blends=[("norm","正常"),("mul ","正片叠底"),("scrn","滤色"),("over","叠加"),("dark","变暗"),("lite","变亮")];
+    internal static readonly (string Key,string Name)[] Blends=[("norm","正常"),("mul ","正片叠底"),("scrn","滤色"),("over","叠加"),("hLit","强光"),("dark","变暗"),("lite","变亮")];
     internal static DynamicLayout Layout()=>new(){Spacing=new(8,8)};
     internal static UiButton Button(string text,Action click,int width=-1){var b=new UiButton{Text=text,MinimumSize=new(0,26)};if(width>0)b.Width=width;b.Click+=(_,_)=>click();return b;}
     internal static NumericStepper Number(double min,double max,int decimals=0,int width=82)=>new(){MinValue=min,MaxValue=max,DecimalPlaces=decimals,Width=width};
@@ -297,7 +297,7 @@ internal sealed class ViewCard : IDisposable
     }
     internal void Sync(){binding=true;try{included.Checked=Row.Included;width.Value=Row.Width;height.Value=Row.Height;modes.SelectedKey=Row.Mode.ToString();presets.SelectedKey="0";UpdateName();SyncStatus();}finally{binding=false;}}
     internal void SyncStatus()=>status.Text=Row.Status;
-    private string Title(ExportLayerSetting l)=>l.Kind switch{"plants"=>"植物","shadow"=>"阴影","texture"=>"材质贴图","material"=>"图层颜色（旧版）","color"=>"材质颜色","depth"=>"深度图","display"=>WorkbenchService.Modes().FirstOrDefault(m=>m.Id==l.Mode)?.LocalName??"显示模式",_=>"选择图层内容"};
+    private string Title(ExportLayerSetting l)=>l.Kind switch{"plants"=>"植物","shadow"=>"阴影","texture"=>"材质贴图","material"=>"图层颜色（旧版）","color"=>"材质颜色","depth"=>"深度图","emission"=>"自发光","display"=>WorkbenchService.Modes().FirstOrDefault(m=>m.Id==l.Mode)?.LocalName??"显示模式",_=>"选择图层内容"};
     internal void RebuildLayers()
     {
         if(owner.ClosedForUpdates||closed)return;rebuilding=true;try{layerSections.Clear();var layout=Ui.Layout();layout.Spacing=new(4,6);
@@ -315,19 +315,19 @@ internal sealed class ViewCard : IDisposable
             var actions=ToolUi.Row(up,down,remove,null);
             var head=new TableLayout{Spacing=new(0,3),Rows={new TableRow(identity),new TableRow(actions)}};
             var type=new DropDown{Width=100};type.Items.Add(new UiListItem{Key="",Text="请选择通道 / 显示模式…"});
-            foreach(var (key,text) in new[]{("plants","通道 · 植物"),("shadow","通道 · 阴影"),("texture","通道 · 材质贴图"),("color","通道 · 材质颜色"),("depth","通道 · 深度图"),("material","旧版 · 图层颜色")})type.Items.Add(new UiListItem{Key=key,Text=text});
+            foreach(var (key,text) in new[]{("plants","通道 · 植物"),("shadow","通道 · 阴影"),("texture","通道 · 材质贴图"),("color","通道 · 材质颜色"),("depth","通道 · 深度图"),("emission","通道 · 自发光"),("material","旧版 · 图层颜色")})type.Items.Add(new UiListItem{Key=key,Text=text});
             foreach(var m in WorkbenchService.Modes())type.Items.Add(new UiListItem{Key="display:"+m.Id,Text="模式 · "+m.EnglishName});type.SelectedKey=l.Kind=="display"?"display:"+l.Mode:l.Kind;
             var detail=Ui.Layout();detail.AddRow(type);
             var blend=new DropDown{Width=96};foreach(var b in Ui.Blends)blend.Items.Add(new UiListItem{Key=b.Key,Text=b.Name});blend.SelectedKey=l.Blend;
             var opacity=Ui.Number(0,100,0,55);opacity.Value=l.Opacity;detail.AddRow(ToolUi.Row(new UiLabel{Text="混合"},blend,null));detail.AddRow(ToolUi.Row(new UiLabel{Text="不透明度 %"},opacity,null));
-            type.SelectedValueChanged+=(_,_)=>{if(!EventsActive||type.IsDisposed)return;var key=type.SelectedKey??"";l.Kind=key.StartsWith("display:",StringComparison.Ordinal)?"display":key;l.Mode=l.Kind=="display"?Guid.Parse(key[8..]):Guid.Empty;owner.Changed(Row,false);RebuildLayers();};
+            type.SelectedValueChanged+=(_,_)=>{if(!EventsActive||type.IsDisposed)return;var key=type.SelectedKey??"";l.Kind=key.StartsWith("display:",StringComparison.Ordinal)?"display":key;l.Mode=l.Kind=="display"?Guid.Parse(key[8..]):Guid.Empty;if(l.Kind=="emission"){l.Blend="hLit";l.TextureGrouping="all";}owner.Changed(Row,false);RebuildLayers();};
             enabled.CheckedChanged+=(_,_)=>{if(!EventsActive||enabled.IsDisposed)return;l.Enabled=enabled.Checked==true;owner.Changed(Row,false);};blend.SelectedValueChanged+=(_,_)=>{if(!EventsActive||blend.IsDisposed)return;l.Blend=blend.SelectedKey??"norm";owner.Changed(Row,false);};opacity.ValueChanged+=(_,_)=>{if(!EventsActive||opacity.IsDisposed)return;l.Opacity=(int)opacity.Value;owner.Changed(Row,false);};
             if(l.Kind=="color")
             {
                 var source=new DropDown{Width=100};source.Items.Add(new UiListItem{Key="material",Text="材质等效单色（贴图平均色）"});source.Items.Add(new UiListItem{Key="layer",Text="Rhino 图层颜色"});source.SelectedKey=l.ColorSource;
                 detail.AddRow(new UiLabel{Text="颜色来源"});detail.AddRow(source);source.SelectedValueChanged+=(_,_)=>{if(!EventsActive||source.IsDisposed)return;l.ColorSource=source.SelectedKey??"material";owner.Changed(Row,false);};
             }
-            if(l.Kind is "texture" or "color")
+            if(l.Kind is "texture" or "color" or "emission")
             {
                 var grouping=new DropDown{Width=100};foreach(var (key,text) in new[]{("material","按材质合并（默认；图层色按颜色）"),("object","按物件分开 · 同一组"),("all","全部合并 · 一张图层")})grouping.Items.Add(new UiListItem{Key=key,Text=text});grouping.SelectedKey=l.TextureGrouping;
                 detail.AddRow(new UiLabel{Text="分层方式"});detail.AddRow(grouping);grouping.SelectedValueChanged+=(_,_)=>{if(!EventsActive||grouping.IsDisposed)return;l.TextureGrouping=grouping.SelectedKey??"material";owner.Changed(Row,false);};
@@ -346,6 +346,7 @@ internal sealed class ViewCard : IDisposable
                 detail.AddRow(plantShadows);detail.AddRow(new Panel{Padding=new(18,0,0,0),Content=separate});
                 detail.AddRow(ToolUi.Note("分离后放在植物组最底层，沿用阴影通道的混合、透明度和眼睛；未启用植物通道时仍合并导出。"));
             }
+            if(l.Kind=="emission"){var glow=new UiCheckBox{Text="光晕",Checked=l.Glow};glow.CheckedChanged+=(_,_)=>{if(!EventsActive||glow.IsDisposed)return;l.Glow=glow.Checked==true;owner.Changed(Row,false);};detail.AddRow(glow);detail.AddRow(ToolUi.Note("光晕为屏幕空间效果，不是实际照度；AI 使用独立发光通道理解发光位置。"));}
             if(l.Kind=="depth")detail.AddRow(ToolUi.Note("相机方向的线性深度，近白远黑；按可见模型归一化，黑色背景不参与范围。植物按透明轮廓计入。"));
             var section=new UiExpander{Header=head,Content=detail,Expanded=l.Expanded};section.ExpandedChanged+=(_,_)=>{if(!EventsActive||section.IsDisposed)return;l.Expanded=section.Expanded;owner.PresentationChanged();};layerSections.Add(section);
             layout.AddRow(new UiGroupBox{Content=new Panel{Padding=new(4),Content=section}});

@@ -3562,5 +3562,71 @@
     "en": "Partially completed",
     "shortZh": "部分完成",
     "shortEn": "Partial"
+  },
+  {
+    "zh": "强光",
+    "en": "Hard Light",
+    "shortZh": "强光",
+    "shortEn": "Hard Light"
+  },
+  {
+    "zh": "自发光",
+    "en": "Emission",
+    "shortZh": "自发光",
+    "shortEn": "Emission"
+  },
+  {
+    "zh": "通道 · 自发光",
+    "en": "Channel · Emission",
+    "shortZh": "通道 · 自发光",
+    "shortEn": "Emission"
+  },
+  {
+    "zh": "光晕",
+    "en": "Bloom",
+    "shortZh": "光晕",
+    "shortEn": "Bloom"
+  },
+  {
+    "zh": "启用自发光",
+    "en": "Enable emission",
+    "shortZh": "启用自发光",
+    "shortEn": "Emit"
+  },
+  {
+    "zh": "修改自发光",
+    "en": "Modify emission",
+    "shortZh": "修改自发光",
+    "shortEn": "Edit emission"
+  },
+  {
+    "zh": "发光颜色 #RRGGBB",
+    "en": "Emission color #RRGGBB",
+    "shortZh": "发光颜色 #RRGGBB",
+    "shortEn": "Color #RRGGBB"
+  },
+  {
+    "zh": "发光强度",
+    "en": "Emission intensity",
+    "shortZh": "发光强度",
+    "shortEn": "Intensity"
+  },
+  {
+    "zh": "视觉强度，不是流明；PSD 自发光通道与 AI 会使用此设置。",
+    "en": "Artistic intensity, not lumens. Used by the PSD emission channel and AI.",
+    "shortZh": "视觉强度，不是流明；PSD 自发光通道与 AI 会使用此设置。",
+    "shortEn": "Artistic intensity; PSD and AI."
+  },
+  {
+    "zh": "光晕为屏幕空间效果，不是实际照度；AI 使用独立发光通道理解发光位置。",
+    "en": "Bloom is a screen-space effect, not physical illumination. AI receives emission as a separate guide.",
+    "shortZh": "光晕为屏幕空间效果，不是实际照度；AI 使用独立发光通道理解发光位置。",
+    "shortEn": "Screen-space bloom; separate AI guide."
+  },
+  {
+    "zh": "恢复自发光默认值",
+    "en": "Reset emission defaults",
+    "shortZh": "恢复默认",
+    "shortEn": "Reset emission"
   }
 ]

@@ -17,6 +17,10 @@ public sealed class MaterialsTool:Panel
     private readonly DropDown scope=new(){Width=100};
     private readonly UiCheckBox reuse=new(){Text="优先复用相似的已有材质",Checked=true};
     private readonly NumericStepper width=Ui.Number(.001,1e8,1,95),height=Ui.Number(.001,1e8,1,95);
+    private readonly UiCheckBox emissionEnabled=new(){Text="启用自发光"};
+    private readonly ColorPicker emissionPicker=new(){Value=Eto.Drawing.Color.Parse("#FFF0D0")};
+    private readonly UiTextBox emissionColor=new(){Text="#FFF0D0"};
+    private readonly NumericStepper emissionIntensity=Ui.Number(0,100,2);
     private readonly NumericStepper roughness=Ui.Number(0,1,2,95),metallic=Ui.Number(0,1,2,95);
     private readonly DropDown randomMode=new(){Width=100},randomTiles=new(){Width=100};
     private readonly NumericStepper randomSeed=Ui.Number(int.MinValue,int.MaxValue,0,110),randomStrength=Ui.Number(0,50,0,85),randomColumns=Ui.Number(1,128,0,65),randomRows=Ui.Number(1,128,0,65),randomOffset=Ui.Number(0,1,2,65);
@@ -48,7 +52,9 @@ public sealed class MaterialsTool:Panel
         else chat=new(document,()=>(width.Value/1000,height.Value/1000),id=>{job=lastJob=id;progress.Indeterminate=true;},()=>reuse.Checked==true);
         var settings=Ui.Layout();settings.AddRow(new UiLabel{Text="整张贴图代表的实际宽 × 高（mm）",Wrap=WrapMode.Word});settings.AddRow(ToolUi.Row(new UiLabel{Text="宽度 mm"},width,null));settings.AddRow(ToolUi.Row(new UiLabel{Text="高度 mm"},height,null));
         settings.AddRow(ToolUi.Row(new UiLabel{Text="粗糙度"},roughness,null));settings.AddRow(ToolUi.Row(new UiLabel{Text="金属度"},metallic,null));
-        settings.AddRow(Ui.Button("保存尺寸与外观参数",()=>Guard(()=>{if(Busy)throw new ArgumentException("请先完成当前任务。");if(selectedVersion==null)throw new ArgumentException("先选择材质。");var a=MaterialLibrary.Clone(selectedVersion);a.WidthMeters=width.Value/1000;a.HeightMeters=height.Value/1000;a.Roughness=roughness.Value;a.Metallic=metallic.Value;MaterialService.Library.Update(a);SelectAsset(a.Id);status.Text="尺寸与外观参数已保存，下次应用生效。";})));
+        emissionPicker.ValueChanged+=(_,_)=>{var c=emissionPicker.Value;emissionColor.Text=$"#{c.Rb:X2}{c.Gb:X2}{c.Bb:X2}";};emissionColor.TextChanged+=(_,_)=>{try{var c=EmissionSettings.Parse(emissionColor.Text);emissionPicker.Value=Eto.Drawing.Color.Parse($"#{c.R:X2}{c.G:X2}{c.B:X2}");}catch(ArgumentException){}};
+        var light=Ui.Layout();light.AddRow(emissionEnabled);light.AddRow(new UiLabel{Text="发光颜色 #RRGGBB"});light.AddRow(ToolUi.Row(emissionPicker,emissionColor,null));light.AddRow(ToolUi.Row(new UiLabel{Text="发光强度"},emissionIntensity,null));light.AddRow(Ui.Button("恢复自发光默认值",()=>{emissionEnabled.Checked=false;emissionColor.Text="#FFF0D0";emissionIntensity.Value=1;}));settings.AddRow(new UiExpander{Header="自发光",Content=light});
+        settings.AddRow(Ui.Button("保存尺寸与外观参数",()=>Guard(()=>{if(Busy)throw new ArgumentException("请先完成当前任务。");if(selectedVersion==null)throw new ArgumentException("先选择材质。");var a=MaterialLibrary.Clone(selectedVersion);a.WidthMeters=width.Value/1000;a.HeightMeters=height.Value/1000;a.Roughness=roughness.Value;a.Metallic=metallic.Value;a.Emission=new(){Enabled=emissionEnabled.Checked==true,Color=emissionColor.Text,Intensity=emissionIntensity.Value};MaterialService.Library.Update(a);SelectAsset(a.Id);status.Text="尺寸与外观参数已保存，下次应用生效。";})));
         settings.AddRow(Ui.Button("打开 UV 工具",()=>SceneFlowWorkspace.Open("uv")));
         var advanced=new UiExpander{Header="尺寸与高级设置",Expanded=false,Content=settings};
         foreach(var item in new[]{("auto","自动 · 使用 AI 建议"),("off","关闭"),("object","按物件随机"),("stochastic","自然纹理 · 随机平铺"),("macro","大尺度色差"),("structured","保留结构 · 分区色差")})randomMode.Items.Add(new UiListItem{Key=item.Item1,Text=item.Item2});
@@ -87,7 +93,7 @@ public sealed class MaterialsTool:Panel
     {
         seasonal.Bind(id);
         plantContext=false;foreach(var control in appearanceControls)control.Visible=true;apply.Text="应用选中材质";
-        var a=MaterialService.Library.Get(id);selected=id;selectedVersion=MaterialLibrary.Clone(a);width.Value=a.WidthMeters*1000;height.Value=a.HeightMeters*1000;roughness.Value=a.Roughness;metallic.Value=a.Metallic;chosen.Tag="user-content";chosen.Text=CatalogDisplay.Name(a)+" · "+CatalogDisplay.Category(a);status.Text="材质已选中；点击应用即可。";
+        var a=MaterialService.Library.Get(id);selected=id;selectedVersion=MaterialLibrary.Clone(a);width.Value=a.WidthMeters*1000;height.Value=a.HeightMeters*1000;roughness.Value=a.Roughness;metallic.Value=a.Metallic;emissionEnabled.Checked=a.Emission.Enabled;emissionColor.Text=a.Emission.Color;emissionIntensity.Value=a.Emission.Intensity;chosen.Tag="user-content";chosen.Text=CatalogDisplay.Name(a)+" · "+CatalogDisplay.Category(a);status.Text="材质已选中；点击应用即可。";
         var r=a.Randomization;randomMode.SelectedKey=r.Mode;randomTiles.SelectedKey=r.Tiles.ToString();randomSeed.Value=r.Seed;randomStrength.Value=r.Strength*100;randomRotate.Checked=r.Rotate;randomColumns.Value=r.Columns;randomRows.Value=r.Rows;randomOffset.Value=r.RowOffset;randomReason.Tag="user-content";randomReason.Text=(r.RecommendedBy=="ai"?WorkspaceAppearance.Text("AI 建议："):"")+CatalogDisplay.Reason(a);UpdateRandomSummary();
         if(shelf!=null){shelf.Refresh();shelf.Select(id,false);}
     }

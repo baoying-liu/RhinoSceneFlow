@@ -1,10 +1,10 @@
 # SceneFlow for Rhino 8
 
-**Public preview · 0.23.3 · Windows x64 · Rhino 8.34+ / .NET 8**
+**Public preview · 0.23.4 · Windows x64 · Rhino 8.34+ / .NET 8**
 
 AI assets → physical-scale materials and UV → planting → layered PSD → AI postproduction.
 
-[Download the preview](https://github.com/baoying-liu/RhinoSceneFlow/releases/tag/v0.23.3) · [Installation guide](docs/Getting-Started.md) · [Report an issue](https://github.com/baoying-liu/RhinoSceneFlow/issues)
+[Download the preview](https://github.com/baoying-liu/RhinoSceneFlow/releases/tag/v0.23.4) · [Installation guide](docs/Getting-Started.md) · [Report an issue](https://github.com/baoying-liu/RhinoSceneFlow/issues)
 
 ## Videos
 
@@ -20,11 +20,11 @@ Click a preview to watch, or browse the [RhinoSceneFlow playlist](https://www.yo
 - **AI assets:** text/image references, existing-asset reuse, local shared libraries,
   categories and tags. The interface supports English and Chinese.
 - **Materials and UV:** physical-scale checks before application, independent UV
-  preparation and xatlas-based complex mesh unwrapping.
+  preparation, xatlas-based complex mesh unwrapping and emissive material settings.
 - **Planting:** mixed-species groups, density, random seeds, surface attachment,
   seasonal variants and camera-dependent elevation/plan display.
 - **PSD export:** Named Views, resolution, material textures/colors, shadows,
-  plants, Arctic display mode and depth channels.
+  plants, Arctic display mode, depth and emission channels with optional bloom.
 - **Web studio:** PSD import, list/canvas views, traceable child images,
   annotations, references, PhotoCraft editing reference layers and HD processing.
 

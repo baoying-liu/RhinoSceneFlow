@@ -1,6 +1,7 @@
 using Rhino;
 using Rhino.DocObjects;
 using Rhino.Render;
+using RhinoSceneFlow.Core;
 
 namespace RhinoSceneFlow.Plugin;
 
@@ -20,11 +21,11 @@ public static class SelectionProperties
     public static object Inspect(RhinoDoc doc,Guid[] ids)=>new{objects=Targets(doc,ids).Select(o=>
     {
         var rm=o.GetRenderMaterial(true);using var m=rm!=null?new Material(rm.ToMaterial(RenderTexture.TextureGeneration.Allow)):new Material(o.GetMaterial(true));
-        return new{id=o.Id,name=o.Name,material=Identity(o),materialName=rm?.Name??m.Name,roughness=m.IsPhysicallyBased?m.PhysicallyBased.Roughness:0,metallic=m.IsPhysicallyBased?m.PhysicallyBased.Metallic:0,uv=MaterialService.InspectWorldUv(doc,[o.Id])};
+        return new{id=o.Id,name=o.Name,material=Identity(o),materialName=rm?.Name??m.Name,roughness=m.IsPhysicallyBased?m.PhysicallyBased.Roughness:0,metallic=m.IsPhysicallyBased?m.PhysicallyBased.Metallic:0,emission=MaterialEmission.Read(rm,m),uv=MaterialService.InspectWorldUv(doc,[o.Id])};
     }).ToArray()};
-    public static object Modify(RhinoDoc doc,Guid[] ids,string scope="material",string? name=null,double? roughness=null,double? metallic=null,double? widthMeters=null,double? heightMeters=null)
+    public static object Modify(RhinoDoc doc,Guid[] ids,string scope="material",string? name=null,double? roughness=null,double? metallic=null,double? widthMeters=null,double? heightMeters=null,EmissionSettings? emission=null)
     {
-        var selected=Targets(doc,ids);if(scope is not ("material" or "layer" or "object"))throw new ArgumentException("scope: material | layer | object");
+        emission?.Validate();var selected=Targets(doc,ids);if(scope is not ("material" or "layer" or "object"))throw new ArgumentException("scope: material | layer | object");
         if(new[]{roughness,metallic}.Any(v=>v.HasValue&&(!double.IsFinite(v.Value)||v<0||v>1))||new[]{widthMeters,heightMeters}.Any(v=>v.HasValue&&(!double.IsFinite(v.Value)||v<=0||v>1e8))||name?.Length>200)throw new ArgumentException("材质参数无效。");
         var all=doc.Objects.GetObjectList(new ObjectEnumeratorSettings{NormalObjects=true,LockedObjects=true,HiddenObjects=true}).Where(o=>!PlantService.IsPlant(o)).ToArray();
         var layerIndices=selected.Select(o=>o.Attributes.LayerIndex).ToHashSet();var identities=selected.Select(Identity).ToHashSet();
@@ -41,26 +42,27 @@ public static class SelectionProperties
                 bool otherLayer=doc.Layers.Any(l=>!l.IsDeleted&&l.RenderMaterial?.Id==original.Id&&(scope!="layer"||!layerIndices.Contains(l.Index)));
                 bool clone=scope!="material"&&(outside||otherLayer);
                 var copy=(RenderMaterial)original.MakeCopy();changes.Add((objects,original,copy,clone));
+                if(emission!=null)MaterialEmission.Set(copy,emission);
                 if(name!=null)copy.Name=name;else if(clone)copy.Name=original.Name+" · "+(scope=="object"?"物体":"图层");
                 if(roughness.HasValue&&!copy.SetParameter("pbr-roughness",roughness.Value))throw new ArgumentException("无法修改粗糙度。");
                 if(metallic.HasValue&&!copy.SetParameter("pbr-metallic",metallic.Value))throw new ArgumentException("无法修改金属度。");
                 if(widthMeters.HasValue||heightMeters.HasValue)
-                    foreach(var usage in new[]{RenderMaterial.StandardChildSlots.PbrBaseColor,RenderMaterial.StandardChildSlots.PbrRoughness,RenderMaterial.StandardChildSlots.PbrMetallic,RenderMaterial.StandardChildSlots.Bump})
+                    foreach(var usage in new[]{RenderMaterial.StandardChildSlots.PbrBaseColor,RenderMaterial.StandardChildSlots.PbrRoughness,RenderMaterial.StandardChildSlots.PbrMetallic,RenderMaterial.StandardChildSlots.Bump,RenderMaterial.StandardChildSlots.PbrEmission})
                     {var texture=copy.GetTextureFromUsage(usage);if(texture==null)continue;var repeat=texture.GetRepeat();texture.SetRepeatLocked(false,RenderContent.ChangeContexts.Program);texture.SetRepeat(new(widthMeters.HasValue?1/widthMeters.Value:repeat.X,heightMeters.HasValue?1/heightMeters.Value:repeat.Y,repeat.Z),RenderContent.ChangeContexts.Program);}
             }
             uint undo=doc.BeginUndoRecord("修改选择的材质属性");try
             {
-                using var contentUndo=new ContentUndoHelper(doc);
+                using var contentUndo=changes.Any(c=>!c.Clone)?new ContentUndoHelper(doc):null;
                 foreach(var change in changes)
                 {
                     var material=change.Original;
-                    if(change.Clone){if(!doc.RenderMaterials.Add(change.Copy))throw new InvalidOperationException("无法创建独立材质。");contentUndo.AddContent(change.Copy,null);material=change.Copy;}
+                    if(change.Clone){if(!doc.RenderMaterials.Add(change.Copy))throw new InvalidOperationException("无法创建独立材质。");/* RDK attachment records creation in the active document undo. Rhino 8.34 AddContent(null parent) throws. */material=change.Copy;}
                     else
                     {
-                        if(!contentUndo.ModifyContent(material))throw new InvalidOperationException("无法记录材质撤销。");
+                        if(!contentUndo!.ModifyContent(material))throw new InvalidOperationException("无法记录材质撤销。");
                         material.BeginChange(RenderContent.ChangeContexts.Program);try
-                        {if(name!=null)material.Name=name;if(roughness.HasValue)material.SetParameter("pbr-roughness",roughness.Value);if(metallic.HasValue)material.SetParameter("pbr-metallic",metallic.Value);
-                         foreach(var usage in new[]{RenderMaterial.StandardChildSlots.PbrBaseColor,RenderMaterial.StandardChildSlots.PbrRoughness,RenderMaterial.StandardChildSlots.PbrMetallic,RenderMaterial.StandardChildSlots.Bump}){var source=change.Copy.GetTextureFromUsage(usage);var target=material.GetTextureFromUsage(usage);if(source!=null&&target!=null&&(widthMeters.HasValue||heightMeters.HasValue)){target.SetRepeatLocked(false,RenderContent.ChangeContexts.Program);target.SetRepeat(source.GetRepeat(),RenderContent.ChangeContexts.Program);}}}
+                        {if(emission!=null)MaterialEmission.Set(material,emission);if(name!=null)material.Name=name;if(roughness.HasValue)material.SetParameter("pbr-roughness",roughness.Value);if(metallic.HasValue)material.SetParameter("pbr-metallic",metallic.Value);
+                         foreach(var usage in new[]{RenderMaterial.StandardChildSlots.PbrBaseColor,RenderMaterial.StandardChildSlots.PbrRoughness,RenderMaterial.StandardChildSlots.PbrMetallic,RenderMaterial.StandardChildSlots.Bump,RenderMaterial.StandardChildSlots.PbrEmission}){var source=change.Copy.GetTextureFromUsage(usage);var target=material.GetTextureFromUsage(usage);if(source!=null&&target!=null&&(widthMeters.HasValue||heightMeters.HasValue)){target.SetRepeatLocked(false,RenderContent.ChangeContexts.Program);target.SetRepeat(source.GetRepeat(),RenderContent.ChangeContexts.Program);}}}
                         finally{material.EndChange();}
                     }
                     if(scope=="layer")foreach(int index in change.Objects.Select(o=>o.Attributes.LayerIndex).Distinct())

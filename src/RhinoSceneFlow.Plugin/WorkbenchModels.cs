@@ -11,6 +11,7 @@ public sealed class ExportLayerSetting
 {
     public string Kind{get;set;}=""; // empty placeholder, shadow, material (legacy color), texture, display
     public string TextureGrouping{get;set;}="material";
+    public bool Glow{get;set;}=true;
     public string PlantGrouping{get;set;}="species";
     public string ColorSource{get;set;}="material";
     public Guid Mode{get;set;}
@@ -19,7 +20,7 @@ public sealed class ExportLayerSetting
     public bool Enabled{get;set;}=true;
     public bool Visible{get;set;}=true;
     public bool Expanded{get;set;}
-    public ExportLayerSetting Copy()=>new(){Kind=Kind,TextureGrouping=TextureGrouping,PlantGrouping=PlantGrouping,ColorSource=ColorSource,Mode=Mode,Blend=Blend,Opacity=Opacity,Enabled=Enabled,Visible=Visible,Expanded=Expanded};
+    public ExportLayerSetting Copy()=>new(){Kind=Kind,Glow=Glow,TextureGrouping=TextureGrouping,PlantGrouping=PlantGrouping,ColorSource=ColorSource,Mode=Mode,Blend=Blend,Opacity=Opacity,Enabled=Enabled,Visible=Visible,Expanded=Expanded};
 }
 public sealed class CameraAdjustment
 {
@@ -49,7 +50,7 @@ public sealed class ViewExportRow
     public string[] ExportSeasons{get;set;}=["summer"];
     public bool SeasonExpanded{get;set;}
     public string Status{get;set;}="待导出";
-    public static List<ExportLayerSetting> DefaultLayers()=>[new(){Kind="plants"},new(){Kind="shadow",Blend="mul "},new(){Kind="texture"},new(){Kind="display",Mode=WorkbenchService.Modes().FirstOrDefault(m=>m.EnglishName=="Arctic")?.Id??Guid.Empty},new(){Kind="depth",Visible=false},new(){Kind="color",Visible=false}];
+    public static List<ExportLayerSetting> DefaultLayers()=>[new(){Kind="plants"},new(){Kind="emission",TextureGrouping="all",Blend="hLit"},new(){Kind="shadow",Blend="mul "},new(){Kind="texture"},new(){Kind="display",Mode=WorkbenchService.Modes().FirstOrDefault(m=>m.EnglishName=="Arctic")?.Id??Guid.Empty},new(){Kind="depth",Visible=false},new(){Kind="color",Visible=false}];
     public List<ExportLayerSetting> Layers{get;set;}=DefaultLayers();
     public int LayerDefaultsVersion{get;set;}
     public bool SizeExpanded{get;set;}
@@ -64,8 +65,9 @@ public sealed class ViewExportRow
     {
         if(!PlantsInitialized){if(!Layers.Any(l=>l.Kind=="plants"))Layers.Insert(0,new(){Kind="plants"});PlantsInitialized=true;}
         // Only upgrade the untouched historical default. Explicit custom stacks stay intact.
-        if(LayerDefaultsVersion==0&&Layers.Count==3&&Layers.Select(l=>l.Kind).SequenceEqual(new[]{"plants","shadow","texture"})&&Layers.All(l=>l.Enabled&&l.Visible&&l.Opacity==100&&l.TextureGrouping=="material"&&l.PlantGrouping=="species"&&l.Blend==(l.Kind=="shadow"?"mul ":"norm")))Layers.AddRange(DefaultLayers().Skip(3));
-        LayerDefaultsVersion=1;
+        if(LayerDefaultsVersion==0&&Layers.Count==3&&Layers.Select(l=>l.Kind).SequenceEqual(new[]{"plants","shadow","texture"})&&Layers.All(l=>l.Enabled&&l.Visible&&l.Opacity==100&&l.TextureGrouping=="material"&&l.PlantGrouping=="species"&&l.Blend==(l.Kind=="shadow"?"mul ":"norm")))Layers.AddRange(DefaultLayers().Where(l=>l.Kind is "display" or "depth" or "color"));
+        if(LayerDefaultsVersion<2&&Layers.Count==6&&Layers.Select(l=>l.Kind).SequenceEqual(new[]{"plants","shadow","texture","display","depth","color"})&&Layers.All(l=>l.Enabled&&l.Visible==(l.Kind is not ("depth" or "color"))&&l.Opacity==100&&l.TextureGrouping=="material"&&l.PlantGrouping=="species"&&l.Blend==(l.Kind=="shadow"?"mul ":"norm")))Layers.Insert(1,new(){Kind="emission",TextureGrouping="all",Blend="hLit"});
+        LayerDefaultsVersion=2;
     }
     public void SetPreset(int longest)
     {
@@ -82,11 +84,11 @@ public sealed class ViewExportRow
         if(!WorkbenchService.Modes().Any(m=>m.Id==Mode))throw new ArgumentException($"{Name} 的预览显示模式不存在。");
         if(Layers.Count>32)throw new ArgumentException("每个视图最多设置 32 个通道/显示模式。");
         var active=Layers.Where(l=>l.Enabled).ToArray();
-        if(active.Length==0||active.Any(l=>l.Kind is not ("shadow" or "material" or "texture" or "display" or "plants" or "color" or "depth")))throw new ArgumentException($"{Name}：请选择每个启用图层的内容，或关闭空条目。");
+        if(active.Length==0||active.Any(l=>l.Kind is not ("shadow" or "material" or "texture" or "display" or "plants" or "color" or "depth" or "emission")))throw new ArgumentException($"{Name}：请选择每个启用图层的内容，或关闭空条目。");
         foreach(var l in active)
             if(l.Kind=="plants"&&l.PlantGrouping is not ("individual" or "species" or "all"))throw new ArgumentException("植物分层：单株、按学名或合并全部。");
             else
-            if(l.Kind is "texture" or "color"&&l.TextureGrouping is not ("material" or "object" or "all"))throw new ArgumentException("请选择按材质、按物件或全部合并。");
+            if(l.Kind is "texture" or "color" or "emission"&&l.TextureGrouping is not ("material" or "object" or "all"))throw new ArgumentException("请选择按材质、按物件或全部合并。");
             else if(l.Kind=="color"&&l.ColorSource is not ("material" or "layer"))throw new ArgumentException("颜色来源：material | layer。");
             else if(!ConfiguredStack.BlendKeys.Contains(l.Blend)||l.Opacity<0||l.Opacity>100||l.Kind=="display"&&!WorkbenchService.Modes().Any(m=>m.Id==l.Mode))throw new ArgumentException($"{Name}：图层模式或透明度无效。");
         double[] numbers=[Camera.Yaw,Camera.Pitch,Camera.Zoom,Camera.PanX,Camera.PanY,Camera.PanZ,Sun.Azimuth,Sun.Altitude];

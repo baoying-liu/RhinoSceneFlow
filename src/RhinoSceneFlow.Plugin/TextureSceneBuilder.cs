@@ -10,7 +10,7 @@ using RhinoSceneFlow.Core;
 namespace RhinoSceneFlow.Plugin;
 
 /// <summary>UI-thread snapshot of actual effective materials and seam-correct mapped render meshes.</summary>
-internal sealed class TextureSceneBuilder(RhinoDoc doc,bool colorsOnly=false,bool layerColors=false)
+internal sealed class TextureSceneBuilder(RhinoDoc doc,bool colorsOnly=false,bool layerColors=false,bool emissionOnly=false)
 {
     internal readonly List<TextureSurface> Surfaces=[];
     internal readonly List<TextureObject> Objects=[];
@@ -23,7 +23,7 @@ internal sealed class TextureSceneBuilder(RhinoDoc doc,bool colorsOnly=false,boo
         if(obj.Geometry is Brep b&&b.Faces.Any(f=>f.MaterialChannelIndex>0))throw new NotSupportedException($"{obj.Id} 使用面级多材质，材质贴图通道暂不支持。");
         string? binding=obj.Attributes.MaterialSource==ObjectMaterialSource.MaterialFromLayer
             ?doc.Layers[obj.Attributes.LayerIndex].GetUserString(MaterialService.BindingKey):obj.Attributes.GetUserString(MaterialService.BindingKey);
-        if(!colorsOnly&&binding!=null&&!MaterialService.UvValid(doc,obj))throw new InvalidOperationException($"{obj.Attributes.Name} ({obj.Id}) 的真实世界 UV 缺失或已失效，请先在材质面板重新映射。");
+        if(!colorsOnly&&!emissionOnly&&binding!=null&&!MaterialService.UvValid(doc,obj))throw new InvalidOperationException($"{obj.Attributes.Name} ({obj.Id}) 的真实世界 UV 缺失或已失效，请先在材质面板重新映射。");
         var render=obj.GetRenderMaterial(true);var legacy=render is null?obj.GetMaterial(true):null;
         using var native=render?.ToMaterial(RenderTexture.TextureGeneration.Disallow)??(legacy is null?new Material():new Material(legacy));
         if(!colorsOnly&&(native.Transparency>1e-6||(native.IsPhysicallyBased&&native.PhysicallyBased.Opacity<.999999)))throw new NotSupportedException($"{obj.Id} 使用透明材质，材质贴图通道暂只支持不透明材质。");
@@ -42,7 +42,7 @@ internal sealed class TextureSceneBuilder(RhinoDoc doc,bool colorsOnly=false,boo
             if(name.StartsWith("SceneFlow_"+value.Asset.ToString("N")+"_r"+value.Revision+"_",StringComparison.Ordinal))
                 try{name=MaterialService.Library.Get(value.Asset).Name;}catch(FileNotFoundException){}
         }
-        if(!layerColors&&binding!=null)
+        if(!layerColors&&!emissionOnly&&binding!=null)
         {
             var id=MaterialService.Deserialize<MaterialBinding>(binding).Asset;var asset=MaterialService.Library.Get(id);string slot=Seasons.Slot(asset,PlantService.CurrentSeason);
             if(slot!="baseColor"){var seasonBinding=MaterialService.Deserialize<MaterialBinding>(binding);string selected=RandomTextureService.SeasonalPath(asset,slot,obj.Attributes.MaterialSource==ObjectMaterialSource.MaterialFromLayer?doc.Layers[obj.Attributes.LayerIndex].Id:obj.Id,seasonBinding.Randomized);using var seasonalTexture=native.GetBitmapTexture();if(seasonalTexture!=null){seasonalTexture.FileName=selected;native.SetBitmapTexture(seasonalTexture);}else native.SetBitmapTexture(selected);}
@@ -54,7 +54,14 @@ internal sealed class TextureSceneBuilder(RhinoDoc doc,bool colorsOnly=false,boo
             byte C(double v)=>(byte)Math.Clamp(Math.Round(v*255),0,255);color=Color.FromArgb(C(c.R),C(c.G),C(c.B));
         }
         if(layerColors){color=doc.Layers[obj.Attributes.LayerIndex].Color;key=groupKey="layer-color:"+color.ToArgb();name=$"#{color.R:X2}{color.G:X2}{color.B:X2} "+doc.Layers[obj.Attributes.LayerIndex].FullPath;}
-        using var texture=native.GetBitmapTexture();bool textured=!layerColors&&texture is {Enabled:true};bool mapped=textured&&!colorsOnly;
+        bool emissive=false;
+        if(emissionOnly)
+        {
+            if(native.IsPhysicallyBased){var e=native.PhysicallyBased.Emission;double peak=Math.Max(e.R,Math.Max(e.G,e.B));emissive=peak>0;double tone=peak>0?(1-Math.Exp(-peak))/peak:0;int C(double v)=>(int)Math.Clamp(Math.Round(v*tone*255),0,255);color=Color.FromArgb(C(e.R),C(e.G),C(e.B));}
+            else {color=native.EmissionColor;emissive=color.R>0||color.G>0||color.B>0;}
+        }
+        using var texture=emissionOnly?native.GetTexture(TextureType.PBR_Emission):native.GetBitmapTexture();bool textured=!layerColors&&(!emissionOnly||emissive)&&texture is {Enabled:true};bool mapped=textured&&!colorsOnly;
+        if(emissionOnly&&mapped&&binding!=null&&!MaterialService.UvValid(doc,obj))throw new InvalidOperationException("Emissive map UV is missing or stale; prepare physical UV before exporting.");
         if(!materials.TryGetValue(key,out int material))
         {
             PixelTexture? bitmap=null;
@@ -68,8 +75,8 @@ internal sealed class TextureSceneBuilder(RhinoDoc doc,bool colorsOnly=false,boo
             }
             // PBR base-color texture amount blends the constant and bitmap; it does not
             // multiply a 100% bitmap by the default gray constant. Classic Modulate does.
-            bool modulate=!native.IsPhysicallyBased&&texture?.TextureCombineMode==TextureCombineMode.Modulate;
-            double amount=native.IsPhysicallyBased&&render!=null?render.GetTextureAmountFromUsage(RenderMaterial.StandardChildSlots.PbrBaseColor)/100:1;
+            bool modulate=emissionOnly||!native.IsPhysicallyBased&&texture?.TextureCombineMode==TextureCombineMode.Modulate;
+            double amount=native.IsPhysicallyBased&&render!=null?render.GetTextureAmountFromUsage(emissionOnly?RenderMaterial.StandardChildSlots.PbrEmission:RenderMaterial.StandardChildSlots.PbrBaseColor)/100:1;
             if(!double.IsFinite(amount)||amount<0||amount>1)throw new NotSupportedException("颜色贴图混合量需为 0–100%。");
             var constant=new Rgb(color.R,color.G,color.B);Rgb representative=constant;
             if(bitmap!=null)
@@ -78,7 +85,7 @@ internal sealed class TextureSceneBuilder(RhinoDoc doc,bool colorsOnly=false,boo
                 byte Mix(long sum,byte fallback)=>(byte)Math.Clamp(Math.Round(modulate?sum/count*fallback/255:sum/count*amount+fallback*(1-amount)),0,255);
                 representative=new(Mix(r,constant.R),Mix(g,constant.G),Mix(blueSum,constant.B));
             }
-            material=Surfaces.Count;materials.Add(key,material);Surfaces.Add(new(groupKey,name,constant,bitmap,modulate,amount,representative));
+            material=Surfaces.Count;materials.Add(key,material);Surfaces.Add(new(groupKey,name,constant,bitmap,modulate,amount,representative,emissive));
         }
         int owner=Objects.Count;string objectName=string.IsNullOrWhiteSpace(obj.Attributes.Name)?"物件 "+obj.Id.ToString()[..8]:obj.Attributes.Name+" ["+obj.Id.ToString()[..8]+"]";
         Objects.Add(new(obj.Id.ToString(),objectName,material));
