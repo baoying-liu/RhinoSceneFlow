@@ -1,3 +1,4 @@
+import {TutorialFullV02,tutorialV02Frames} from './TutorialFullV02';
 import {TutorialFullV01,tutorialFullFrames} from './TutorialFullV01';
 import {TutorialRhinoSampleV01} from './TutorialRhinoSampleV01';
 import {TutorialRhinoSampleV02} from './TutorialRhinoSampleV02';
@@ -17,6 +18,7 @@ import { WorkflowMaterial, WorkflowPlantRules, WorkflowCamera, WorkflowSeasons, 
 export const RemotionRoot: React.FC = () => {
   return (
     <>
+<Composition id="SceneFlow-Tutorial-Full-v02" component={TutorialFullV02} durationInFrames={tutorialV02Frames} fps={30} width={1920} height={1080}/>
 <Composition id="SceneFlow-Tutorial-Full-v01" component={TutorialFullV01} durationInFrames={tutorialFullFrames} fps={30} width={1920} height={1080}/>
 <Composition id="SceneFlow-Tutorial-Rhino-Sample-v01" component={TutorialRhinoSampleV01} durationInFrames={1485} fps={30} width={1920} height={1080}/>
 <Composition id="SceneFlow-Tutorial-Rhino-Sample-v02" component={TutorialRhinoSampleV02} durationInFrames={1665} fps={30} width={1920} height={1080}/>
